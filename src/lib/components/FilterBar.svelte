@@ -1,6 +1,5 @@
 <script lang="ts">
-	import SearchIcon from '@lucide/svelte/icons/search';
-	import XIcon from '@lucide/svelte/icons/x';
+	import { Search, X, Brain, Code, Zap, Globe, Shield } from '@lucide/svelte';
 
 	interface Props {
 		filter: string;
@@ -9,21 +8,19 @@
 
 	let { filter = $bindable(''), scenario = $bindable('') }: Props = $props();
 
-	let showSearch = $state(false);
+	let searchOpen = $state(false);
 
-	const scenarios = [
-		{ value: '', label: 'All models' },
-		{ value: 'brainstorming', label: '🧠 Brainstorming & Reasoning' },
-		{ value: 'coding', label: '💻 General Coding' },
-		{ value: 'competitive', label: '⚔️ Competitive Programming' },
-		{ value: 'agentic', label: '🤖 Agentic / Autonomous' },
-		{ value: 'budget', label: '⚡ Budget / High Volume' },
-		{ value: 'long-context', label: '📚 Long Context' }
+	const scenarios: { value: string; label: string; icon: typeof Brain }[] = [
+		{ value: '', label: 'All', icon: Globe },
+		{ value: 'brainstorming', label: 'Brainstorming', icon: Brain },
+		{ value: 'coding', label: 'Coding', icon: Code },
+		{ value: 'competitive', label: 'Competitive', icon: Shield },
+		{ value: 'agentic', label: 'Agentic', icon: Zap },
+		{ value: 'budget', label: 'Budget', icon: Globe }
 	];
 
 	function applyScenario(value: string) {
 		scenario = value;
-		// Map scenario to search terms for filtering
 		switch (value) {
 			case 'brainstorming':
 				filter = 'reasoning';
@@ -38,61 +35,60 @@
 				filter = 'agentic';
 				break;
 			case 'budget':
-				filter = 'budget quota-friendly';
-				break;
-			case 'long-context':
-				filter = 'context';
+				filter = 'quota';
 				break;
 			default:
 				filter = '';
 		}
 	}
+
+	function clearFilter() {
+		filter = '';
+		searchOpen = false;
+	}
 </script>
 
 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-	<!-- Scenario chips -->
+	<!-- Scenario filter buttons -->
 	<div class="flex flex-wrap gap-1.5">
 		{#each scenarios as s}
+			{@const Icon = s.icon}
 			<button
-				class="rounded-full border px-3 py-1 text-xs transition-colors {scenario === s.value
-					? 'border-white/30 bg-white/10 text-white'
-					: 'border-white/10 bg-transparent text-white/50 hover:border-white/20 hover:text-white/70'}"
+				class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all {scenario === s.value
+					? 'border-primary/40 bg-primary/10 text-primary'
+					: 'border-border bg-card text-muted-foreground hover:border-border hover:text-foreground'}"
 				onclick={() => applyScenario(s.value)}
 			>
+				<Icon class="size-3" />
 				{s.label}
 			</button>
 		{/each}
 	</div>
 
 	<!-- Search -->
-	<div class="relative">
-		{#if !showSearch}
+	<div class="flex items-center gap-2">
+		{#if !searchOpen}
 			<button
-				class="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-sm text-white/50 transition-colors hover:text-white/70"
-				onclick={() => (showSearch = true)}
+				class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+				onclick={() => (searchOpen = true)}
 			>
-				<SearchIcon class="size-4" />
-				Search models
+				<Search class="size-4" />
+				Search
 			</button>
 		{:else}
-			<div
-				class="flex items-center gap-2 rounded-lg border border-white/20 bg-white/[0.04] px-3 py-2"
-			>
-				<SearchIcon class="size-4 text-white/40" />
+			<div class="relative inline-flex items-center rounded-lg border border-primary/40 bg-card px-3 py-2">
+				<Search class="mr-2 size-3.5 shrink-0 text-muted-foreground" />
 				<input
 					type="text"
 					bind:value={filter}
-					placeholder="Search by name, tag, provider..."
-					class="w-48 bg-transparent text-sm text-white placeholder:text-white/20 focus:outline-none"
+					placeholder="Search models..."
+					class="w-44 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
 				/>
 				<button
-					class="text-white/30 hover:text-white/60"
-					onclick={() => {
-						filter = '';
-						showSearch = false;
-					}}
+					class="ml-2 shrink-0 text-muted-foreground hover:text-foreground"
+					onclick={clearFilter}
 				>
-					<XIcon class="size-4" />
+					<X class="size-3.5" />
 				</button>
 			</div>
 		{/if}

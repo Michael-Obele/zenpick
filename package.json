@@ -38,5 +38,8 @@
 		"typescript": "^6.0.3",
 		"vaul-svelte": "^1.0.0-next.7",
 		"vite": "^8.0.16"
+	},
+	"dependencies": {
+		"lucide-svelte": "^1.0.1"
 	}
 }

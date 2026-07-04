@@ -61,56 +61,56 @@
 		return sortDir === 'asc' ? ' ↑' : ' ↓';
 	}
 
-	function burnEmoji(rate: string): string {
-		switch (rate) {
-			case 'slow':
-				return '❄️';
-			case 'medium':
-				return '🟡';
-			case 'fast':
-				return '🔥';
-			default:
-				return '';
-		}
-	}
-
 	function priceLabel(price: number): string {
 		if (price < 0.3) return '$';
 		if (price < 1.5) return '$$';
 		return '$$$';
 	}
+
+	function burnColor(rate: string): string {
+		switch (rate) {
+			case 'slow':
+				return 'text-green-400';
+			case 'medium':
+				return 'text-yellow-400';
+			case 'fast':
+				return 'text-red-400';
+			default:
+				return 'text-muted-foreground';
+		}
+	}
 </script>
 
-<div class="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.02]">
+<div class="overflow-x-auto rounded-xl border border-border bg-card">
 	<Table.Root>
 		<Table.Header>
-			<Table.Row class="border-b border-white/5">
+			<Table.Row class="border-b border-border">
 				<Table.Head
-					class="cursor-pointer whitespace-nowrap hover:text-white"
+					class="cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground"
 					onclick={() => toggleSort('name')}
 				>
 					Model{sortIndicator('name')}
 				</Table.Head>
 				<Table.Head
-					class="cursor-pointer whitespace-nowrap hover:text-white"
+					class="cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground"
 					onclick={() => toggleSort('price')}
 				>
 					Price / 1M{sortIndicator('price')}
 				</Table.Head>
-				<Table.Head class="whitespace-nowrap">Burn</Table.Head>
+				<Table.Head class="whitespace-nowrap text-muted-foreground">Burn</Table.Head>
 				<Table.Head
-					class="cursor-pointer whitespace-nowrap hover:text-white"
+					class="cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground"
 					onclick={() => toggleSort('quota')}
 				>
 					Req / 5h{sortIndicator('quota')}
 				</Table.Head>
 				<Table.Head
-					class="cursor-pointer whitespace-nowrap hover:text-white"
+					class="cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground"
 					onclick={() => toggleSort('coding')}
 				>
 					Coding{sortIndicator('coding')}
 				</Table.Head>
-				<Table.Head class="hidden whitespace-nowrap md:table-cell">Best for</Table.Head>
+				<Table.Head class="hidden whitespace-nowrap text-muted-foreground md:table-cell">Best for</Table.Head>
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
@@ -122,7 +122,7 @@
 							? 'Burns fast'
 							: 'Moderate'}
 				<Table.Row
-					class="cursor-pointer border-b border-white/[0.02] transition-colors hover:bg-white/[0.04]"
+					class="cursor-pointer border-b border-border transition-colors hover:bg-muted/50"
 					onclick={() => onSelectModel(model)}
 					tabindex={0}
 					role="button"
@@ -130,50 +130,49 @@
 				>
 					<Table.Cell class="font-medium">
 						<div class="flex items-center gap-2">
-							<span class="text-white">{model.name}</span>
+							<span class="text-foreground">{model.name}</span>
 							{#if model.isNew}
 								<span
-									class="inline-flex items-center rounded-full border border-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/60"
+									class="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs font-semibold text-muted-foreground"
 									>NEW</span
 								>
 							{/if}
 						</div>
-						<div class="text-xs text-white/40">{model.provider}</div>
+						<div class="text-xs text-muted-foreground">{model.provider}</div>
 					</Table.Cell>
 					<Table.Cell class="text-sm tabular-nums">
-						<div class="text-white/80">
+						<div class="text-foreground/80">
 							${model.pricing.inputPricePerM.toFixed(2)} /
-							<span class="text-white/50">${model.pricing.outputPricePerM.toFixed(2)}</span>
+							<span class="text-muted-foreground">${model.pricing.outputPricePerM.toFixed(2)}</span>
 						</div>
-						<div class="text-xs text-white/40">{priceLabel(model.pricing.inputPricePerM)}</div>
+						<div class="text-xs text-muted-foreground">{priceLabel(model.pricing.inputPricePerM)}</div>
 					</Table.Cell>
 					<Table.Cell>
-						<span class="inline-flex items-center gap-1 text-sm" title={burnLabel}>
-							{burnEmoji(model.burnRate)}
+						<span class="inline-flex items-center gap-1 text-sm font-medium {burnColor(model.burnRate)}" title={burnLabel}>
+							{model.burnRate === 'slow' ? 'Slow' : model.burnRate === 'fast' ? 'Fast' : 'Med'}
 						</span>
 					</Table.Cell>
-					<Table.Cell class="text-sm tabular-nums text-white/70">
+					<Table.Cell class="text-sm tabular-nums text-muted-foreground/70">
 						{model.quota.requestsPer5h.toLocaleString()}
 					</Table.Cell>
 					<Table.Cell class="text-sm tabular-nums">
 						{#if model.benchmarks.coding}
-							<span class="text-white/80">{model.benchmarks.coding.toFixed(1)}</span>
+							<span class="text-foreground/80">{model.benchmarks.coding.toFixed(1)}</span>
 						{:else}
-							<span class="text-white/30">—</span>
+							<span class="text-muted-foreground/30">—</span>
 						{/if}
 					</Table.Cell>
 					<Table.Cell class="hidden md:table-cell">
 						<div class="flex flex-wrap gap-1">
 							{#each model.tags.slice(0, 2) as tag}
 								<span
-									class="inline-flex items-center gap-0.5 rounded-full border border-white/10 px-2 py-0.5 text-xs text-white/60"
+									class="inline-flex items-center gap-0.5 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
 								>
-									{tag.emoji}
 									{tag.label}
 								</span>
 							{/each}
 							{#if model.tags.length > 2}
-								<span class="text-xs text-white/30">
+								<span class="text-xs text-muted-foreground/40">
 									+{model.tags.length - 2}
 								</span>
 							{/if}
@@ -182,7 +181,7 @@
 				</Table.Row>
 			{:else}
 				<Table.Row>
-					<Table.Cell colspan={6} class="py-12 text-center text-white/40">
+					<Table.Cell colspan={6} class="py-12 text-center text-muted-foreground">
 						No models match your filter. Try a different search term.
 					</Table.Cell>
 				</Table.Row>
