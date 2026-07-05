@@ -12,7 +12,7 @@
 
 - Svelte 5 Runes only: `$state`, `$props`, `$derived`, `$effect`. Never `export let` or `$:`.
 - Icons from `@lucide/svelte` only; never `lucide-svelte`.
-- Tailwind v4 semantic tokens preferred; solid colors allowed only for the thermal accent system.
+- Tailwind v4 semantic tokens preferred; solid colors allowed for the thermal accent system (cyan/amber/red) and the primary accent (`violet-600`).
 - No gradients anywhere.
 - shadcn-svelte components must be used as installed; do not hand-write new primitive UI.
 - All edited files must pass `bun check` and `bunx prettier --write <path>`.
@@ -37,9 +37,11 @@
 ### Task 1: Add Scenario Scores to the Type Definition
 
 **Files:**
+
 - Modify: `src/lib/types/models.ts`
 
 **Interfaces:**
+
 - Consumes: existing `GoModel` interface
 - Produces: `GoModel.scenarioScores: { brainstorming: number; coding: number; competitive: number; agentic: number; budget: number; }`
 
@@ -79,9 +81,11 @@ git commit -m "types: add scenarioScores to GoModel"
 ### Task 2: Compute Scenario Fit Scores in the Inference Engine
 
 **Files:**
+
 - Modify: `src/lib/server/inference.ts`
 
 **Interfaces:**
+
 - Consumes: `LLMStatsModel`, coding/reasoning/math rankings, inferred benchmarks, pricing, quota, burn rate, speed, context window
 - Produces: `inferScenarioScores(...): ScenarioScores`
 
@@ -232,9 +236,11 @@ git commit -m "feat: compute scenario fit scores for all models"
 ### Task 3: Update Filter Bar Icons and Behavior
 
 **Files:**
+
 - Modify: `src/lib/components/FilterBar.svelte`
 
 **Interfaces:**
+
 - Consumes: `filter: string`, `scenario: string` via `$bindable`
 - Produces: `scenario` emitted to parent; `filter` still bound for search
 
@@ -294,9 +300,11 @@ git commit -m "refactor: filter bar emits scenario keys with updated icons"
 ### Task 4: Sort Table by Scenario Score and Add Thermal UI
 
 **Files:**
+
 - Modify: `src/lib/components/ModelTable.svelte`
 
 **Interfaces:**
+
 - Consumes: `models: GoModel[]`, `filter: string`, `scenario: string`, `onSelectModel`
 - Produces: sorted/filtered table rows with fit meter and thermal burn badge
 
@@ -447,7 +455,9 @@ Replace the existing burn cell with:
 ```svelte
 <Table.Cell>
 	<span
-		class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium {burnClasses(model.burnRate)}"
+		class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium {burnClasses(
+			model.burnRate
+		)}"
 		title={burnLabel(model.burnRate)}
 	>
 		{#if model.burnRate === 'slow'}
@@ -508,9 +518,11 @@ git commit -m "feat: sort by scenario score, add thermal badges and fit meter"
 ### Task 5: Redesign the Quota Calculator
 
 **Files:**
+
 - Modify: `src/lib/components/QuotaCalculator.svelte`
 
 **Interfaces:**
+
 - Consumes: `models: { id; name; pricing }[]`
 - Produces: calculator with slider, thermal badges, and sensible default
 
@@ -560,7 +572,9 @@ git commit -m "feat: sort by scenario score, add thermal badges and fit meter"
 ```svelte
 <div>
 	<label for="tokens" class="mb-1.5 block text-sm text-muted-foreground">
-		Avg. tokens per request: <span class="font-medium text-foreground">{tokenInput.toLocaleString()}</span>
+		Avg. tokens per request: <span class="font-medium text-foreground"
+			>{tokenInput.toLocaleString()}</span
+		>
 	</label>
 	<input
 		id="tokens"
@@ -588,20 +602,30 @@ In the results block, replace the existing burn-level block with:
 	{@const level = total < 1.5 ? 'slow' : total < 6 ? 'moderate' : 'fast'}
 	<div class="flex items-center gap-2 text-xs">
 		{#if level === 'slow'}
-			<span class="inline-flex items-center gap-1 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-cyan-500">
+			<span
+				class="inline-flex items-center gap-1 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-cyan-500"
+			>
 				<Snowflake class="size-3" /> Slow burn
 			</span>
 		{:else if level === 'moderate'}
-			<span class="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-amber-500">
+			<span
+				class="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-amber-500"
+			>
 				Moderate
 			</span>
 		{:else}
-			<span class="inline-flex items-center gap-1 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-red-500">
+			<span
+				class="inline-flex items-center gap-1 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-red-500"
+			>
 				<Flame class="size-3" /> Fast burn
 			</span>
 		{/if}
 		<span class="text-muted-foreground">
-			{level === 'slow' ? 'Great for high-volume use' : level === 'moderate' ? 'Balanced for daily use' : 'Best for focused sessions'}
+			{level === 'slow'
+				? 'Great for high-volume use'
+				: level === 'moderate'
+					? 'Balanced for daily use'
+					: 'Best for focused sessions'}
 		</span>
 	</div>
 {/if}
@@ -624,9 +648,11 @@ git commit -m "feat: quota calculator slider, thermal badges, default model"
 ### Task 6: Redesign the Model Drawer
 
 **Files:**
+
 - Modify: `src/lib/components/ModelDrawer.svelte`
 
 **Interfaces:**
+
 - Consumes: `model: GoModel | null`, `open`, `onClose`
 - Produces: reorganized drawer with thermal summary, benchmark bars, sticky actions
 
@@ -701,7 +727,9 @@ git commit -m "feat: quota calculator slider, thermal badges, default model"
 					<Badge variant="outline">New</Badge>
 				{/if}
 				<span
-					class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium {burnClasses(model.burnRate)}"
+					class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium {burnClasses(
+						model.burnRate
+					)}"
 				>
 					{#if model.burnRate === 'slow'}
 						<Snowflake class="size-3" />
@@ -741,10 +769,15 @@ After the header, add:
 <div class="px-4 pb-2">
 	<div class="rounded-lg border border-border bg-muted/30 p-3 text-sm">
 		<div class="font-medium text-foreground">
-			{burnLabel(model.burnRate)} — about {model.quota.requestsPer5h.toLocaleString()} requests per $12 window
+			{burnLabel(model.burnRate)} — about {model.quota.requestsPer5h.toLocaleString()} requests per $12
+			window
 		</div>
 		<div class="text-muted-foreground">
-			Use this model for {model.burnRate === 'slow' ? 'high-volume, iterative work' : model.burnRate === 'fast' ? 'short, focused sessions' : 'balanced daily use'}.
+			Use this model for {model.burnRate === 'slow'
+				? 'high-volume, iterative work'
+				: model.burnRate === 'fast'
+					? 'short, focused sessions'
+					: 'balanced daily use'}.
 		</div>
 	</div>
 </div>
@@ -758,12 +791,7 @@ Replace the benchmark grid with:
 <section>
 	<h3 class="mb-2 text-sm font-medium text-muted-foreground">Benchmarks</h3>
 	<div class="space-y-3">
-		{#each [
-			{ label: 'Coding', value: model.benchmarks.coding },
-			{ label: 'Reasoning', value: model.benchmarks.reasoning },
-			{ label: 'Math', value: model.benchmarks.math },
-			{ label: 'SWE-bench', value: model.benchmarks.sweBenchVerified }
-		] as bench}
+		{#each [{ label: 'Coding', value: model.benchmarks.coding }, { label: 'Reasoning', value: model.benchmarks.reasoning }, { label: 'Math', value: model.benchmarks.math }, { label: 'SWE-bench', value: model.benchmarks.sweBenchVerified }] as bench}
 			{#if bench.value !== null}
 				<div>
 					<div class="mb-1 flex justify-between text-sm">
@@ -788,7 +816,9 @@ Replace the benchmark grid with:
 Wrap the action buttons in a sticky footer:
 
 ```svelte
-<div class="sticky bottom-0 border-t border-border bg-background/95 px-4 pb-4 pt-3 backdrop-blur-sm">
+<div
+	class="sticky bottom-0 border-t border-border bg-background/95 px-4 pb-4 pt-3 backdrop-blur-sm"
+>
 	<div class="flex flex-wrap gap-2">
 		<button class={buttonVariants({ variant: 'default', size: 'sm' })} onclick={copyModelId}>
 			{#if copied}
@@ -831,9 +861,11 @@ git commit -m "feat: drawer thermal summary, benchmark bars, sticky actions"
 ### Task 7: Update Page Layout and Pass Scenario State
 
 **Files:**
+
 - Modify: `src/routes/+page.svelte`
 
 **Interfaces:**
+
 - Consumes: `getModels()` query result
 - Produces: page with gradient-free hero, scenario state, loading skeleton
 
@@ -877,13 +909,19 @@ git commit -m "feat: drawer thermal summary, benchmark bars, sticky actions"
 		make economically informed decisions, not guesses.
 	</p>
 	<div class="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
-		<span class="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1">
+		<span
+			class="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1"
+		>
 			<Server class="size-3.5" /> 13+ models
 		</span>
-		<span class="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1">
+		<span
+			class="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1"
+		>
 			<Brain class="size-3.5" /> Live benchmark data
 		</span>
-		<span class="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1">
+		<span
+			class="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1"
+		>
 			<Zap class="size-3.5" /> $10/month subscription
 		</span>
 	</div>
@@ -924,7 +962,14 @@ Ensure `QuotaCalculator` receives `burnRate`:
 
 ```svelte
 {#await getModels() then models}
-	<QuotaCalculator models={models.map((m) => ({ id: m.id, name: m.name, pricing: m.pricing, burnRate: m.burnRate }))} />
+	<QuotaCalculator
+		models={models.map((m) => ({
+			id: m.id,
+			name: m.name,
+			pricing: m.pricing,
+			burnRate: m.burnRate
+		}))}
+	/>
 {/await}
 ```
 
@@ -952,19 +997,23 @@ Expected: 0 errors.
 - [ ] **Step 2: Run prettier on all edited files**
 
 Run:
+
 ```bash
 bunx prettier --write src/lib/types/models.ts src/lib/server/inference.ts src/lib/components/FilterBar.svelte src/lib/components/ModelTable.svelte src/lib/components/QuotaCalculator.svelte src/lib/components/ModelDrawer.svelte src/routes/+page.svelte
 ```
+
 Expected: all files formatted cleanly.
 
 - [ ] **Step 3: Manual browser checks**
 
 Start the dev server:
+
 ```bash
 bun dev --port 5174
 ```
 
 Verify in the browser:
+
 - Clicking **Competitive** returns ranked results.
 - Clicking **Agentic** returns ranked results.
 - Each scenario changes the row order.
@@ -985,6 +1034,7 @@ git commit -m "chore: final formatting and validation"
 ## Self-Review
 
 **1. Spec coverage:**
+
 - Scenario scoring → Task 2
 - Filter bar fix → Task 3
 - Table sort + fit meter → Task 4
@@ -994,10 +1044,12 @@ git commit -m "chore: final formatting and validation"
 - Loading state → Task 7
 
 **2. Placeholder scan:**
+
 - No TBD/TODO/fill-in-details found.
 - All steps include concrete code or commands.
 
 **3. Type consistency:**
+
 - `ScenarioScores` interface used consistently.
 - `burnRate` prop added to `QuotaCalculator` and passed from `+page.svelte`.
 - `scenario` prop threaded through `FilterBar`, `ModelTable`, and `+page.svelte`.
