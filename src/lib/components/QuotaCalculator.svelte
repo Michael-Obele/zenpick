@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Calculator, Clock, ChevronDown } from 'lucide-svelte';
+	import { Calculator, Clock, Flame, Snowflake } from '@lucide/svelte';
 	import * as Select from '$lib/components/ui/select/index.js';
 
 	interface Props {
@@ -7,6 +7,7 @@
 			id: string;
 			name: string;
 			pricing: { inputPricePerM: number; outputPricePerM: number };
+			burnRate?: string;
 		}[];
 	}
 
@@ -16,6 +17,18 @@
 	let selectedModelId = $state<string>('');
 
 	let selectedModel = $derived(models.find((m) => m.id === selectedModelId) ?? null);
+
+	$effect(() => {
+		if (!selectedModelId && models.length > 0) {
+			const sorted = [...models].sort(
+				(a, b) =>
+					a.pricing.inputPricePerM +
+					a.pricing.outputPricePerM -
+					(b.pricing.inputPricePerM + b.pricing.outputPricePerM)
+			);
+			selectedModelId = sorted[0]?.id ?? '';
+		}
+	});
 
 	let estimatedCost = $derived.by(() => {
 		if (!selectedModel) return null;
@@ -36,14 +49,6 @@
 			perMonth: Math.floor(60 / estimatedCost.perRequest)
 		};
 	});
-
-	let burnLevel = $derived.by(() => {
-		if (!selectedModel) return null;
-		const total = selectedModel.pricing.inputPricePerM + selectedModel.pricing.outputPricePerM;
-		if (total < 1.5) return 'slow';
-		if (total < 6) return 'moderate';
-		return 'fast';
-	});
 </script>
 
 <div class="rounded-xl border border-border bg-card p-6">
@@ -63,16 +68,18 @@
 		<!-- Token input -->
 		<div>
 			<label for="tokens" class="mb-1.5 block text-sm text-muted-foreground">
-				Avg. tokens per request
+				Avg. tokens per request: <span class="font-medium text-foreground"
+					>{tokenInput.toLocaleString()}</span
+				>
 			</label>
 			<input
 				id="tokens"
-				type="number"
+				type="range"
 				min="1000"
 				max="500000"
 				step="1000"
 				bind:value={tokenInput}
-				class="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+				class="w-full accent-violet-600"
 			/>
 			<div class="mt-1 flex justify-between text-xs text-muted-foreground/50">
 				<span>Short prompt (~2K)</span>
@@ -110,19 +117,37 @@
 					>
 				</div>
 
-				{#if burnLevel}
+				{#if selectedModel}
+					{@const total =
+						selectedModel.pricing.inputPricePerM + selectedModel.pricing.outputPricePerM}
+					{@const level = total < 1.5 ? 'slow' : total < 6 ? 'moderate' : 'fast'}
 					<div class="flex items-center gap-2 text-xs">
-						{#if burnLevel === 'slow'}
-							<span class="rounded-full bg-green-500/10 px-2 py-0.5 text-green-500">Slow burn</span>
-							<span class="text-muted-foreground">Great for high-volume use</span>
-						{:else if burnLevel === 'moderate'}
-							<span class="rounded-full bg-yellow-500/10 px-2 py-0.5 text-yellow-500">Moderate</span
+						{#if level === 'slow'}
+							<span
+								class="inline-flex items-center gap-1 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-cyan-500"
 							>
-							<span class="text-muted-foreground">Balanced for daily use</span>
+								<Snowflake class="size-3" /> Slow burn
+							</span>
+						{:else if level === 'moderate'}
+							<span
+								class="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-amber-500"
+							>
+								Moderate
+							</span>
 						{:else}
-							<span class="rounded-full bg-red-500/10 px-2 py-0.5 text-red-500">Fast burn</span>
-							<span class="text-muted-foreground">Best for focused sessions</span>
+							<span
+								class="inline-flex items-center gap-1 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-red-500"
+							>
+								<Flame class="size-3" /> Fast burn
+							</span>
 						{/if}
+						<span class="text-muted-foreground">
+							{level === 'slow'
+								? 'Great for high-volume use'
+								: level === 'moderate'
+									? 'Balanced for daily use'
+									: 'Best for focused sessions'}
+						</span>
 					</div>
 				{/if}
 
