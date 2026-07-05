@@ -5,7 +5,7 @@ import { fetchLLMStatsModels, fetchLLMStatsRankings } from '$lib/server/llm-stat
 import { inferModel } from '$lib/server/inference';
 import type { GoModel } from '$lib/types/models';
 
-const CACHE_KEY = 'go-models-enriched';
+const CACHE_KEY = 'go-models-enriched-v2';
 
 /**
  * Fetch all enriched Go models.
@@ -34,13 +34,7 @@ export const getModels = query(async () => {
 // ─── Internal ─────────────────────────────────────────────────────────────
 
 async function refreshCache(): Promise<GoModel[]> {
-	const [
-		goModels,
-		llmModels,
-		codingRankings,
-		reasoningRankings,
-		mathRankings
-	] = await Promise.all([
+	const [goModels, llmModels, codingRankings, reasoningRankings, mathRankings] = await Promise.all([
 		fetchGoModels(),
 		fetchLLMStatsModels().catch(() => []),
 		fetchLLMStatsRankings('coding', 50).catch(() => []),
@@ -49,11 +43,12 @@ async function refreshCache(): Promise<GoModel[]> {
 	]);
 
 	const enriched = goModels.map((gm) => {
-		const llmModel = llmModels.find(
-			(m) =>
-				m.name.toLowerCase().includes(goIdToName(gm.id).toLowerCase()) ||
-				goIdToName(gm.id).toLowerCase().includes(m.name.toLowerCase())
-		) ?? null;
+		const llmModel =
+			llmModels.find(
+				(m) =>
+					m.name.toLowerCase().includes(goIdToName(gm.id).toLowerCase()) ||
+					goIdToName(gm.id).toLowerCase().includes(m.name.toLowerCase())
+			) ?? null;
 
 		return inferModel(gm.id, llmModel, codingRankings, reasoningRankings, mathRankings);
 	});
