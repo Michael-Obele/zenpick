@@ -17,19 +17,6 @@
 <main class="mx-auto max-w-4xl px-4 py-12 sm:py-16">
 	<!-- Document header -->
 	<header class="mb-16">
-		<div
-			class="mb-6 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground"
-		>
-			<div class="flex items-center gap-2">
-				<ScrollText class="size-3" />
-				<span>spec_sheet · doc-zp-2026-001</span>
-			</div>
-			<div class="flex items-center gap-2">
-				<span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-500"></span>
-				<span class="text-cyan-500">active v1.0</span>
-			</div>
-		</div>
-
 		<h1
 			class="mb-6 text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-6xl"
 		>
@@ -317,9 +304,6 @@
 					Source
 					<ExternalLink class="size-3" />
 				</a>
-			</div>
-			<div class="font-mono text-[10px] uppercase tracking-[0.2em]">
-				doc-zp-2026-001 · v1.0 · {new Date().getFullYear()}
 			</div>
 		</div>
 	</footer>

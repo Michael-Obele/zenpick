@@ -98,43 +98,12 @@
 		{/await}
 	</section>
 
-	<!-- Footer -->
-	<footer class="mt-20 border-t border-border pt-8">
-		<div
-			class="flex flex-col items-center gap-4 text-sm text-muted-foreground/60 sm:flex-row sm:justify-between"
-		>
-			<p>
-				Data from the
-				<a
-					href="https://llm-stats.com"
-					target="_blank"
-					rel="noopener noreferrer"
-					class="inline-flex items-center gap-1 text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-				>
-					LLM Stats API <ArrowUpRight class="size-3" />
-				</a>
-				and
-				<a
-					href="https://opencode.ai/docs/go/"
-					target="_blank"
-					rel="noopener noreferrer"
-					class="inline-flex items-center gap-1 text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-				>
-					OpenCode Go docs <ArrowUpRight class="size-3" />
-				</a>
-				·
-				<a
-					href="/about"
-					class="inline-flex items-center gap-1 text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-				>
-					About ZenPick <ArrowUpRight class="size-3" />
-				</a>
-			</p>
-			<p>
-				Made to help developers make
-				<span class="text-muted-foreground/70">economically informed</span>
-				model choices.
-			</p>
-		</div>
-	</footer>
+	<!-- Footer (in-page attribution & tagline) -->
+	<div class="mt-20 text-center text-sm text-muted-foreground/60">
+		<p>
+			Made to help developers make
+			<span class="text-muted-foreground/70">economically informed</span>
+			model choices.
+		</p>
+	</div>
 </div>
