@@ -2,7 +2,7 @@
 
 **Find the right OpenCode Go model — without burning through your quota.**
 
-[![Netlify Status](https://api.netlify.com/api/v1/badges/YOUR_BADGE_ID/deploy-status)](https://zenpick.netlify.app)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/91fb6716-5f3e-42ad-87cc-58d7fcc6b1ec/deploy-status)](https://app.netlify.com/projects/zenpick/deploys)
 
 [ZenPick](https://zenpick.netlify.app) compares every [OpenCode Go](https://opencode.ai/zen) model side-by-side with live benchmarks, algorithmic fit scores, and quota burn estimates. One $10/month subscription, 12+ models — pick the one that matches your task and your budget.
 
