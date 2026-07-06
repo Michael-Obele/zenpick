@@ -17,10 +17,6 @@
 		drawerOpen = true;
 	}
 
-	function closeDrawer() {
-		drawerOpen = false;
-	}
-
 	const modelsPromise = getModels();
 </script>
 
@@ -86,8 +82,14 @@
 			<div class="mb-4">
 				<FilterBar bind:filter bind:scenario />
 			</div>
-			<ModelTable {models} {filter} {scenario} onSelectModel={openDrawer} />
-			<ModelDrawer model={selectedModel} open={drawerOpen} onClose={closeDrawer} />
+			<ModelTable
+				{models}
+				{filter}
+				{scenario}
+				selectedModelId={selectedModel?.id}
+				onSelectModel={openDrawer}
+			/>
+			<ModelDrawer model={selectedModel} bind:open={drawerOpen} />
 		{:catch err}
 			<div class="rounded-xl border border-red-500/20 bg-red-500/5 p-8 text-center">
 				<div class="text-red-400">Failed to load model data</div>

@@ -1,17 +1,24 @@
 <script lang="ts">
 	import type { GoModel } from '$lib/types/models';
-	import { burnClasses, burnLabel } from '$lib/burn';
+	import { burnClasses, burnLabel, type BurnRate } from '$lib/burn';
 	import * as Table from '$lib/components/ui/table/index.js';
-	import { Flame, Snowflake } from '@lucide/svelte';
+	import { Flame, Snowflake, ArrowUp, ArrowDown, ArrowUpDown, SearchX } from '@lucide/svelte';
 
 	interface Props {
 		models: GoModel[];
 		filter: string;
 		scenario: string;
+		selectedModelId?: string;
 		onSelectModel: (model: GoModel) => void;
 	}
 
-	let { models, filter = $bindable(''), scenario, onSelectModel }: Props = $props();
+	let {
+		models,
+		filter = $bindable(''),
+		scenario,
+		selectedModelId,
+		onSelectModel
+	}: Props = $props();
 
 	let filteredModels = $derived.by(() => {
 		let result = models;
@@ -77,8 +84,23 @@
 	}
 
 	function sortIndicator(key: SortKey) {
-		if (sortKey !== key) return '';
-		return sortDir === 'asc' ? ' ↑' : ' ↓';
+		if (sortKey !== key) {
+			return { icon: ArrowUpDown, active: false };
+		}
+		return { icon: sortDir === 'asc' ? ArrowUp : ArrowDown, active: true };
+	}
+
+	function burnDotClass(rate: BurnRate | string): string {
+		switch (rate) {
+			case 'slow':
+				return 'bg-cyan-500';
+			case 'medium':
+				return 'bg-amber-500';
+			case 'fast':
+				return 'bg-red-500';
+			default:
+				return 'bg-muted-foreground';
+		}
 	}
 
 	function priceLabel(price: number): string {
@@ -95,39 +117,69 @@
 
 <div class="overflow-x-auto rounded-xl border border-border bg-card">
 	<Table.Root>
-		<Table.Header>
-			<Table.Row class="border-b border-border">
+		<Table.Header class="sticky top-0 z-10 bg-card">
+			<Table.Row class="border-b border-border hover:bg-transparent">
+				{@const nameSort = sortIndicator('name')}
 				<Table.Head
 					class="cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground"
 					onclick={() => toggleSort('name')}
 				>
-					Model{sortIndicator('name')}
+					<span class="inline-flex items-center gap-1">
+						Model
+						<nameSort.icon
+							class="size-3 {nameSort.active ? 'text-foreground' : 'text-muted-foreground/40'}"
+						/>
+					</span>
 				</Table.Head>
+				{@const priceSort = sortIndicator('price')}
 				<Table.Head
 					class="cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground"
 					onclick={() => toggleSort('price')}
 				>
-					Price / 1M{sortIndicator('price')}
+					<span class="inline-flex items-center gap-1">
+						Price / 1M
+						<priceSort.icon
+							class="size-3 {priceSort.active ? 'text-foreground' : 'text-muted-foreground/40'}"
+						/>
+					</span>
 				</Table.Head>
 				<Table.Head class="whitespace-nowrap text-muted-foreground">Burn</Table.Head>
+				{@const quotaSort = sortIndicator('quota')}
 				<Table.Head
 					class="cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground"
 					onclick={() => toggleSort('quota')}
 				>
-					Req / 5h{sortIndicator('quota')}
+					<span class="inline-flex items-center gap-1">
+						Req / 5h
+						<quotaSort.icon
+							class="size-3 {quotaSort.active ? 'text-foreground' : 'text-muted-foreground/40'}"
+						/>
+					</span>
 				</Table.Head>
+				{@const codingSort = sortIndicator('coding')}
 				<Table.Head
 					class="cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground"
 					onclick={() => toggleSort('coding')}
 				>
-					Coding{sortIndicator('coding')}
+					<span class="inline-flex items-center gap-1">
+						Coding
+						<codingSort.icon
+							class="size-3 {codingSort.active ? 'text-foreground' : 'text-muted-foreground/40'}"
+						/>
+					</span>
 				</Table.Head>
 				{#if scenario}
+					{@const fitSort = sortIndicator('fit')}
 					<Table.Head
 						class="w-24 cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground"
 						onclick={() => toggleSort('fit')}
 					>
-						Fit{sortIndicator('fit')}
+						<span class="inline-flex items-center gap-1">
+							Fit
+							<fitSort.icon
+								class="size-3 {fitSort.active ? 'text-foreground' : 'text-muted-foreground/40'}"
+							/>
+						</span>
 					</Table.Head>
 				{/if}
 				<Table.Head class="hidden whitespace-nowrap text-muted-foreground md:table-cell"
@@ -137,11 +189,16 @@
 		</Table.Header>
 		<Table.Body>
 			{#each sortedModels as model (model.id)}
+				{@const isSelected = selectedModelId === model.id}
 				<Table.Row
-					class="cursor-pointer border-b border-border transition-colors hover:bg-muted/50"
+					class="cursor-pointer border-b border-border transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/50 {isSelected
+						? 'bg-muted/70 hover:bg-muted/80'
+						: ''}"
 					onclick={() => onSelectModel(model)}
 					tabindex={0}
 					role="button"
+					aria-pressed={isSelected}
+					data-state={isSelected ? 'selected' : undefined}
 					onkeydown={(e) => e.key === 'Enter' && onSelectModel(model)}
 				>
 					<Table.Cell class="font-medium">
@@ -167,11 +224,12 @@
 					</Table.Cell>
 					<Table.Cell>
 						<span
-							class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium {burnClasses(
+							class="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium {burnClasses(
 								model.burnRate
 							)}"
 							title={burnLabel(model.burnRate)}
 						>
+							<span class="size-1.5 rounded-full {burnDotClass(model.burnRate)}"></span>
 							{#if model.burnRate === 'slow'}
 								<Snowflake class="size-3" />
 							{:else if model.burnRate === 'fast'}
@@ -225,8 +283,12 @@
 				</Table.Row>
 			{:else}
 				<Table.Row>
-					<Table.Cell colspan={scenario ? 7 : 6} class="py-12 text-center text-muted-foreground">
-						No models match your search. Try clearing the filter or switching scenarios.
+					<Table.Cell colspan={scenario ? 7 : 6} class="py-12 text-center">
+						<div class="flex flex-col items-center gap-2 text-muted-foreground">
+							<SearchX class="size-8 opacity-40" />
+							<p>No models match your search.</p>
+							<p class="text-xs">Try clearing the filter or switching scenarios.</p>
+						</div>
 					</Table.Cell>
 				</Table.Row>
 			{/each}
