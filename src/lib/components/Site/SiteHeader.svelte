@@ -10,7 +10,6 @@
 	let open = $state(false);
 
 	function isActive(href: string): boolean {
-		// ponytail: simple match — covers 2-page site, refine when nav grows
 		const path: string = page.url.pathname;
 		if (href === '/') return path === '/';
 		return path === href || path.startsWith(href + '/');
