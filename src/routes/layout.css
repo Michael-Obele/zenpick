@@ -1,7 +1,8 @@
 @import 'tailwindcss';
-@import "tw-animate-css";
-@import "shadcn-svelte/tailwind.css";
-@import "@fontsource-variable/public-sans";
+@import 'tw-animate-css';
+@import 'shadcn-svelte/tailwind.css';
+@import '@fontsource-variable/public-sans';
+@import '@fontsource-variable/jetbrains-mono';
 
 @custom-variant dark (&:is(.dark *));
 @plugin '@tailwindcss/forms';
@@ -78,6 +79,7 @@
 
 @theme inline {
 	--font-sans: 'Public Sans Variable', sans-serif;
+	--font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, monospace;
 	--color-sidebar-ring: var(--sidebar-ring);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);

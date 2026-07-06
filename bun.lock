@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "opencode-compare",
+      "dependencies": {
+        "@fontsource-variable/jetbrains-mono": "^5.2.8",
+      },
       "devDependencies": {
         "@fontsource-variable/public-sans": "^5.2.7",
         "@internationalized/date": "^3.12.0",
@@ -44,6 +47,8 @@
     "@floating-ui/dom": ["@floating-ui/dom@1.7.6", "", { "dependencies": { "@floating-ui/core": "^1.7.5", "@floating-ui/utils": "^0.2.11" } }, "sha512-9gZSAI5XM36880PPMm//9dfiEngYoC6Am2izES1FF406YFsjvyBMmeJ2g4SAju3xWwtuynNRFL2s9hgxpLI5SQ=="],
 
     "@floating-ui/utils": ["@floating-ui/utils@0.2.11", "", {}, "sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg=="],
+
+    "@fontsource-variable/jetbrains-mono": ["@fontsource-variable/jetbrains-mono@5.2.8", "", {}, "sha512-WBA9elru6Jdp5df2mES55wuOO0WIrn3kpXnI4+W2ek5u3ZgLS9XS4gmIlcQhiZOWEKl95meYdvK7xI+ETLCq/Q=="],
 
     "@fontsource-variable/public-sans": ["@fontsource-variable/public-sans@5.2.7", "", {}, "sha512-4mvade2J3slKkvwRkS+p8T3szet/0vhWoSnuUJTVU81Uo2pRpSZY/Y8bSLRqpSwzIPxjVmRJ53oq6JKP/l/PSg=="],
 

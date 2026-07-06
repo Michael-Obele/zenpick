@@ -122,6 +122,13 @@
 				>
 					OpenCode Go docs <ArrowUpRight class="size-3" />
 				</a>
+				·
+				<a
+					href="/about"
+					class="inline-flex items-center gap-1 text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+				>
+					About ZenPick <ArrowUpRight class="size-3" />
+				</a>
 			</p>
 			<p>
 				Made to help developers make

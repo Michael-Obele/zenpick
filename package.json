@@ -38,5 +38,8 @@
 		"lint": "prettier --check .",
 		"format": "prettier --write ."
 	},
-	"type": "module"
+	"type": "module",
+	"dependencies": {
+		"@fontsource-variable/jetbrains-mono": "^5.2.8"
+	}
 }
