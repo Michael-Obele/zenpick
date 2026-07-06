@@ -14,28 +14,25 @@ function headers(): HeadersInit {
 	};
 }
 
+async function fetchLLMStats<T>(
+	path: string,
+	params: URLSearchParams,
+	resultKey: string
+): Promise<T> {
+	const url = `${LLM_STATS_BASE}${path}?${params}`;
+	const res = await fetch(url, { headers: headers() });
+	if (!res.ok) {
+		throw new Error(`LLM Stats ${path} returned ${res.status}: ${res.statusText}`);
+	}
+	const json = await res.json();
+	return json[resultKey] as T;
+}
+
 /** Fetch all models from LLM Stats, optionally filtered by organization. */
 export async function fetchLLMStatsModels(organization?: string): Promise<LLMStatsModel[]> {
 	const params = new URLSearchParams({ limit: '200' });
 	if (organization) params.set('organization', organization);
-
-	const url = `${LLM_STATS_BASE}/models?${params}`;
-	const res = await fetch(url, { headers: headers() });
-	if (!res.ok) {
-		throw new Error(`LLM Stats API returned ${res.status}: ${res.statusText}`);
-	}
-	const json = await res.json();
-	return json.models as LLMStatsModel[];
-}
-
-/** Fetch a single model's full details including all scores. */
-export async function fetchLLMStatsModelDetail(modelId: string): Promise<LLMStatsModel> {
-	const url = `${LLM_STATS_BASE}/models/${encodeURIComponent(modelId)}`;
-	const res = await fetch(url, { headers: headers() });
-	if (!res.ok) {
-		throw new Error(`LLM Stats model detail returned ${res.status}: ${res.statusText}`);
-	}
-	return (await res.json()) as LLMStatsModel;
+	return fetchLLMStats<LLMStatsModel[]>('/models', params, 'models');
 }
 
 /** Fetch rankings for a specific category (coding, reasoning, math). */
@@ -44,13 +41,7 @@ export async function fetchLLMStatsRankings(
 	limit = 50
 ): Promise<LLMStatsRanking[]> {
 	const params = new URLSearchParams({ category, limit: String(limit) });
-	const url = `${LLM_STATS_BASE}/rankings?${params}`;
-	const res = await fetch(url, { headers: headers() });
-	if (!res.ok) {
-		throw new Error(`LLM Stats rankings returned ${res.status}: ${res.statusText}`);
-	}
-	const json = await res.json();
-	return json.models as LLMStatsRanking[];
+	return fetchLLMStats<LLMStatsRanking[]>('/rankings', params, 'models');
 }
 
 /** Get the LLM Stats compare URL for a model. */

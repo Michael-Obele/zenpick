@@ -14,11 +14,6 @@ export async function fetchGoModels(): Promise<GoModelEntry[]> {
 	return json.data as GoModelEntry[];
 }
 
-/** Build the full model ID for OpenCode config. */
-export function goModelId(id: string): string {
-	return `opencode-go/${id}`;
-}
-
 /** Map Go model ID to LLM Stats search-friendly name. */
 export function goIdToName(id: string): string {
 	const mapping: Record<string, string> = {

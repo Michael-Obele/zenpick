@@ -27,15 +27,5 @@ export function cacheSet<T>(key: string, data: T, ttl: number): void {
 	cache.set(key, { data, createdAt: Date.now(), ttl });
 }
 
-/** Clear a specific cache key. */
-export function cacheDelete(key: string): void {
-	cache.delete(key);
-}
-
-/** Invalidate all cached data. */
-export function cacheClear(): void {
-	cache.clear();
-}
-
 /** Default TTL for model data: 6 hours. */
 export const MODELS_TTL = 6 * 60 * 60 * 1000;

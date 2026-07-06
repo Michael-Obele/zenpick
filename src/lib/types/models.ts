@@ -65,7 +65,8 @@ export interface GoModel {
 	fetchedAt: number;
 }
 
-export type BurnRate = 'slow' | 'medium' | 'fast';
+import type { BurnRate } from '$lib/burn';
+export type { BurnRate };
 
 export interface ScenarioScores {
 	brainstorming: number;

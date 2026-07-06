@@ -5,8 +5,8 @@
  * Zero manual curation — everything derived from benchmarks, pricing, and rankings.
  */
 
+import { burnRateFromPrice, type BurnRate } from '$lib/burn';
 import type {
-	BurnRate,
 	GoModel,
 	LLMStatsModel,
 	LLMStatsRanking,
@@ -28,66 +28,80 @@ export function inferModel(
 	mathRankings: LLMStatsRanking[]
 ): GoModel {
 	const name = goIdToName(goId);
-	const endpoint = goEndpointType(goId);
-
-	// Pricing — use LLM Stats data, or fall back to known defaults
 	const pricing = inferPricing(goId, llmStatsModel);
-
-	// Quota estimates computed from pricing
 	const quota = inferQuota(pricing);
-
-	// Burn rate tier
 	const burnRate = inferBurnRate(pricing);
-
-	// Rankings
-	const codingRank = findRanking(name, codingRankings);
-	const reasoningRank = findRanking(name, reasoningRankings);
-	const mathRank = findRanking(name, mathRankings);
-
-	// Benchmarks
-	const benchmarks = inferBenchmarks(goId, llmStatsModel, codingRank, reasoningRank, mathRank);
-
-	// Speed
+	const benchmarks = inferBenchmarksForModel(name, goId, llmStatsModel, {
+		codingRankings,
+		reasoningRankings,
+		mathRankings
+	});
 	const speed = inferSpeed(llmStatsModel);
-
-	// Algorithmic tags
 	const tags = inferTags(goId, pricing, benchmarks, burnRate, speed, llmStatsModel, codingRankings);
-
-	// Migration hints
 	const migrationHints = inferMigrationHints(goId, pricing, benchmarks);
-
-	const scenarioScores = inferScenarioScores(
+	const scenarioScores = inferScenarioScores({
 		goId,
 		pricing,
 		benchmarks,
 		burnRate,
 		speed,
-		llmStatsModel,
+		model: llmStatsModel,
 		codingRankings,
 		reasoningRankings,
 		mathRankings
-	);
+	});
 
-	return {
-		id: goId,
+	return buildGoModel({
+		goId,
 		name,
-		provider: llmStatsModel?.organization?.name ?? inferProvider(goId),
-		description: llmStatsModel?.description ?? '',
-		openWeight: llmStatsModel?.open_weight ?? true, // Go models are all open
-		contextWindow: llmStatsModel?.context_window ?? inferContextWindow(goId),
-		releaseDate: llmStatsModel?.release_date ?? null,
+		llmStatsModel,
 		pricing,
 		quota,
 		burnRate,
-		tags,
 		benchmarks,
 		speed,
+		tags,
 		migrationHints,
-		scenarioScores,
-		endpoint,
-		endpointUrl: goEndpointUrl(goId),
-		isNew: llmStatsModel === null,
-		llmStatsUrl: llmStatsModel ? llmStatsModelUrl(llmStatsModel.id) : '',
+		scenarioScores
+	});
+}
+
+interface GoModelParts {
+	goId: string;
+	name: string;
+	llmStatsModel: LLMStatsModel | null;
+	pricing: ModelPricing;
+	quota: GoModel['quota'];
+	burnRate: BurnRate;
+	benchmarks: ModelBenchmarks;
+	speed: ModelSpeed | null;
+	tags: ModelTag[];
+	migrationHints: MigrationHint[];
+	scenarioScores: ScenarioScores;
+}
+
+function buildGoModel(parts: GoModelParts): GoModel {
+	const m = parts.llmStatsModel;
+	return {
+		id: parts.goId,
+		name: parts.name,
+		provider: m?.organization?.name ?? inferProvider(parts.goId),
+		description: m?.description ?? '',
+		openWeight: m?.open_weight ?? true,
+		contextWindow: m?.context_window ?? inferContextWindow(parts.goId),
+		releaseDate: m?.release_date ?? null,
+		pricing: parts.pricing,
+		quota: parts.quota,
+		burnRate: parts.burnRate,
+		tags: parts.tags,
+		benchmarks: parts.benchmarks,
+		speed: parts.speed,
+		migrationHints: parts.migrationHints,
+		scenarioScores: parts.scenarioScores,
+		endpoint: goEndpointType(parts.goId),
+		endpointUrl: goEndpointUrl(parts.goId),
+		isNew: m === null,
+		llmStatsUrl: m ? llmStatsModelUrl(m.id) : '',
 		fetchedAt: Date.now()
 	};
 }
@@ -155,11 +169,7 @@ function inferQuota(pricing: ModelPricing): GoModel['quota'] {
 // ─── Burn Rate ───────────────────────────────────────────────────────────
 
 function inferBurnRate(pricing: ModelPricing): BurnRate {
-	// Burn rate is based on total pricing (input + output) per 1M
-	const total = pricing.inputPricePerM + pricing.outputPricePerM;
-	if (total < 1.5) return 'slow';
-	if (total < 6) return 'medium';
-	return 'fast';
+	return burnRateFromPrice(pricing.inputPricePerM + pricing.outputPricePerM);
 }
 
 // ─── Rankings ────────────────────────────────────────────────────────────
@@ -176,25 +186,33 @@ function findRanking(modelName: string, rankings: LLMStatsRanking[]): LLMStatsRa
 
 // ─── Benchmarks ──────────────────────────────────────────────────────────
 
-function inferBenchmarks(
+interface RankingSets {
+	codingRankings: LLMStatsRanking[];
+	reasoningRankings: LLMStatsRanking[];
+	mathRankings: LLMStatsRanking[];
+}
+
+function inferBenchmarksForModel(
+	name: string,
 	goId: string,
+	model: LLMStatsModel | null,
+	rankings: RankingSets
+): ModelBenchmarks {
+	const codingRank = findRanking(name, rankings.codingRankings);
+	const reasoningRank = findRanking(name, rankings.reasoningRankings);
+	const mathRank = findRanking(name, rankings.mathRankings);
+	return buildBenchmarks(model, codingRank, reasoningRank, mathRank);
+}
+
+function buildBenchmarks(
 	model: LLMStatsModel | null,
 	codingRank: LLMStatsRanking | null,
 	reasoningRank: LLMStatsRanking | null,
 	mathRank: LLMStatsRanking | null
 ): ModelBenchmarks {
-	const allScores: Record<string, number> = {};
-	if (model?.top_scores) {
-		for (const [key, val] of Object.entries(model.top_scores)) {
-			allScores[key] = val;
-		}
-	}
-
-	// Extract specific benchmarks from top_scores
-	const sweBenchKey = Object.keys(allScores).find((k) => k.toLowerCase().includes('swe-bench'));
-	const arenaKey = Object.keys(allScores).find(
-		(k) => k.toLowerCase().includes('code') && k.toLowerCase().includes('arena')
-	);
+	const allScores = extractAllScores(model);
+	const sweBenchKey = findScoreKey(allScores, 'swe-bench');
+	const arenaKey = findScoreKey(allScores, 'code', 'arena');
 
 	return {
 		coding: codingRank?.score ?? null,
@@ -204,6 +222,18 @@ function inferBenchmarks(
 		codeArena: arenaKey ? allScores[arenaKey] : null,
 		allScores
 	};
+}
+
+function extractAllScores(model: LLMStatsModel | null): Record<string, number> {
+	if (!model?.top_scores) return {};
+	return { ...model.top_scores };
+}
+
+function findScoreKey(scores: Record<string, number>, ...needles: string[]): string | undefined {
+	return Object.keys(scores).find((k) => {
+		const lower = k.toLowerCase();
+		return needles.every((n) => lower.includes(n));
+	});
 }
 
 // ─── Speed ───────────────────────────────────────────────────────────────
@@ -230,69 +260,107 @@ function inferTags(
 	model: LLMStatsModel | null,
 	codingRankings: LLMStatsRanking[]
 ): ModelTag[] {
-	const tags: ModelTag[] = [];
-	const totalModels = codingRankings.length || 13; // default to Go model count
-	const top25Threshold = Math.ceil(totalModels * 0.25);
-
-	// Coding
-	if (benchmarks.coding !== null && benchmarks.coding > 0) {
-		const rank = codingRankings.findIndex((r) =>
-			r.model_name.toLowerCase().includes(goId.toLowerCase())
-		);
-		if (rank >= 0 && rank < top25Threshold) {
-			tags.push({ label: 'Top-tier coding', emoji: '💻', source: 'ranking' });
-		} else if (rank >= 0 && rank < totalModels * 0.5) {
-			tags.push({ label: 'Solid coding', emoji: '🔧', source: 'ranking' });
-		}
-	}
-
-	// Competitive programming
-	if (benchmarks.sweBenchVerified !== null && benchmarks.sweBenchVerified > 50) {
-		tags.push({ label: 'Competitive programming', emoji: '⚔️', source: 'computed' });
-	} else if (benchmarks.codeArena && benchmarks.codeArena > 70) {
-		tags.push({ label: 'Code Arena strong', emoji: '🏟️', source: 'computed' });
-	}
-
-	// Reasoning
-	if (benchmarks.reasoning !== null && benchmarks.reasoning > 0) {
-		tags.push({ label: 'Strong reasoning', emoji: '🧠', source: 'ranking' });
-	}
-
-	// Math
-	if (benchmarks.math !== null && benchmarks.math > 0) {
-		tags.push({ label: 'Math & research', emoji: '📐', source: 'ranking' });
-	}
-
-	// Agentic (high coding + large context)
 	const ctx = model?.context_window ?? 0;
+	const tagBuilders = [
+		() => codingTags(goId, benchmarks, codingRankings),
+		() => competitiveTags(benchmarks),
+		() => reasoningTags(benchmarks),
+		() => mathTags(benchmarks),
+		() => agenticTags(benchmarks, ctx),
+		() => contextTags(ctx),
+		() => budgetTags(burnRate),
+		() => speedTags(speed),
+		() => newModelTag(model)
+	];
+
+	const tags = tagBuilders.flatMap((build) => build());
+	return dedupeTags(tags);
+}
+
+function codingTags(
+	goId: string,
+	benchmarks: ModelBenchmarks,
+	rankings: LLMStatsRanking[]
+): ModelTag[] {
+	if (benchmarks.coding === null || benchmarks.coding <= 0) return [];
+	const totalModels = rankings.length || 13;
+	const rank = rankings.findIndex((r) => r.model_name.toLowerCase().includes(goId.toLowerCase()));
+	if (rank < 0) return [];
+	if (rank < Math.ceil(totalModels * 0.25)) {
+		return [{ label: 'Top-tier coding', emoji: '💻', source: 'ranking' }];
+	}
+	if (rank < totalModels * 0.5) {
+		return [{ label: 'Solid coding', emoji: '🔧', source: 'ranking' }];
+	}
+	return [];
+}
+
+function competitiveTags(benchmarks: ModelBenchmarks): ModelTag[] {
+	if (benchmarks.sweBenchVerified !== null && benchmarks.sweBenchVerified > 50) {
+		return [{ label: 'Competitive programming', emoji: '⚔️', source: 'computed' }];
+	}
+	if (benchmarks.codeArena && benchmarks.codeArena > 70) {
+		return [{ label: 'Code Arena strong', emoji: '🏟️', source: 'computed' }];
+	}
+	return [];
+}
+
+function reasoningTags(benchmarks: ModelBenchmarks): ModelTag[] {
+	if (benchmarks.reasoning !== null && benchmarks.reasoning > 0) {
+		return [{ label: 'Strong reasoning', emoji: '🧠', source: 'ranking' }];
+	}
+	return [];
+}
+
+function mathTags(benchmarks: ModelBenchmarks): ModelTag[] {
+	if (benchmarks.math !== null && benchmarks.math > 0) {
+		return [{ label: 'Math & research', emoji: '📐', source: 'ranking' }];
+	}
+	return [];
+}
+
+function agenticTags(benchmarks: ModelBenchmarks, ctx: number): ModelTag[] {
 	if (benchmarks.coding !== null && benchmarks.coding > 0 && ctx >= 500_000) {
-		tags.push({ label: 'Agentic / autonomous', emoji: '🤖', source: 'computed' });
+		return [{ label: 'Agentic / autonomous', emoji: '🤖', source: 'computed' }];
 	}
+	return [];
+}
 
-	// Long context
+function contextTags(ctx: number): ModelTag[] {
 	if (ctx >= 500_000) {
-		tags.push({ label: `${formatContext(ctx)} context`, emoji: '📚', source: 'context' });
+		return [{ label: `${formatContext(ctx)} context`, emoji: '📚', source: 'context' }];
 	}
+	return [];
+}
 
-	// Budget
+function budgetTags(burnRate: BurnRate): ModelTag[] {
 	if (burnRate === 'slow') {
-		tags.push({ label: 'Quota-friendly', emoji: '❄️', source: 'pricing' });
-		tags.push({ label: 'High-volume budget', emoji: '⚡', source: 'pricing' });
-	} else if (burnRate === 'fast') {
-		tags.push({ label: 'Burns quota fast', emoji: '🔥', source: 'pricing' });
+		return [
+			{ label: 'Quota-friendly', emoji: '❄️', source: 'pricing' },
+			{ label: 'High-volume budget', emoji: '⚡', source: 'pricing' }
+		];
 	}
+	if (burnRate === 'fast') {
+		return [{ label: 'Burns quota fast', emoji: '🔥', source: 'pricing' }];
+	}
+	return [];
+}
 
-	// Speed
+function speedTags(speed: ModelSpeed | null): ModelTag[] {
 	if (speed && speed.tokensPerSecond > 100) {
-		tags.push({ label: 'Fast inference', emoji: '🚀', source: 'computed' });
+		return [{ label: 'Fast inference', emoji: '🚀', source: 'computed' }];
 	}
+	return [];
+}
 
-	// New / unranked
+function newModelTag(model: LLMStatsModel | null): ModelTag[] {
 	if (!model) {
-		tags.push({ label: 'New — benchmarking', emoji: '🆕', source: 'computed' });
+		return [{ label: 'New — benchmarking', emoji: '🆕', source: 'computed' }];
 	}
+	return [];
+}
 
-	// Deduplicate by label
+function dedupeTags(tags: ModelTag[]): ModelTag[] {
 	const seen = new Set<string>();
 	return tags.filter((t) => {
 		if (seen.has(t.label)) return false;
@@ -301,127 +369,168 @@ function inferTags(
 	});
 }
 
-function inferScenarioScores(
-	goId: string,
-	pricing: ModelPricing,
-	benchmarks: ModelBenchmarks,
-	burnRate: BurnRate,
-	speed: ModelSpeed | null,
-	model: LLMStatsModel | null,
-	codingRankings: LLMStatsRanking[],
-	reasoningRankings: LLMStatsRanking[],
-	mathRankings: LLMStatsRanking[]
-): ScenarioScores {
-	const totalModels = codingRankings.length || 13;
-	const codingRank = codingRankings.findIndex((r) =>
-		r.model_name.toLowerCase().includes(goId.toLowerCase())
-	);
-	const reasoningRank = reasoningRankings.findIndex((r) =>
-		r.model_name.toLowerCase().includes(goId.toLowerCase())
-	);
-	const mathRank = mathRankings.findIndex((r) =>
-		r.model_name.toLowerCase().includes(goId.toLowerCase())
-	);
+interface ScenarioInputs {
+	goId: string;
+	pricing: ModelPricing;
+	benchmarks: ModelBenchmarks;
+	burnRate: BurnRate;
+	speed: ModelSpeed | null;
+	model: LLMStatsModel | null;
+	codingRankings: LLMStatsRanking[];
+	reasoningRankings: LLMStatsRanking[];
+	mathRankings: LLMStatsRanking[];
+}
 
+function inferScenarioScores(inputs: ScenarioInputs): ScenarioScores {
+	const { goId, pricing, benchmarks, burnRate, speed, model, codingRankings, reasoningRankings } =
+		inputs;
+	const totalModels = codingRankings.length || 13;
 	const ctx = model?.context_window ?? inferContextWindow(goId);
-	const totalPrice = pricing.inputPricePerM + pricing.outputPricePerM;
 	const quota = inferQuota(pricing);
 
-	// Coding: rank (inverted) + sweBench/codeArena + speed
-	const codingScore =
-		(codingRank >= 0 ? normalizeScore(totalModels - codingRank, totalModels) * 0.5 : 0) +
-		normalizeScore(benchmarks.sweBenchVerified ?? 0, 100) * 0.25 +
-		normalizeScore(benchmarks.codeArena ?? 0, 100) * 0.15 +
-		normalizeScore(speed?.tokensPerSecond ?? 0, 200) * 0.1;
-
-	// Brainstorming: reasoning rank + context + moderate burn
-	const brainstormingScore =
-		(reasoningRank >= 0 ? normalizeScore(totalModels - reasoningRank, totalModels) * 0.5 : 0) +
-		normalizeScore(ctx, 1_000_000) * 0.3 +
-		(burnRate === 'medium' ? 100 : burnRate === 'slow' ? 70 : 40) * 0.2;
-
-	// Competitive: sweBench + codeArena + coding rank
-	const competitiveScore =
-		normalizeScore(benchmarks.sweBenchVerified ?? 0, 100) * 0.4 +
-		normalizeScore(benchmarks.codeArena ?? 0, 100) * 0.35 +
-		(codingRank >= 0 ? normalizeScore(totalModels - codingRank, totalModels) * 0.25 : 0);
-
-	// Agentic: coding rank + context >= 256K + speed + tool support
-	const agenticContextBonus = ctx >= 500_000 ? 100 : ctx >= 256_000 ? 60 : 0;
-	const toolSupport = model?.inference?.supports_tools ? 100 : 50;
-	const agenticScore =
-		(codingRank >= 0 ? normalizeScore(totalModels - codingRank, totalModels) * 0.4 : 0) +
-		agenticContextBonus * 0.3 +
-		normalizeScore(speed?.tokensPerSecond ?? 0, 200) * 0.15 +
-		toolSupport * 0.15;
-
-	// Budget: low price + high requests per window
-	const budgetScore =
-		normalizeScore(Math.max(0, 10 - totalPrice), 10) * 0.6 +
-		normalizeScore(quota.requestsPer5h, 30_000) * 0.4;
+	const ranks = {
+		coding: findRank(goId, codingRankings),
+		reasoning: findRank(goId, reasoningRankings),
+		math: findRank(goId, inputs.mathRankings)
+	};
 
 	return {
-		brainstorming: Math.round(brainstormingScore),
-		coding: Math.round(codingScore),
-		competitive: Math.round(competitiveScore),
-		agentic: Math.round(agenticScore),
-		budget: Math.round(budgetScore)
+		coding: Math.round(scoreCoding(benchmarks, ranks.coding, totalModels, speed)),
+		brainstorming: Math.round(scoreBrainstorming(ranks.reasoning, totalModels, ctx, burnRate)),
+		competitive: Math.round(scoreCompetitive(benchmarks, ranks.coding, totalModels)),
+		agentic: Math.round(scoreAgentic(ranks.coding, totalModels, ctx, speed, model)),
+		budget: Math.round(scoreBudget(pricing, quota))
 	};
+}
+
+function findRank(goId: string, rankings: LLMStatsRanking[]): number {
+	return rankings.findIndex((r) => r.model_name.toLowerCase().includes(goId.toLowerCase()));
+}
+
+function scoreCoding(
+	benchmarks: ModelBenchmarks,
+	rank: number,
+	totalModels: number,
+	speed: ModelSpeed | null
+): number {
+	const rankScore = rank >= 0 ? normalizeScore(totalModels - rank, totalModels) * 0.5 : 0;
+	return (
+		rankScore +
+		normalizeScore(benchmarks.sweBenchVerified ?? 0, 100) * 0.25 +
+		normalizeScore(benchmarks.codeArena ?? 0, 100) * 0.15 +
+		normalizeScore(speed?.tokensPerSecond ?? 0, 200) * 0.1
+	);
+}
+
+function scoreBrainstorming(
+	rank: number,
+	totalModels: number,
+	ctx: number,
+	burnRate: BurnRate
+): number {
+	const rankScore = rank >= 0 ? normalizeScore(totalModels - rank, totalModels) * 0.5 : 0;
+	const burnScore = burnRate === 'medium' ? 100 : burnRate === 'slow' ? 70 : 40;
+	return rankScore + normalizeScore(ctx, 1_000_000) * 0.3 + burnScore * 0.2;
+}
+
+function scoreCompetitive(benchmarks: ModelBenchmarks, rank: number, totalModels: number): number {
+	const rankScore = rank >= 0 ? normalizeScore(totalModels - rank, totalModels) * 0.25 : 0;
+	return (
+		normalizeScore(benchmarks.sweBenchVerified ?? 0, 100) * 0.4 +
+		normalizeScore(benchmarks.codeArena ?? 0, 100) * 0.35 +
+		rankScore
+	);
+}
+
+function scoreAgentic(
+	rank: number,
+	totalModels: number,
+	ctx: number,
+	speed: ModelSpeed | null,
+	model: LLMStatsModel | null
+): number {
+	const rankScore = rank >= 0 ? normalizeScore(totalModels - rank, totalModels) * 0.4 : 0;
+	const contextBonus = ctx >= 500_000 ? 100 : ctx >= 256_000 ? 60 : 0;
+	const toolSupport = model?.inference?.supports_tools ? 100 : 50;
+	return (
+		rankScore +
+		contextBonus * 0.3 +
+		normalizeScore(speed?.tokensPerSecond ?? 0, 200) * 0.15 +
+		toolSupport * 0.15
+	);
+}
+
+function scoreBudget(pricing: ModelPricing, quota: GoModel['quota']): number {
+	const totalPrice = pricing.inputPricePerM + pricing.outputPricePerM;
+	return (
+		normalizeScore(Math.max(0, 10 - totalPrice), 10) * 0.6 +
+		normalizeScore(quota.requestsPer5h, 30_000) * 0.4
+	);
 }
 
 // ─── Migration Hints ─────────────────────────────────────────────────────
 
 function inferMigrationHints(
-	goId: string,
+	_goId: string,
 	pricing: ModelPricing,
 	benchmarks: ModelBenchmarks
 ): MigrationHint[] {
-	const hints: MigrationHint[] = [];
+	return [
+		codingMigrationHint(benchmarks.coding, pricing.inputPricePerM),
+		reasoningMigrationHint(benchmarks.reasoning),
+		budgetMigrationHint(pricing.inputPricePerM)
+	].filter((h): h is MigrationHint => h !== null);
+}
 
-	// Quality-to-price ratio hints based on benchmark scores
-	if (benchmarks.coding && benchmarks.coding > 80) {
-		hints.push({
-			model: 'Claude Sonnet 4.6 / Opus 4.8',
-			reason: `Comparable coding quality at ~${pricing.inputPricePerM < 1 ? '10x+' : '5x'} lower input cost`
-		});
-	}
+function codingMigrationHint(score: number | null, inputPrice: number): MigrationHint | null {
+	if (!score || score <= 80) return null;
+	const multiplier = inputPrice < 1 ? '10x+' : '5x';
+	return {
+		model: 'Claude Sonnet 4.6 / Opus 4.8',
+		reason: `Comparable coding quality at ~${multiplier} lower input cost`
+	};
+}
 
-	if (benchmarks.reasoning && benchmarks.reasoning > 80) {
-		hints.push({
-			model: 'GPT-5.4 / Claude Mythos',
-			reason: 'Strong reasoning performance rivaling frontier closed-source models'
-		});
-	}
+function reasoningMigrationHint(score: number | null): MigrationHint | null {
+	if (!score || score <= 80) return null;
+	return {
+		model: 'GPT-5.4 / Claude Mythos',
+		reason: 'Strong reasoning performance rivaling frontier closed-source models'
+	};
+}
 
-	// Budget alternative hints
-	if (pricing.inputPricePerM < 0.3) {
-		hints.push({
-			model: 'Any API pay-per-token plan',
-			reason: 'Included in $10/month Go subscription — no per-request billing'
-		});
-	}
-
-	return hints;
+function budgetMigrationHint(inputPrice: number): MigrationHint | null {
+	if (inputPrice >= 0.3) return null;
+	return {
+		model: 'Any API pay-per-token plan',
+		reason: 'Included in $10/month Go subscription — no per-request billing'
+	};
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
+const PROVIDER_BY_PREFIX: Record<string, string> = {
+	deepseek: 'DeepSeek',
+	qwen: 'Alibaba / Qwen Team',
+	glm: 'Zhipu AI',
+	kimi: 'Moonshot AI',
+	minimax: 'MiniMax',
+	mimo: 'Xiaomi',
+	hy3: 'Unknown'
+};
+
 function inferProvider(goId: string): string {
-	if (goId.startsWith('deepseek')) return 'DeepSeek';
-	if (goId.startsWith('qwen')) return 'Alibaba / Qwen Team';
-	if (goId.startsWith('glm')) return 'Zhipu AI';
-	if (goId.startsWith('kimi')) return 'Moonshot AI';
-	if (goId.startsWith('minimax')) return 'MiniMax';
-	if (goId.startsWith('mimo')) return 'Xiaomi';
-	if (goId.startsWith('hy3')) return 'Unknown';
-	return 'Unknown';
+	const prefix = Object.keys(PROVIDER_BY_PREFIX).find((p) => goId.startsWith(p));
+	return prefix ? PROVIDER_BY_PREFIX[prefix] : 'Unknown';
 }
 
 function inferContextWindow(goId: string): number {
-	if (goId.includes('glm-5') || goId.includes('qwen3.6') || goId.includes('deepseek-v4-pro'))
+	if (goId.includes('glm-5') || goId.includes('qwen3.6') || goId.includes('deepseek-v4-pro')) {
 		return 1_000_000;
-	if (goId.includes('kimi-k2')) return 256_000;
-	if (goId.includes('qwen3.7')) return 256_000;
+	}
+	if (goId.includes('kimi-k2') || goId.includes('qwen3.7')) {
+		return 256_000;
+	}
 	return 128_000;
 }
 

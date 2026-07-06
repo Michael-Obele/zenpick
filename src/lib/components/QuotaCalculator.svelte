@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Calculator, Clock, Flame, Snowflake } from '@lucide/svelte';
+	import { burnClasses, burnRateFromPrice } from '$lib/burn';
 	import * as Select from '$lib/components/ui/select/index.js';
 
 	interface Props {
@@ -20,15 +21,19 @@
 
 	$effect(() => {
 		if (!selectedModelId && models.length > 0) {
-			const sorted = [...models].sort(
-				(a, b) =>
-					a.pricing.inputPricePerM +
-					a.pricing.outputPricePerM -
-					(b.pricing.inputPricePerM + b.pricing.outputPricePerM)
-			);
-			selectedModelId = sorted[0]?.id ?? '';
+			selectedModelId = cheapestModel(models)?.id ?? '';
 		}
 	});
+
+	function cheapestModel(
+		models: { id: string; pricing: { inputPricePerM: number; outputPricePerM: number } }[]
+	) {
+		return [...models].sort((a, b) => totalPrice(a.pricing) - totalPrice(b.pricing))[0];
+	}
+
+	function totalPrice(pricing: { inputPricePerM: number; outputPricePerM: number }) {
+		return pricing.inputPricePerM + pricing.outputPricePerM;
+	}
 
 	let estimatedCost = $derived.by(() => {
 		if (!selectedModel) return null;
@@ -118,33 +123,27 @@
 				</div>
 
 				{#if selectedModel}
-					{@const total =
-						selectedModel.pricing.inputPricePerM + selectedModel.pricing.outputPricePerM}
-					{@const level = total < 1.5 ? 'slow' : total < 6 ? 'moderate' : 'fast'}
+					{@const level = burnRateFromPrice(
+						selectedModel.pricing.inputPricePerM + selectedModel.pricing.outputPricePerM
+					)}
 					<div class="flex items-center gap-2 text-xs">
-						{#if level === 'slow'}
-							<span
-								class="inline-flex items-center gap-1 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-cyan-500"
-							>
+						<span
+							class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 {burnClasses(
+								level
+							)}"
+						>
+							{#if level === 'slow'}
 								<Snowflake class="size-3" /> Slow burn
-							</span>
-						{:else if level === 'moderate'}
-							<span
-								class="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-amber-500"
-							>
-								Moderate
-							</span>
-						{:else}
-							<span
-								class="inline-flex items-center gap-1 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-red-500"
-							>
+							{:else if level === 'fast'}
 								<Flame class="size-3" /> Fast burn
-							</span>
-						{/if}
+							{:else}
+								Moderate
+							{/if}
+						</span>
 						<span class="text-muted-foreground">
 							{level === 'slow'
 								? 'Great for high-volume use'
-								: level === 'moderate'
+								: level === 'medium'
 									? 'Balanced for daily use'
 									: 'Best for focused sessions'}
 						</span>

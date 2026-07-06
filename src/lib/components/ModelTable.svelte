@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { GoModel } from '$lib/types/models';
+	import { burnClasses, burnLabel } from '$lib/burn';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { Flame, Snowflake } from '@lucide/svelte';
 
@@ -26,46 +27,47 @@
 		return result;
 	});
 
-	let sortKey = $state<'name' | 'coding' | 'price' | 'quota' | 'fit'>('coding');
+	type SortKey = 'name' | 'coding' | 'price' | 'quota' | 'fit';
+
+	let sortKey = $state<SortKey>('coding');
 	let sortDir = $state<'asc' | 'desc'>('desc');
 
-	let sortedModels = $derived.by(() => {
-		const copy = [...filteredModels];
-		if (scenario && sortKey !== 'fit') {
-			copy.sort(
-				(a, b) =>
-					b.scenarioScores[scenario as keyof GoModel['scenarioScores']] -
-					a.scenarioScores[scenario as keyof GoModel['scenarioScores']]
-			);
-		} else {
-			copy.sort((a, b) => {
-				let cmp = 0;
-				switch (sortKey) {
-					case 'name':
-						cmp = a.name.localeCompare(b.name);
-						break;
-					case 'coding':
-						cmp = (a.benchmarks.coding ?? 0) - (b.benchmarks.coding ?? 0);
-						break;
-					case 'price':
-						cmp = b.pricing.inputPricePerM - a.pricing.inputPricePerM;
-						break;
-					case 'quota':
-						cmp = a.quota.requestsPer5h - b.quota.requestsPer5h;
-						break;
-					case 'fit':
-						cmp =
-							(b.scenarioScores[scenario as keyof GoModel['scenarioScores']] ?? 0) -
-							(a.scenarioScores[scenario as keyof GoModel['scenarioScores']] ?? 0);
-						break;
-				}
-				return sortDir === 'asc' ? cmp : -cmp;
-			});
-		}
-		return copy;
-	});
+	let sortedModels = $derived.by(() =>
+		[...filteredModels].sort((a, b) => compareModels(a, b, scenario, sortKey, sortDir))
+	);
 
-	function toggleSort(key: typeof sortKey) {
+	function compareModels(
+		a: GoModel,
+		b: GoModel,
+		scenario: string,
+		key: SortKey,
+		sortDir: 'asc' | 'desc'
+	): number {
+		const effectiveKey = scenario && key !== 'fit' ? 'fit' : key;
+		const cmp = compareByKey(a, b, scenario, effectiveKey);
+		return sortDir === 'asc' ? cmp : -cmp;
+	}
+
+	function compareByKey(a: GoModel, b: GoModel, scenario: string, key: SortKey): number {
+		switch (key) {
+			case 'name':
+				return a.name.localeCompare(b.name);
+			case 'coding':
+				return (a.benchmarks.coding ?? 0) - (b.benchmarks.coding ?? 0);
+			case 'price':
+				return b.pricing.inputPricePerM - a.pricing.inputPricePerM;
+			case 'quota':
+				return a.quota.requestsPer5h - b.quota.requestsPer5h;
+			case 'fit':
+				return scenarioScore(b, scenario) - scenarioScore(a, scenario);
+		}
+	}
+
+	function scenarioScore(model: GoModel, scenario: string): number {
+		return model.scenarioScores[scenario as keyof GoModel['scenarioScores']] ?? 0;
+	}
+
+	function toggleSort(key: SortKey) {
 		if (sortKey === key) {
 			sortDir = sortDir === 'asc' ? 'desc' : 'asc';
 		} else {
@@ -74,7 +76,7 @@
 		}
 	}
 
-	function sortIndicator(key: typeof sortKey) {
+	function sortIndicator(key: SortKey) {
 		if (sortKey !== key) return '';
 		return sortDir === 'asc' ? ' ↑' : ' ↓';
 	}
@@ -85,36 +87,9 @@
 		return '$$$';
 	}
 
-	function burnClasses(rate: string): string {
-		switch (rate) {
-			case 'slow':
-				return 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20';
-			case 'medium':
-				return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
-			case 'fast':
-				return 'bg-red-500/10 text-red-500 border-red-500/20';
-			default:
-				return 'bg-muted text-muted-foreground border-border';
-		}
-	}
-
-	function burnLabel(rate: string): string {
-		switch (rate) {
-			case 'slow':
-				return 'Slow burn';
-			case 'fast':
-				return 'Fast burn';
-			default:
-				return 'Moderate';
-		}
-	}
-
 	function fitSegments(score: number): number {
-		if (score >= 80) return 4;
-		if (score >= 60) return 3;
-		if (score >= 40) return 2;
-		if (score >= 20) return 1;
-		return 0;
+		const thresholds = [80, 60, 40, 20];
+		return thresholds.findIndex((t) => score >= t);
 	}
 </script>
 
