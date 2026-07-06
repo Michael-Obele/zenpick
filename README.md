@@ -51,8 +51,8 @@ ZenPick answers three questions:
 
 ```bash
 # Clone
-git clone https://github.com/Michael-Obele/opencode-compare.git
-cd opencode-compare
+git clone https://github.com/Michael-Obele/zenpick.git
+cd zenpick
 
 # Install dependencies
 bun install

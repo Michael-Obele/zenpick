@@ -21,10 +21,10 @@
 </script>
 
 <svelte:head>
-	<title>OpenCode Compare — Find the right Go model</title>
+	<title>ZenPick — Find the right Go model</title>
 	<meta
 		name="description"
-		content="Compare OpenCode Go models with live benchmarks, pricing, and quota estimates. Find which model is best for brainstorming, coding, agentic work — and how fast it burns your quota."
+		content="Compare OpenCode Go models with live benchmarks, pricing, and quota estimates. ZenPick helps you find which model fits your task — and how fast it burns your quota."
 	/>
 </svelte:head>
 

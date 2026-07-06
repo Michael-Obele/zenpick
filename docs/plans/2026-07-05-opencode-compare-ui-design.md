@@ -1,4 +1,4 @@
-# OpenCode Compare — Filter Fix + Thermal UI Redesign
+# ZenPick — Filter Fix + Thermal UI Redesign
 
 **Date:** 2026-07-05
 **Status:** approved
@@ -66,12 +66,12 @@ Keep the existing Public Sans variable. Tighten the hero to a single strong stat
 - Extend `GoModel` with:
   ```ts
   scenarioScores: {
-    brainstorming: number;
-    coding: number;
-    competitive: number;
-    agentic: number;
-    budget: number;
-  };
+  	brainstorming: number;
+  	coding: number;
+  	competitive: number;
+  	agentic: number;
+  	budget: number;
+  }
   ```
 
 ### `src/lib/components/FilterBar.svelte`

@@ -1,4 +1,4 @@
-# OpenCode Compare — Design Doc
+# ZenPick — Design Doc
 
 **Date:** 2026-07-04
 **Status:** approved

@@ -1,5 +1,5 @@
 ---
-title: OpenCode Compare
+title: ZenPick
 status: draft
 owner: Michael Obele
 tags:
