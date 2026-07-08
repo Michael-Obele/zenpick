@@ -3,8 +3,10 @@
 	import * as Drawer from '$lib/components/ui/drawer/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
-	import { ExternalLink, Copy, Check, Info, Flame, Snowflake } from '@lucide/svelte';
+	import { ExternalLink, Copy, Check, Info } from '@lucide/svelte';
 	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
+	import BurnBadge from './BurnBadge.svelte';
+	import FallbackBadge from './FallbackBadge.svelte';
 
 	interface Props {
 		model: GoModel | null;
@@ -28,28 +30,9 @@
 		return `${Math.round(n / 1_000)}K`;
 	}
 
-	function burnClasses(rate: string): string {
-		switch (rate) {
-			case 'slow':
-				return 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20';
-			case 'medium':
-				return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
-			case 'fast':
-				return 'bg-red-500/10 text-red-500 border-red-500/20';
-			default:
-				return 'bg-muted text-muted-foreground border-border';
-		}
-	}
-
-	function burnLabel(rate: string): string {
-		switch (rate) {
-			case 'slow':
-				return 'Slow burn';
-			case 'fast':
-				return 'Fast burn';
-			default:
-				return 'Moderate';
-		}
+	function benchmarkBarWidth(value: number | null, max: number = 60): number {
+		if (!value || value < 1) return 0;
+		return Math.min(100, Math.round((value / Math.max(60, max)) * 100));
 	}
 </script>
 
@@ -65,18 +48,7 @@
 								{#if model.isNew}
 									<Badge variant="outline">New</Badge>
 								{/if}
-								<span
-									class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium {burnClasses(
-										model.burnRate
-									)}"
-								>
-									{#if model.burnRate === 'slow'}
-										<Snowflake class="size-3" />
-									{:else if model.burnRate === 'fast'}
-										<Flame class="size-3" />
-									{/if}
-									{burnLabel(model.burnRate)}
-								</span>
+								<BurnBadge burnDetails={model.burnDetails} />
 							</Drawer.Title>
 							<Drawer.Description>
 								{model.provider}
@@ -102,18 +74,29 @@
 				<div class="px-4 pb-2">
 					<div class="rounded-lg border border-border bg-muted/30 p-3 text-sm">
 						<div class="font-medium text-foreground">
-							{burnLabel(model.burnRate)} — about {model.quota.requestsPer5h.toLocaleString()} requests
-							per $12 window
+							{#if model.burnDetails?.band != null}
+								{model.burnDetails.score} burn score — ~{model.quota.requestsPer5h.toLocaleString()} requests per $12 window
+							{:else}
+								Burn data unavailable — pricing unknown
+							{/if}
 						</div>
 						<div class="text-muted-foreground">
-							Use this model for {model.burnRate === 'slow'
-								? 'high-volume, iterative work'
-								: model.burnRate === 'fast'
-									? 'short, focused sessions'
-									: 'balanced daily use'}.
+							{#if model.burnDetails?.band === 'excellent' || model.burnDetails?.band === 'good'}
+								Use for high-volume, iterative work
+							{:else if model.burnDetails?.band === 'extreme' || model.burnDetails?.band === 'high'}
+								Best for short, focused sessions
+							{:else}
+								Balanced for daily use
+							{/if}
 						</div>
 					</div>
 				</div>
+
+				{#if model.pricing.source !== 'llm-stats'}
+					<div class="mx-4 mb-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 text-xs text-amber-600">
+						Pricing source: {model.pricing.source === 'fallback-map' ? 'from OpenCode docs (may be outdated)' : 'unknown — contact OpenCode for accurate pricing'}
+					</div>
+				{/if}
 
 				<div class="space-y-6 px-4 pb-8">
 					<!-- Pricing -->
@@ -123,13 +106,13 @@
 							<div class="rounded-lg border border-border p-3">
 								<div class="text-muted-foreground">Input</div>
 								<div class="text-lg tabular-nums text-foreground">
-									${model.pricing.inputPricePerM.toFixed(2)}
+									{model.pricing.inputPricePerM != null ? `$${model.pricing.inputPricePerM.toFixed(2)}` : '—'}
 								</div>
 							</div>
 							<div class="rounded-lg border border-border p-3">
 								<div class="text-muted-foreground">Output</div>
 								<div class="text-lg tabular-nums text-foreground">
-									${model.pricing.outputPricePerM.toFixed(2)}
+									{model.pricing.outputPricePerM != null ? `$${model.pricing.outputPricePerM.toFixed(2)}` : '—'}
 								</div>
 							</div>
 						</div>
@@ -178,7 +161,7 @@
 										<div class="h-2 w-full overflow-hidden rounded-full bg-muted">
 											<div
 												class="h-full rounded-full bg-violet-500"
-												style="width: {Math.min(100, bench.value)}%"
+										style="width: {benchmarkBarWidth(bench.value)}%"
 											></div>
 										</div>
 									</div>

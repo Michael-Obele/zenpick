@@ -172,7 +172,12 @@
 					name: m.name,
 					pricing: m.pricing,
 					burnRate: m.burnRate
-				}))}
+				})) as Array<{
+					id: string;
+					name: string;
+					pricing: import('$lib/types/models').ModelPricing;
+					burnRate: string;
+				}>}
 			/>
 		{/await}
 	</section>

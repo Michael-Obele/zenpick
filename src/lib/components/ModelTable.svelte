@@ -1,8 +1,9 @@
 <script lang="ts">
 	import type { GoModel } from '$lib/types/models';
-	import { burnClasses, burnLabel, type BurnRate } from '$lib/burn';
 	import * as Table from '$lib/components/ui/table/index.js';
-	import { Flame, Snowflake, ArrowUp, ArrowDown, ArrowUpDown, SearchX } from '@lucide/svelte';
+	import { ArrowUp, ArrowDown, ArrowUpDown, SearchX } from '@lucide/svelte';
+	import BurnBadge from './BurnBadge.svelte';
+	import FallbackBadge from './FallbackBadge.svelte';
 
 	interface Props {
 		models: GoModel[];
@@ -62,7 +63,7 @@
 			case 'coding':
 				return (a.benchmarks.coding ?? 0) - (b.benchmarks.coding ?? 0);
 			case 'price':
-				return b.pricing.inputPricePerM - a.pricing.inputPricePerM;
+				return (b.pricing.inputPricePerM ?? 0) - (a.pricing.inputPricePerM ?? 0);
 			case 'quota':
 				return a.quota.requestsPer5h - b.quota.requestsPer5h;
 			case 'fit':
@@ -88,19 +89,6 @@
 			return { icon: ArrowUpDown, active: false };
 		}
 		return { icon: sortDir === 'asc' ? ArrowUp : ArrowDown, active: true };
-	}
-
-	function burnDotClass(rate: BurnRate | string): string {
-		switch (rate) {
-			case 'slow':
-				return 'bg-cyan-500';
-			case 'medium':
-				return 'bg-amber-500';
-			case 'fast':
-				return 'bg-red-500';
-			default:
-				return 'bg-muted-foreground';
-		}
 	}
 
 	function priceLabel(price: number): string {
@@ -144,6 +132,9 @@
 					</span>
 				</Table.Head>
 				<Table.Head class="whitespace-nowrap text-muted-foreground">Burn</Table.Head>
+				<Table.Head class="hidden whitespace-nowrap text-muted-foreground md:table-cell"
+					>Score</Table.Head
+				>
 				{@const quotaSort = sortIndicator('quota')}
 				<Table.Head
 					class="cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground"
@@ -214,29 +205,41 @@
 						<div class="text-xs text-muted-foreground">{model.provider}</div>
 					</Table.Cell>
 					<Table.Cell class="text-sm tabular-nums">
-						<div class="text-foreground/80">
-							${model.pricing.inputPricePerM.toFixed(2)} /
-							<span class="text-muted-foreground">${model.pricing.outputPricePerM.toFixed(2)}</span>
-						</div>
-						<div class="text-xs text-muted-foreground">
-							{priceLabel(model.pricing.inputPricePerM)}
-						</div>
+						{#if model.pricing.inputPricePerM != null}
+							<div class="text-foreground/80">
+								${model.pricing.inputPricePerM.toFixed(2)} /
+								<span class="text-muted-foreground"
+									>${model.pricing.outputPricePerM?.toFixed(2) ?? '—'}</span
+								>
+							</div>
+							<div class="flex items-center gap-1">
+								<span class="text-xs text-muted-foreground">{priceLabel(model.pricing.inputPricePerM)}</span>
+								<FallbackBadge source={model.pricing.source} />
+							</div>
+						{:else}
+							<div class="flex items-center gap-1">
+								<span class="text-muted-foreground/30">—</span>
+								<FallbackBadge source={model.pricing.source} />
+							</div>
+						{/if}
 					</Table.Cell>
 					<Table.Cell>
-						<span
-							class="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium {burnClasses(
-								model.burnRate
-							)}"
-							title={burnLabel(model.burnRate)}
-						>
-							<span class="size-1.5 rounded-full {burnDotClass(model.burnRate)}"></span>
-							{#if model.burnRate === 'slow'}
-								<Snowflake class="size-3" />
-							{:else if model.burnRate === 'fast'}
-								<Flame class="size-3" />
-							{/if}
-							{burnLabel(model.burnRate)}
-						</span>
+						<BurnBadge burnDetails={model.burnDetails} />
+					</Table.Cell>
+					<Table.Cell class="hidden text-sm tabular-nums md:table-cell">
+						{#if model.burnDetails?.band != null}
+							<div class="flex items-center gap-1.5">
+								<div class="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+									<div
+										class="h-full rounded-full {model.burnDetails.score >= 60 ? 'bg-emerald-500' : model.burnDetails.score >= 40 ? 'bg-amber-500' : 'bg-red-500'}"
+										style="width: {model.burnDetails.score}%"
+									></div>
+								</div>
+								<span class="text-xs text-muted-foreground">{model.burnDetails.score}</span>
+							</div>
+						{:else}
+							<span class="text-muted-foreground/30">—</span>
+						{/if}
 					</Table.Cell>
 					<Table.Cell class="text-sm tabular-nums text-muted-foreground/70">
 						{model.quota.requestsPer5h.toLocaleString()}

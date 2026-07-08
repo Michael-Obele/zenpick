@@ -1,15 +1,18 @@
 <script lang="ts">
-	import { Calculator, Clock, Flame, Snowflake } from '@lucide/svelte';
-	import { burnClasses, burnRateFromPrice } from '$lib/burn';
+	import { Calculator, Clock } from '@lucide/svelte';
+	import { burnRateFromPrice } from '$lib/burn';
 	import * as Select from '$lib/components/ui/select/index.js';
+	import type { ModelPricing } from '$lib/types/models';
+
+	interface CalculatorModel {
+		id: string;
+		name: string;
+		pricing: ModelPricing;
+		burnRate?: string;
+	}
 
 	interface Props {
-		models: {
-			id: string;
-			name: string;
-			pricing: { inputPricePerM: number; outputPricePerM: number };
-			burnRate?: string;
-		}[];
+		models: CalculatorModel[];
 	}
 
 	let { models }: Props = $props();
@@ -25,33 +28,49 @@
 		}
 	});
 
-	function cheapestModel(
-		models: { id: string; pricing: { inputPricePerM: number; outputPricePerM: number } }[]
-	) {
+	function cheapestModel(models: CalculatorModel[]): CalculatorModel | undefined {
 		return [...models].sort((a, b) => totalPrice(a.pricing) - totalPrice(b.pricing))[0];
 	}
 
-	function totalPrice(pricing: { inputPricePerM: number; outputPricePerM: number }) {
-		return pricing.inputPricePerM + pricing.outputPricePerM;
+	function totalPrice(pricing: ModelPricing): number {
+		return (pricing.inputPricePerM ?? 0) + (pricing.outputPricePerM ?? 0);
 	}
 
-	let estimatedCost = $derived.by(() => {
+	// Client-side cost estimate with cached-read discount
+	function computeCost(
+		pricing: ModelPricing,
+		inputTokens: number,
+		outputTokens: number,
+		cachedPct: number
+	): number | null {
+		if (pricing.inputPricePerM == null || pricing.outputPricePerM == null) return null;
+		const cachedInputTokens = Math.round(inputTokens * (cachedPct / 100));
+		const uncachedInput = inputTokens - cachedInputTokens;
+		const cachedRate = pricing.cachedReadPerM ?? pricing.inputPricePerM;
+		return (
+			(uncachedInput * pricing.inputPricePerM +
+				cachedInputTokens * cachedRate +
+				outputTokens * pricing.outputPricePerM) /
+			1_000_000
+		);
+	}
+
+	let cachedPct = $state(50);
+	let useCached = $state(true);
+
+	let costPerRequest = $derived.by(() => {
 		if (!selectedModel) return null;
 		const inputTokens = tokenInput * 0.7;
 		const outputTokens = tokenInput * 0.15;
-		return {
-			perRequest:
-				(inputTokens / 1_000_000) * selectedModel.pricing.inputPricePerM +
-				(outputTokens / 1_000_000) * selectedModel.pricing.outputPricePerM
-		};
+		return computeCost(selectedModel.pricing, inputTokens, outputTokens, cachedPct);
 	});
 
 	let quotaEstimates = $derived.by(() => {
-		if (!estimatedCost || estimatedCost.perRequest <= 0) return null;
+		if (costPerRequest == null || costPerRequest <= 0) return null;
 		return {
-			per5h: Math.floor(12 / estimatedCost.perRequest),
-			perWeek: Math.floor(30 / estimatedCost.perRequest),
-			perMonth: Math.floor(60 / estimatedCost.perRequest)
+			per5h: Math.floor(12 / costPerRequest),
+			perWeek: Math.floor(30 / costPerRequest),
+			perMonth: Math.floor(60 / costPerRequest)
 		};
 	});
 </script>
@@ -113,32 +132,31 @@
 			</Select.Root>
 		</div>
 
+		<!-- Cached reads toggle -->
+		<div>
+			<label class="flex items-center gap-2 text-sm text-muted-foreground">
+				<input type="checkbox" checked={useCached} class="accent-violet-600"
+					onclick={() => { useCached = !useCached; cachedPct = useCached ? 50 : 0; }} />
+				<span>50% of input tokens are cached reads</span>
+			</label>
+		</div>
+
 		<!-- Results -->
-		{#if selectedModel && estimatedCost}
+		{#if selectedModel && costPerRequest != null}
 			<div class="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
 				<div class="text-sm text-muted-foreground">
 					Cost per request: <span class="font-medium text-foreground"
-						>~${estimatedCost.perRequest.toFixed(4)}</span
+						>~${costPerRequest.toFixed(6)}</span
 					>
 				</div>
 
 				{#if selectedModel}
 					{@const level = burnRateFromPrice(
-						selectedModel.pricing.inputPricePerM + selectedModel.pricing.outputPricePerM
+						(selectedModel.pricing.inputPricePerM ?? 0) + (selectedModel.pricing.outputPricePerM ?? 0)
 					)}
 					<div class="flex items-center gap-2 text-xs">
-						<span
-							class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 {burnClasses(
-								level
-							)}"
-						>
-							{#if level === 'slow'}
-								<Snowflake class="size-3" /> Slow burn
-							{:else if level === 'fast'}
-								<Flame class="size-3" /> Fast burn
-							{:else}
-								Moderate
-							{/if}
+						<span class="text-muted-foreground">
+							{level === 'slow' ? '❄️ Quota-friendly' : level === 'fast' ? '🔥 Burns fast' : '⚖️ Moderate'}
 						</span>
 						<span class="text-muted-foreground">
 							{level === 'slow'
