@@ -4,17 +4,14 @@
 # SvelteKit entry points: route files and the lib barrel are loaded by the framework.
 entry = ["src/routes/**/*.{ts,svelte}", "src/lib/**/*.ts"]
 
+# Exclude generated shadcn-svelte UI primitives from all analysis (dead code,
+# duplicates, health, etc.) — these are CLI-managed and follow their own conventions.
+ignorePatterns = ["src/lib/components/ui/**/*.{ts,svelte}"]
+
 [duplicates]
 # Hide pair-only clones; focus on widespread copy-paste worth refactoring.
 # Lower to 2 to report every duplicate pair.
 minOccurrences = 3
-
-# shadcn-svelte barrel files re-export primitive aliases (Root, Button, Table, etc.)
-# that are part of the public component API. These are false positives for dead-export
-# analysis and should not be removed.
-[[ignoreExports]]
-file = "src/lib/components/ui/**/index.ts"
-exports = ["*"]
 
 [health]
 # CRAP is inflated when fallow estimates 0% coverage. Most of these functions are
