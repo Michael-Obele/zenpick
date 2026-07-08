@@ -174,6 +174,8 @@ export interface LLMStatsRanking {
 	score: number;
 	/** TrueSkill μ−3σ conservative rating (0-70+ scale) */
 	conservative_rating: number;
+	/** Minimum input price across providers, from API */
+	min_input_price?: number | null;
 }
 
 // OpenCode Go API response

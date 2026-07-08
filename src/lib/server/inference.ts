@@ -30,7 +30,7 @@ export function inferModel(
 	mathRankings: LLMStatsRanking[]
 ): GoModel {
 	const name = goIdToName(goId);
-	const pricing = inferPricing(goId, llmStatsModel);
+	const pricing = inferPricing(goId, llmStatsModel, codingRankings);
 	const burnDetails = inferBurnDetails(pricing);
 
 	// Quota using default token assumptions for the table
