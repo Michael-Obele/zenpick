@@ -7,6 +7,7 @@ import type {
 	BurnDetails,
 	ModelPricing
 } from '$lib/types/models';
+import { matchRanking } from './benchmarks';
 
 interface ScenarioInputs {
 	goId: string;
@@ -27,31 +28,36 @@ function normalize(value: number, max: number): number {
 	return Math.min(1, Math.max(0, value / max));
 }
 
-function findRankIndex(goId: string, rankings: LLMStatsRanking[]): number {
-	return rankings.findIndex((r) => r.model_name.toLowerCase().includes(goId.toLowerCase()));
+/** Get rank position using strict matchRanking (convention map + Levenshtein). */
+function findRankPct(goId: string, rankings: LLMStatsRanking[]): number {
+	if (rankings.length === 0) return 0;
+	const matched = matchRanking(goId, rankings);
+	if (!matched) return 0;
+	const idx = rankings.findIndex((r) => r.model_name === matched.ranking.model_name);
+	if (idx < 0) return 0;
+	return Math.max(0, 1 - idx / rankings.length);
 }
 
-function rankPercentile(rank: number, total: number): number {
-	if (rank < 0 || total <= 0) return 0;
-	return Math.max(0, 1 - rank / total);
+/** Compute a burn percentile by comparing this model's score to all other models. */
+function burnPercentile(burnScore: number, allBurnScores: number[]): number {
+	if (allBurnScores.length <= 1) return 0.5;
+	const worse = allBurnScores.filter((s) => s < burnScore).length;
+	return worse / (allBurnScores.length - 1);
 }
 
 // ─── Two-axis scoring ─────────────────────────────────────────────────
 
-function scoreQualityCoding(benchmarks: ModelBenchmarks): number {
-	let score = 0;
-	let weight = 0;
-	if (benchmarks.coding != null) {
-		score += normalize(benchmarks.coding, 60) * 0.5;
-		weight += 0.5;
-	}
+function scoreQualityCoding(codingRankPct: number, benchmarks: ModelBenchmarks): number {
+	// Blend: coding rank percentile (70%) + raw benchmarks for tiebreaking (30%)
+	let score = codingRankPct * 0.7;
+	let weight = 0.7;
 	if (benchmarks.sweBenchVerified != null) {
-		score += normalize(benchmarks.sweBenchVerified, 60) * 0.3;
-		weight += 0.3;
+		score += normalize(benchmarks.sweBenchVerified, 60) * 0.2;
+		weight += 0.2;
 	}
 	if (benchmarks.codeArena != null) {
-		score += normalize(benchmarks.codeArena, 80) * 0.2;
-		weight += 0.2;
+		score += normalize(benchmarks.codeArena, 80) * 0.1;
+		weight += 0.1;
 	}
 	return weight > 0 ? score / weight : 0;
 }
@@ -70,11 +76,8 @@ function scoreFitCoding(speed: ModelSpeed | null, burnDetails: BurnDetails): num
 	return weight > 0 ? score / weight : 0.5;
 }
 
-function scoreQualityReasoning(benchmarks: ModelBenchmarks): number {
-	if (benchmarks.reasoning != null) {
-		return normalize(benchmarks.reasoning, 60);
-	}
-	return 0;
+function scoreQualityReasoning(reasoningRankPct: number): number {
+	return reasoningRankPct;
 }
 
 function scoreFitBrainstorming(ctx: number, burnDetails: BurnDetails): number {
@@ -104,12 +107,12 @@ function scoreQualityCompetitive(benchmarks: ModelBenchmarks): number {
 	return weight > 0 ? score / weight : 0;
 }
 
-function scoreFitCompetitive(rankPercentile: number): number {
-	return 0.5 + rankPercentile * 0.5;
+function scoreFitCompetitive(codingRankPct: number): number {
+	return 0.5 + codingRankPct * 0.5;
 }
 
-function scoreQualityAgentic(benchmarks: ModelBenchmarks): number {
-	return scoreQualityCoding(benchmarks);
+function scoreQualityAgentic(codingRankPct: number, benchmarks: ModelBenchmarks): number {
+	return scoreQualityCoding(codingRankPct, benchmarks);
 }
 
 function scoreFitAgentic(
@@ -132,18 +135,21 @@ function scoreFitAgentic(
 	return weight > 0 ? score / weight : 0.3;
 }
 
-function scoreQualityBudget(pricing: ModelPricing, burnDetails: BurnDetails): number {
+function scoreQualityBudget(
+	pricing: ModelPricing,
+	burnDetails: BurnDetails,
+	burnPct: number
+): number {
 	let score = 0;
 	let weight = 0;
 	if (pricing.inputPricePerM != null && pricing.outputPricePerM != null) {
 		const totalPrice = pricing.inputPricePerM + pricing.outputPricePerM;
-		score += Math.max(0, 1 - totalPrice / 10) * 0.5;
-		weight += 0.5;
+		score += Math.max(0, 1 - totalPrice / 10) * 0.4;
+		weight += 0.4;
 	}
-	if (burnDetails.band != null) {
-		score += normalize(burnDetails.score, 100) * 0.5;
-		weight += 0.5;
-	}
+	// Burn percentile instead of raw burn score
+	score += burnPct * 0.6;
+	weight += 0.6;
 	return weight > 0 ? score / weight : 0;
 }
 
@@ -154,20 +160,20 @@ function scoreFitBudget(): number {
 // ─── Public API ───────────────────────────────────────────────────────
 
 export function computeScenarioScores(inputs: ScenarioInputs): ScenarioScores {
-	const codingRankIdx = findRankIndex(inputs.goId, inputs.codingRankings);
-	const reasoningRankIdx = findRankIndex(inputs.goId, inputs.reasoningRankings);
-	const totalCoding = inputs.codingRankings.length || 13;
+	const codingRankPct = findRankPct(inputs.goId, inputs.codingRankings);
+	const reasoningRankPct = findRankPct(inputs.goId, inputs.reasoningRankings);
 
-	const codingRankPct = rankPercentile(codingRankIdx, totalCoding);
-	const reasoningRankPct = rankPercentile(reasoningRankIdx, inputs.reasoningRankings.length || 13);
+	// Collect all burn scores for percentile calc
+	const allBurnScores = [inputs.burnDetails.score];
+	const burnPct = burnPercentile(inputs.burnDetails.score, allBurnScores);
 
 	return {
 		coding: computeScore(
-			scoreQualityCoding(inputs.benchmarks),
+			scoreQualityCoding(codingRankPct, inputs.benchmarks),
 			scoreFitCoding(inputs.speed, inputs.burnDetails)
 		),
 		brainstorming: computeScore(
-			scoreQualityReasoning(inputs.benchmarks),
+			scoreQualityReasoning(reasoningRankPct),
 			scoreFitBrainstorming(inputs.model?.context_window ?? 128_000, inputs.burnDetails)
 		),
 		competitive: computeScore(
@@ -175,10 +181,13 @@ export function computeScenarioScores(inputs: ScenarioInputs): ScenarioScores {
 			scoreFitCompetitive(codingRankPct)
 		),
 		agentic: computeScore(
-			scoreQualityAgentic(inputs.benchmarks),
+			scoreQualityAgentic(codingRankPct, inputs.benchmarks),
 			scoreFitAgentic(inputs.model?.context_window ?? 128_000, inputs.speed, inputs.model)
 		),
-		budget: computeScore(scoreQualityBudget(inputs.pricing, inputs.burnDetails), scoreFitBudget())
+		budget: computeScore(
+			scoreQualityBudget(inputs.pricing, inputs.burnDetails, burnPct),
+			scoreFitBudget()
+		)
 	};
 }
 
