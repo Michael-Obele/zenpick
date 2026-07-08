@@ -36,13 +36,27 @@ export const getModels = query(async () => {
 async function refreshCache(): Promise<GoModel[]> {
 	const [goModels, llmModels, codingRankings, reasoningRankings, mathRankings] = await Promise.all([
 		fetchGoModels(),
-		fetchLLMStatsModels().catch((e) => { console.error('[refreshCache] LLM Stats models failed:', e.message); return []; }),
-		fetchLLMStatsRankings('coding', 50).catch((e) => { console.error('[refreshCache] coding rankings failed:', e.message); return []; }),
-		fetchLLMStatsRankings('reasoning', 50).catch((e) => { console.error('[refreshCache] reasoning rankings failed:', e.message); return []; }),
-		fetchLLMStatsRankings('math', 50).catch((e) => { console.error('[refreshCache] math rankings failed:', e.message); return []; })
+		fetchLLMStatsModels().catch((e) => {
+			console.error('[refreshCache] LLM Stats models failed:', e.message);
+			return [];
+		}),
+		fetchLLMStatsRankings('coding', 50).catch((e) => {
+			console.error('[refreshCache] coding rankings failed:', e.message);
+			return [];
+		}),
+		fetchLLMStatsRankings('reasoning', 50).catch((e) => {
+			console.error('[refreshCache] reasoning rankings failed:', e.message);
+			return [];
+		}),
+		fetchLLMStatsRankings('math', 50).catch((e) => {
+			console.error('[refreshCache] math rankings failed:', e.message);
+			return [];
+		})
 	]);
 
-	console.log(`[refreshCache] goModels=${goModels.length} llmModels=${llmModels.length} codingRanks=${codingRankings.length} reasoningRanks=${reasoningRankings.length} mathRanks=${mathRankings.length}`);
+	console.log(
+		`[refreshCache] goModels=${goModels.length} llmModels=${llmModels.length} codingRanks=${codingRankings.length} reasoningRanks=${reasoningRankings.length} mathRanks=${mathRankings.length}`
+	);
 
 	const enriched = goModels.map((gm) => {
 		const llmModel =

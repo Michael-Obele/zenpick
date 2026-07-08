@@ -119,7 +119,7 @@
 					class="flex items-center gap-2.5 rounded-xl border border-border bg-card/80 px-4 py-2.5 shadow-sm backdrop-blur-sm"
 				>
 					<div class="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10">
-						<Zap class="size-4 text-emerald-500" />
+						<Wallet class="size-4 text-emerald-500" />
 					</div>
 					<div class="text-left">
 						<div class="text-sm font-semibold text-foreground">$10/month</div>

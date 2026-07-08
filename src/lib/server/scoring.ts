@@ -135,10 +135,7 @@ function scoreFitAgentic(
 	return weight > 0 ? score / weight : 0.3;
 }
 
-function scoreQualityBudget(
-	pricing: ModelPricing,
-	burnDetails: BurnDetails
-): number {
+function scoreQualityBudget(pricing: ModelPricing, burnDetails: BurnDetails): number {
 	let score = 0;
 	let weight = 0;
 	if (pricing.inputPricePerM != null && pricing.outputPricePerM != null) {
@@ -181,10 +178,7 @@ export function computeScenarioScores(inputs: ScenarioInputs): ScenarioScores {
 			scoreQualityAgentic(codingRankPct, inputs.benchmarks),
 			scoreFitAgentic(inputs.model?.context_window ?? 128_000, inputs.speed, inputs.model)
 		),
-		budget: computeScore(
-			scoreQualityBudget(inputs.pricing, inputs.burnDetails),
-			scoreFitBudget()
-		)
+		budget: computeScore(scoreQualityBudget(inputs.pricing, inputs.burnDetails), scoreFitBudget())
 	};
 }
 

@@ -14,7 +14,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let models: GoModel[] = $state(data.models);
+	let models = $derived(data.models);
 
 	type Section =
 		| 'overview'
