@@ -137,8 +137,7 @@ function scoreFitAgentic(
 
 function scoreQualityBudget(
 	pricing: ModelPricing,
-	burnDetails: BurnDetails,
-	burnPct: number
+	burnDetails: BurnDetails
 ): number {
 	let score = 0;
 	let weight = 0;
@@ -147,9 +146,11 @@ function scoreQualityBudget(
 		score += Math.max(0, 1 - totalPrice / 10) * 0.4;
 		weight += 0.4;
 	}
-	// Burn percentile instead of raw burn score
-	score += burnPct * 0.6;
-	weight += 0.6;
+	// Use burn score normalized to 100 (score 51/100 = 0.51)
+	if (burnDetails.band != null) {
+		score += normalize(burnDetails.score, 100) * 0.6;
+		weight += 0.6;
+	}
 	return weight > 0 ? score / weight : 0;
 }
 
@@ -162,10 +163,6 @@ function scoreFitBudget(): number {
 export function computeScenarioScores(inputs: ScenarioInputs): ScenarioScores {
 	const codingRankPct = findRankPct(inputs.goId, inputs.codingRankings);
 	const reasoningRankPct = findRankPct(inputs.goId, inputs.reasoningRankings);
-
-	// Collect all burn scores for percentile calc
-	const allBurnScores = [inputs.burnDetails.score];
-	const burnPct = burnPercentile(inputs.burnDetails.score, allBurnScores);
 
 	return {
 		coding: computeScore(
@@ -185,7 +182,7 @@ export function computeScenarioScores(inputs: ScenarioInputs): ScenarioScores {
 			scoreFitAgentic(inputs.model?.context_window ?? 128_000, inputs.speed, inputs.model)
 		),
 		budget: computeScore(
-			scoreQualityBudget(inputs.pricing, inputs.burnDetails, burnPct),
+			scoreQualityBudget(inputs.pricing, inputs.burnDetails),
 			scoreFitBudget()
 		)
 	};
