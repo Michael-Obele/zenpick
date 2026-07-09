@@ -12,7 +12,7 @@
 
 ## Coding Conventions
 
-### Commit & Push Policy
+### Commit or Push Policy
 
 - **Never auto-commit, auto-push, or auto-merge.** The AI agent must stop after edits, run quality checks, and hand control back to the user.
 - The agent may **stage** changes (`git add`) to show what it changed, but the actual `git commit`, `git push`, PR creation, and any force operations must be done by the user after they review the diff.
