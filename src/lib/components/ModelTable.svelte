@@ -37,8 +37,21 @@
 
 	type SortKey = 'name' | 'coding' | 'price' | 'quota' | 'fit' | 'burn' | 'score';
 
-	let sortKey = $state<SortKey>('coding');
-	let sortDir = $state<'asc' | 'desc'>('desc');
+	// `userSort` is the user's explicit column choice (or null). When null,
+	// the sort follows the scenario: scenario picked → fit desc, no scenario → burn asc.
+	// Picking a new scenario clears `userSort` so Fit auto-activates again.
+	type ExplicitSort = { key: SortKey; dir: 'asc' | 'desc' } | null;
+	let userSort = $state<ExplicitSort>(null);
+
+	$effect(() => {
+		// Subscribe to scenario; when it changes, drop the user's column override
+		// so Fit auto-activates for the new scenario.
+		void scenario;
+		userSort = null;
+	});
+
+	let sortKey = $derived<SortKey>(userSort?.key ?? (scenario ? 'fit' : 'burn'));
+	let sortDir = $derived<'asc' | 'desc'>(userSort?.dir ?? (scenario ? 'desc' : 'asc'));
 
 	let sortedModels = $derived.by(() =>
 		[...filteredModels].sort((a, b) => compareModels(a, b, scenario, sortKey, sortDir))
@@ -67,8 +80,14 @@
 				return (b.pricing.inputPricePerM ?? 0) - (a.pricing.inputPricePerM ?? 0);
 			case 'quota':
 				return a.quota.requestsPer5h - b.quota.requestsPer5h;
-			case 'fit':
-				return scenarioScore(b, scenario) - scenarioScore(a, scenario);
+			case 'fit': {
+				// Strict primary / soft secondary: fit dominates; ties break on burn (cheap first).
+				// Natural order is ascending; sortDir='desc' in the wrapper flips it so best fit is on top.
+				const fitA = scenarioScore(a, scenario);
+				const fitB = scenarioScore(b, scenario);
+				if (fitA !== fitB) return fitA - fitB;
+				return (a.burnDetails.score ?? 0) - (b.burnDetails.score ?? 0);
+			}
 			case 'burn':
 				return (a.burnDetails.score ?? 0) - (b.burnDetails.score ?? 0);
 			case 'score':
@@ -81,11 +100,12 @@
 	}
 
 	function toggleSort(key: SortKey) {
-		if (sortKey === key) {
-			sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+		const currentKey = userSort?.key ?? (scenario ? 'fit' : 'burn');
+		const currentDir = userSort?.dir ?? (scenario ? 'desc' : 'asc');
+		if (currentKey === key) {
+			userSort = { key, dir: currentDir === 'asc' ? 'desc' : 'asc' };
 		} else {
-			sortKey = key;
-			sortDir = 'desc';
+			userSort = { key, dir: 'desc' };
 		}
 	}
 
@@ -93,7 +113,8 @@
 		if (sortKey !== key) {
 			return { icon: ArrowUpDown, active: false };
 		}
-		return { icon: sortDir === 'asc' ? ArrowUp : ArrowDown, active: true };
+		// asc = low-to-high → up arrow; desc = high-to-low → down arrow.
+		return { icon: sortDir === 'asc' ? ArrowDown : ArrowUp, active: true };
 	}
 </script>
 

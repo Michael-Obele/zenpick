@@ -44,17 +44,28 @@ function scoreQualityCoding(
 	return weight > 0 ? score / weight : 0;
 }
 
-function scoreFitCoding(speed: ModelSpeed | null, burnDetails: BurnDetails): number {
+function scoreFitCoding(speed: ModelSpeed | null, mgModel: ModelgrepModelData | null): number {
+	// Pure ability fit for coding tasks (cost lives in the Burn column, not here).
+	//   40% speed  — faster iteration matters
+	//   40% tools  — coding agents need tool support
+	//   20% uptime — reliability over time
 	let score = 0;
 	let weight = 0;
 	if (speed?.tokensPerSecond) {
-		score += normalize(speed.tokensPerSecond, 200) * 0.5;
-		weight += 0.5;
+		score += normalize(speed.tokensPerSecond, 200) * 0.4;
+		weight += 0.4;
 	}
-	if (burnDetails.band != null) {
-		score += normalize(burnDetails.score, 100) * 0.5;
-		weight += 0.5;
+	if (mgModel?.capabilities?.tools != null) {
+		score += (mgModel.capabilities.tools ? 1 : 0.3) * 0.4;
+		weight += 0.4;
 	}
+	if (mgModel?.performance?.uptime != null) {
+		score += normalize(mgModel.performance.uptime, 1) * 0.2;
+		weight += 0.2;
+	}
+	// Neutral 0.5 floor when we have no fit signal — don't zero out a model just
+	// because it lacks speed/tools metadata. The 0.5 is neutral, not a cheapness
+	// reward (the Burn column carries the cost signal).
 	return weight > 0 ? score / weight : 0.5;
 }
 
@@ -63,33 +74,55 @@ function scoreQualityReasoning(mgModel: ModelgrepModelData | null): number {
 	return aaIntel != null ? normalize(aaIntel, 100) : 0;
 }
 
-function scoreFitBrainstorming(ctx: number, burnDetails: BurnDetails): number {
+function scoreFitBrainstorming(ctx: number, mgModel: ModelgrepModelData | null): number {
+	// Pure ability fit for open-ended ideation (cost lives in the Burn column, not here).
+	//   40% context       — long chains of thought need long context
+	//   40% AA.intelligence — raw reasoning quality
+	//   20% reasoning flag  — extended-thinking support
 	let score = 0;
 	let weight = 0;
-	score += normalize(ctx, 1_000_000) * 0.6;
-	weight += 0.6;
-	if (burnDetails.band != null) {
-		const burnFit = burnDetails.score >= 40 && burnDetails.score < 80 ? 1 : 0.5;
-		score += burnFit * 0.4;
+	score += normalize(ctx, 1_000_000) * 0.4;
+	weight += 0.4;
+	const intel = mgModel?.benchmarks?.artificial_analysis?.intelligence;
+	if (intel != null) {
+		score += normalize(intel, 100) * 0.4;
 		weight += 0.4;
 	}
+	if (mgModel?.capabilities?.reasoning != null) {
+		score += (mgModel.capabilities.reasoning ? 1 : 0.5) * 0.2;
+		weight += 0.2;
+	}
+	// Neutral 0.5 floor when no fit signal — see scoreFitCoding.
 	return weight > 0 ? score / weight : 0.5;
 }
 
-function scoreQualityCompetitive(benchmarks: ModelBenchmarks): number {
+function scoreQualityCompetitive(mgModel: ModelgrepModelData | null): number {
+	// One-shot hard reasoning — distinct from `coding` (which measures agentic coding).
+	//   60% AA.gpqa         — graduate-level reasoning, best proxy for hard single-shot
+	//   40% AA.intelligence — overall reasoning quality
+	const gpqa = mgModel?.benchmarks?.artificial_analysis?.gpqa;
+	const intel = mgModel?.benchmarks?.artificial_analysis?.intelligence;
 	let score = 0;
 	let weight = 0;
-	if (benchmarks.sweBenchVerified != null) {
-		score += normalize(benchmarks.sweBenchVerified, 60) * 0.6;
+	if (gpqa != null) {
+		score += normalize(gpqa, 100) * 0.6;
 		weight += 0.6;
+	}
+	if (intel != null) {
+		score += normalize(intel, 100) * 0.4;
+		weight += 0.4;
 	}
 	return weight > 0 ? score / weight : 0;
 }
 
 function scoreFitCompetitive(mgModel: ModelgrepModelData | null): number {
-	const aaCoding = mgModel?.benchmarks?.artificial_analysis?.coding;
-	const codingNorm = aaCoding != null ? normalize(aaCoding, 100) : 0;
-	return 0.5 + codingNorm * 0.5;
+	//   50% context       — long problems need long context
+	//   50% reasoning flag — extended thinking helps one-shot hard problems
+	if (mgModel == null) return 0.5; // neutral floor — see scoreFitCoding
+	const ctx = mgModel.context_length ?? 0;
+	const ctxScore = normalize(ctx, 1_000_000) * 0.5;
+	const reasonScore = (mgModel.capabilities?.reasoning ? 1 : 0.5) * 0.5;
+	return ctxScore + reasonScore;
 }
 
 function scoreQualityAgentic(
@@ -119,22 +152,20 @@ function scoreFitAgentic(
 	return weight > 0 ? score / weight : 0.3;
 }
 
-function scoreQualityBudget(pricing: ModelPricing, burnDetails: BurnDetails): number {
-	let score = 0;
-	let weight = 0;
-	if (pricing.inputPricePerM != null && pricing.outputPricePerM != null) {
-		const totalPrice = pricing.inputPricePerM + pricing.outputPricePerM;
-		score += Math.max(0, 1 - totalPrice / 10) * 0.4;
-		weight += 0.4;
-	}
-	if (burnDetails.band != null) {
-		score += normalize(burnDetails.score, 100) * 0.6;
-		weight += 0.6;
-	}
-	return weight > 0 ? score / weight : 0;
+function scoreQualityBudget(pricing: ModelPricing): number {
+	// Price-as-quality: cheaper is better, capped at 1.0 (free).
+	// Burn double-counting removed — cost already lives in the Burn column.
+	if (pricing.inputPricePerM == null || pricing.outputPricePerM == null) return 0;
+	const totalPrice = pricing.inputPricePerM + pricing.outputPricePerM;
+	return Math.max(0, 1 - totalPrice / 10);
 }
 
-function scoreFitBudget(): number {
+function scoreFitBudget(_mgModel: ModelgrepModelData | null): number {
+	// Budget is price-driven. The fit axis is constant 1.0 so the score collapses
+	// to the price-quality, and the cheapest model tops the list. (Multiplication
+	// is symmetric, so we can't put price on the fit axis either — same result.)
+	// If users want "smart + cheap" they should pick the Coding or Brainstorming
+	// scenario; Budget is for "I just want the cheapest thing that runs."
 	return 1.0;
 }
 
@@ -144,21 +175,21 @@ export function computeScenarioScores(inputs: ScenarioInputs): ScenarioScores {
 	return {
 		coding: computeScore(
 			scoreQualityCoding(inputs.benchmarks, inputs.mgModel),
-			scoreFitCoding(inputs.speed, inputs.burnDetails)
+			scoreFitCoding(inputs.speed, inputs.mgModel)
 		),
 		brainstorming: computeScore(
 			scoreQualityReasoning(inputs.mgModel),
-			scoreFitBrainstorming(inputs.mgModel?.context_length ?? 128_000, inputs.burnDetails)
+			scoreFitBrainstorming(inputs.mgModel?.context_length ?? 128_000, inputs.mgModel)
 		),
 		competitive: computeScore(
-			scoreQualityCompetitive(inputs.benchmarks),
+			scoreQualityCompetitive(inputs.mgModel),
 			scoreFitCompetitive(inputs.mgModel)
 		),
 		agentic: computeScore(
 			scoreQualityAgentic(inputs.benchmarks, inputs.mgModel),
 			scoreFitAgentic(inputs.mgModel?.context_length ?? 128_000, inputs.speed, inputs.mgModel)
 		),
-		budget: computeScore(scoreQualityBudget(inputs.pricing, inputs.burnDetails), scoreFitBudget())
+		budget: computeScore(scoreQualityBudget(inputs.pricing), scoreFitBudget(inputs.mgModel))
 	};
 }
 
