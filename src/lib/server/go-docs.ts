@@ -1,5 +1,6 @@
 /** Fetches Go pricing data from the official OpenCode docs page. */
 
+import { parse } from 'node-html-parser';
 import type { ModelPricing } from '$lib/types/models';
 import { cacheGet, cacheSet, GO_DOCS_PRICING_TTL } from '$lib/cache';
 
@@ -113,6 +114,7 @@ export async function fetchGoDocsPricing(): Promise<Record<string, ModelPricing>
 
 /**
  * Fetch Go pricing from the OpenCode docs page.
+ * Parses HTML tables using node-html-parser.
  * Returns a map of Go model ID → pricing.
  */
 async function refreshGoDocsPricing(): Promise<Record<string, ModelPricing>> {
@@ -129,67 +131,48 @@ async function refreshGoDocsPricing(): Promise<Record<string, ModelPricing>> {
 		return {};
 	}
 
-	// Find the pricing table: it has columns "Model | Input | Output | Cached Read | Cached Write"
-	// The markdown table rows look like:
-	//   | GLM-5.2 | $1.40 | $4.40 | $0.26 | - |
-	// In HTML it'd be rendered <table><tr><td>GLM-5.2</td><td>$1.40</td>...
-	// We search for the header pattern first, then parse rows.
-
+	const root = parse(text);
 	const result: Record<string, ModelPricing> = {};
 
-	// Strategy: find the pricing table by looking for the header row
-	// "| Model | Input | Output | Cached Read | Cached Write |"
-	// then parse all subsequent |...| rows until we hit a non-table row.
-	const lines = text.split('\n');
-	let inPricingTable = false;
+	// Find the pricing table by looking for a table whose headers include
+	// "Model", "Input", "Output", and "Cached Read"
+	for (const table of root.querySelectorAll('table')) {
+		const headers = table
+			.querySelectorAll('thead th, tr:first-child td, tr:first-child th')
+			.map((th) => th.text.trim().toLowerCase());
 
-	for (const line of lines) {
-		const trimmed = line.trim();
+		const hasModel = headers.includes('model');
+		const hasInput = headers.includes('input');
+		const hasOutput = headers.includes('output');
+		const hasCachedRead = headers.some((h) => h.includes('cached read'));
 
-		// Detect the pricing table header
-		if (
-			trimmed.includes('|') &&
-			trimmed.toLowerCase().includes('input') &&
-			trimmed.toLowerCase().includes('output') &&
-			trimmed.toLowerCase().includes('cached read')
-		) {
-			inPricingTable = true;
+		if (!hasModel || !hasInput || !hasOutput || !hasCachedRead) {
 			continue;
 		}
 
-		// Skip the separator row (| --- | --- | ... |)
-		if (inPricingTable && trimmed.match(/^\|[\s\-:]+\|/)) {
-			continue;
-		}
+		// Parse data rows (skip header row)
+		const rows = table.querySelectorAll('tbody tr, tr');
+		for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
+			const row = rows[rowIdx];
+			// Skip the first row if it contains headers
+			if (rowIdx === 0 && row.querySelectorAll('th').length > 0) continue;
 
-		// Parse data rows
-		if (inPricingTable) {
-			// Stop at blank line or non-table row
-			if (!trimmed.startsWith('|') || trimmed === '|') {
-				inPricingTable = false;
-				continue;
-			}
+			const cells = row.querySelectorAll('td').map((td) => td.text.trim());
+			if (cells.length < 4) continue;
 
-			const cells = trimmed
-				.split('|')
-				.map((c) => c.trim())
-				.filter((c) => c.length > 0);
+			const docsName = cells[0];
+			const inputPrice = parsePrice(cells[1]);
+			const outputPrice = parsePrice(cells[2]);
+			const cachedRead = parsePrice(cells[3]);
 
-			if (cells.length >= 4) {
-				const docsName = cells[0];
-				const inputPrice = parsePrice(cells[1]);
-				const outputPrice = parsePrice(cells[2]);
-				const cachedRead = parsePrice(cells[3]);
-
-				const goId = matchDisplayName(docsName);
-				if (goId && inputPrice != null && outputPrice != null) {
-					result[goId] = {
-						inputPricePerM: inputPrice,
-						outputPricePerM: outputPrice,
-						cachedReadPerM: cachedRead,
-						source: 'go-docs'
-					};
-				}
+			const goId = matchDisplayName(docsName);
+			if (goId && inputPrice != null && outputPrice != null) {
+				result[goId] = {
+					inputPricePerM: inputPrice,
+					outputPricePerM: outputPrice,
+					cachedReadPerM: cachedRead,
+					source: 'go-docs'
+				};
 			}
 		}
 	}
