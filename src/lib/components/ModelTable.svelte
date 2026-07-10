@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { GoModel } from '$lib/types/models';
 	import * as Table from '$lib/components/ui/table/index.js';
-	import { ArrowUp, ArrowDown, ArrowUpDown, SearchX } from '@lucide/svelte';
+	import { ArrowUp, ArrowDown, ArrowUpDown, SearchX, Hash } from '@lucide/svelte';
 	import BurnBadge from './BurnBadge.svelte';
 	import FallbackBadge from './FallbackBadge.svelte';
 
@@ -122,6 +122,11 @@
 	<Table.Root>
 		<Table.Header class="sticky top-0 z-10 bg-card">
 			<Table.Row class="border-b border-border hover:bg-transparent">
+				<Table.Head class="w-10 whitespace-nowrap text-muted-foreground">
+					<span class="inline-flex items-center gap-1">
+						<Hash class="size-3" />
+					</span>
+				</Table.Head>
 				{@const nameSort = sortIndicator('name')}
 				<Table.Head
 					class="cursor-pointer whitespace-nowrap text-muted-foreground hover:text-foreground"
@@ -214,7 +219,7 @@
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
-			{#each sortedModels as model (model.id)}
+			{#each sortedModels as model, index (model.id)}
 				{@const isSelected = selectedModelId === model.id}
 				<Table.Row
 					class="cursor-pointer border-b border-border transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/50 {isSelected
@@ -227,6 +232,9 @@
 					data-state={isSelected ? 'selected' : undefined}
 					onkeydown={(e) => e.key === 'Enter' && onSelectModel(model)}
 				>
+					<Table.Cell class="w-10 text-sm tabular-nums text-muted-foreground/60">
+						{index + 1}
+					</Table.Cell>
 					<Table.Cell class="font-medium">
 						<div class="flex items-center gap-2">
 							<span class="text-foreground">{model.name}</span>
@@ -325,7 +333,7 @@
 				</Table.Row>
 			{:else}
 				<Table.Row>
-					<Table.Cell colspan={scenario ? 7 : 6} class="py-12 text-center">
+					<Table.Cell colspan={scenario ? 8 : 7} class="py-12 text-center">
 						<div class="flex flex-col items-center gap-2 text-muted-foreground">
 							<SearchX class="size-8 opacity-40" />
 							<p>No models match your search.</p>
