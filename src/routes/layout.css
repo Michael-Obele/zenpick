@@ -8,6 +8,12 @@
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
+/* Bump base font size from 16px → 17px so all rem-based Tailwind text utilities
+   (text-sm, text-base, text-lg, etc.) scale up proportionally. ~6% larger. */
+html {
+	font-size: 17px;
+}
+
 :root {
 	--background: oklch(1 0 0);
 	--foreground: oklch(0.147 0.004 49.25);
