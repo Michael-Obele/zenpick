@@ -90,24 +90,26 @@
 
 <Card.Root class="border-border bg-card">
 	<Card.Header class="pb-3">
-		<div class="flex items-center justify-between">
-			<div class="flex items-center gap-2">
-				<Calculator class="size-4 text-muted-foreground" />
-				<Card.Title class="text-base font-semibold">Quota Calculator</Card.Title>
+		<div class="flex items-start justify-between gap-4">
+			<div class="min-w-0">
+				<div class="flex items-center gap-2">
+					<Calculator class="size-4 text-muted-foreground" />
+					<Card.Title class="text-base font-semibold">Quota Calculator</Card.Title>
+				</div>
+				<Card.Description class="mt-1">
+					Estimate requests before hitting the
+					<span class="text-foreground/70">$12/5h</span>,
+					<span class="text-foreground/70">$30/week</span>, and
+					<span class="text-foreground/70">$60/month</span> Go limits.
+				</Card.Description>
 			</div>
-			<div class="flex items-center gap-2">
-				<Label for="calc-toggle" class="text-xs text-muted-foreground">
+			<div class="flex shrink-0 items-center gap-2 pt-0.5">
+				<Label for="calc-toggle" class="whitespace-nowrap text-xs text-muted-foreground">
 					{enabled ? 'Hide' : 'Show'}
 				</Label>
-				<Switch id="calc-toggle" bind:checked={enabled} size="sm" />
+				<Switch id="calc-toggle" bind:checked={enabled} />
 			</div>
 		</div>
-		<Card.Description>
-			Estimate requests before hitting the
-			<span class="text-foreground/70">$12/5h</span>,
-			<span class="text-foreground/70">$30/week</span>, and
-			<span class="text-foreground/70">$60/month</span> Go limits.
-		</Card.Description>
 	</Card.Header>
 
 	{#if enabled}
