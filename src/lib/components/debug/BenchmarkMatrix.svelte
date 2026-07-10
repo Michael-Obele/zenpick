@@ -28,14 +28,14 @@
 				<th class="p-2 font-medium">Coding</th>
 				<th class="p-2 font-medium">Reasoning</th>
 				<th class="p-2 font-medium">Math</th>
-				<th class="p-2 font-medium">SWE-bench</th>
+				<th class="p-2 font-medium">SciCode</th>
 			</tr>
 		</thead>
 		<tbody>
 			{#each models as m (m.id)}
 				<tr class="border-b border-border/50 hover:bg-muted/30">
 					<td class="p-2 font-medium text-foreground">{m.name}</td>
-					{#each [m.benchmarks.coding, m.benchmarks.reasoning, m.benchmarks.math, m.benchmarks.sweBenchVerified] as val}
+					{#each [m.benchmarks.coding, m.benchmarks.reasoning, m.benchmarks.math, m.benchmarks.sweBenchVerified] as val, i (i)}
 						<td class="p-2">
 							{#if val != null}
 								<div class="flex items-center gap-2">
