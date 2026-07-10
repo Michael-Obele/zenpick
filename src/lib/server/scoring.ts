@@ -169,6 +169,63 @@ function scoreFitBudget(_mgModel: ModelgrepModelData | null): number {
 	return 1.0;
 }
 
+function scoreQualityFrontend(mgModel: ModelgrepModelData | null): number {
+	// UI/website generation quality — driven by Design Arena Elo, the canonical
+	// human-preference benchmark for UI work (head-to-head votes on generated UIs).
+	// The 1500 ceiling is generous: the current top sits around 1380, so we have
+	// headroom for future models without compressing the rankings.
+	//   70% Design Arena Elo  — direct UI quality signal
+	//   20% AA.intelligence   — smarter models write cleaner, more idiomatic code
+	//   10% AA.coding         — UI work is still code; can't be terrible at it
+	const elo = mgModel?.benchmarks?.design_arena?.elo;
+	const intel = mgModel?.benchmarks?.artificial_analysis?.intelligence;
+	const coding = mgModel?.benchmarks?.artificial_analysis?.coding;
+	let score = 0;
+	let weight = 0;
+	if (elo != null) {
+		score += normalize(elo, 1500) * 0.7;
+		weight += 0.7;
+	}
+	if (intel != null) {
+		score += normalize(intel, 100) * 0.2;
+		weight += 0.2;
+	}
+	if (coding != null) {
+		score += normalize(coding, 100) * 0.1;
+		weight += 0.1;
+	}
+	// Neutral 0.5 floor when we have no quality signal — see scoreFitCoding.
+	return weight > 0 ? score / weight : 0.5;
+}
+
+function scoreFitFrontend(speed: ModelSpeed | null, mgModel: ModelgrepModelData | null): number {
+	// UI work is iterative and often needs to read design comps.
+	//   35% vision    — UI work often starts from a mockup or screenshot
+	//   25% speed     — fast iteration matters when tweaking CSS/components
+	//   20% tools     — modern UI work needs to call APIs / set up state
+	//   20% uptime    — long sessions
+	let score = 0;
+	let weight = 0;
+	if (mgModel?.capabilities?.vision != null) {
+		score += (mgModel.capabilities.vision ? 1 : 0.3) * 0.35;
+		weight += 0.35;
+	}
+	if (speed?.tokensPerSecond) {
+		score += normalize(speed.tokensPerSecond, 200) * 0.25;
+		weight += 0.25;
+	}
+	if (mgModel?.capabilities?.tools != null) {
+		score += (mgModel.capabilities.tools ? 1 : 0.3) * 0.2;
+		weight += 0.2;
+	}
+	if (mgModel?.performance?.uptime != null) {
+		score += normalize(mgModel.performance.uptime, 1) * 0.2;
+		weight += 0.2;
+	}
+	// Neutral 0.5 floor when no fit signal — see scoreFitCoding.
+	return weight > 0 ? score / weight : 0.5;
+}
+
 // ─── Public API ───────────────────────────────────────────────────────
 
 export function computeScenarioScores(inputs: ScenarioInputs): ScenarioScores {
@@ -189,7 +246,11 @@ export function computeScenarioScores(inputs: ScenarioInputs): ScenarioScores {
 			scoreQualityAgentic(inputs.benchmarks, inputs.mgModel),
 			scoreFitAgentic(inputs.mgModel?.context_length ?? 128_000, inputs.speed, inputs.mgModel)
 		),
-		budget: computeScore(scoreQualityBudget(inputs.pricing), scoreFitBudget(inputs.mgModel))
+		budget: computeScore(scoreQualityBudget(inputs.pricing), scoreFitBudget(inputs.mgModel)),
+		frontend: computeScore(
+			scoreQualityFrontend(inputs.mgModel),
+			scoreFitFrontend(inputs.speed, inputs.mgModel)
+		)
 	};
 }
 

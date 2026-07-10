@@ -1,5 +1,16 @@
 <script lang="ts">
-	import { Search, X, Brain, Code, Zap, Globe, Trophy, Bot, Calculator } from '@lucide/svelte';
+	import {
+		Search,
+		X,
+		Brain,
+		Code,
+		Zap,
+		Globe,
+		Trophy,
+		Bot,
+		Calculator,
+		Layout
+	} from '@lucide/svelte';
 
 	interface Props {
 		filter: string;
@@ -16,6 +27,7 @@
 		{ value: 'coding', label: 'Coding', icon: Code },
 		{ value: 'competitive', label: 'Competitive', icon: Trophy },
 		{ value: 'agentic', label: 'Agentic', icon: Bot },
+		{ value: 'frontend', label: 'Frontend UI', icon: Layout },
 		{ value: 'budget', label: 'Budget', icon: Calculator }
 	];
 
@@ -32,12 +44,12 @@
 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 	<!-- Scenario filter buttons -->
 	<div class="flex flex-wrap gap-1.5">
-		{#each scenarios as s}
+		{#each scenarios as s (s.value)}
 			{@const Icon = s.icon}
 			<button
 				class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all {scenario ===
 				s.value
-					? 'border-primary/40 bg-primary/10 text-primary'
+					? 'border-primary/70 bg-primary/60 text-white/80'
 					: 'border-border bg-card text-muted-foreground hover:border-border hover:text-foreground'}"
 				onclick={() => applyScenario(s.value)}
 			>

@@ -101,6 +101,7 @@ export interface ScenarioScores {
 	competitive: number;
 	agentic: number;
 	budget: number;
+	frontend: number;
 }
 
 export interface ModelTag {
