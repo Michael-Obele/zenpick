@@ -80,7 +80,6 @@ export function inferModel(
 		scenarioScores,
 		endpoint: goEndpointType(goId),
 		endpointUrl: goEndpointUrl(goId),
-		isNew: mgModel === null && lsModel === null,
 		modelgrepId: mgModel?.id ?? null,
 		fetchedAt: Date.now()
 	};
@@ -146,7 +145,9 @@ const PROVIDER_BY_PREFIX: Record<string, string> = {
 	glm: 'Zhipu AI',
 	kimi: 'Moonshot AI',
 	minimax: 'MiniMax',
-	mimo: 'Xiaomi'
+	mimo: 'Xiaomi',
+	grok: 'xAI',
+	hy3: 'Hy3'
 };
 
 function inferProvider(goId: string): string {
@@ -155,11 +156,7 @@ function inferProvider(goId: string): string {
 }
 
 function inferContextWindow(goId: string): number {
-	if (goId.includes('glm-5') || goId.includes('qwen3.6') || goId.includes('deepseek-v4-pro')) {
-		return 1_000_000;
-	}
-	if (goId.includes('kimi-k2') || goId.includes('qwen3.7')) {
-		return 256_000;
-	}
+	// No hardcoded model IDs — use a sensible default.
+	// modelgrep data (context_length) takes priority in inferModel().
 	return 128_000;
 }

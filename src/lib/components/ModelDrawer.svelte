@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { GoModel } from '$lib/types/models';
 	import * as Drawer from '$lib/components/ui/drawer/index.js';
-	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import { ExternalLink, Copy, Check, Info } from '@lucide/svelte';
 	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
@@ -45,9 +44,6 @@
 						<div>
 							<Drawer.Title class="flex flex-wrap items-center gap-2 text-xl">
 								{model.name}
-								{#if model.isNew}
-									<Badge variant="outline">New</Badge>
-								{/if}
 								<BurnBadge burnDetails={model.burnDetails} />
 							</Drawer.Title>
 							<Drawer.Description>

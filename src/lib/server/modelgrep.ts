@@ -6,33 +6,6 @@ import { goIdToName } from './opencode-go';
 const MODELGREP_BASE = 'https://modelgrep.com/api/v1';
 
 /**
- * Go model ID → modelgrep model ID mapping.
- * Hand-curated for fast path. Models not in this map fall back to fuzzy
- * name matching, so new Go models auto-resolve without code changes.
- */
-const GO_TO_MODELGREP: Record<string, string> = {
-	'deepseek-v4-pro': 'deepseek/deepseek-v4-pro',
-	'deepseek-v4-flash': 'deepseek/deepseek-v4-flash',
-	'glm-5.2': 'z-ai/glm-5.2',
-	'glm-5.1': 'z-ai/glm-5.1',
-	'glm-5': 'z-ai/glm-5',
-	'kimi-k2.7-code': 'moonshotai/kimi-k2.7-code',
-	'kimi-k2.6': 'moonshotai/kimi-k2.6',
-	'kimi-k2.5': 'moonshotai/kimi-k2.5',
-	'mimo-v2.5': 'xiaomi/mimo-v2.5',
-	'mimo-v2.5-pro': 'xiaomi/mimo-v2.5-pro',
-	'mimo-v2-pro': 'xiaomi/mimo-v2-pro',
-	'mimo-v2-omni': 'xiaomi/mimo-v2-omni',
-	'minimax-m3': 'minimax/minimax-m3',
-	'minimax-m2.7': 'minimax/minimax-m2.7',
-	'minimax-m2.5': 'minimax/minimax-m2.5',
-	'qwen3.7-max': 'qwen/qwen3.7-max',
-	'qwen3.7-plus': 'qwen/qwen3.7-plus',
-	'qwen3.6-plus': 'qwen/qwen3.6-plus',
-	'qwen3.5-plus': 'qwen/qwen3.5-plus-20260420'
-};
-
-/**
  * Result of a modelgrep fetch: indexed map for fast exact lookups,
  * plus flat array for fuzzy fallback matching.
  */
@@ -70,13 +43,7 @@ export async function fetchModelgrepModels(): Promise<ModelgrepResult> {
 	return { byId, all };
 }
 
-/** Look up modelgrep model ID for a Go model ID (exact map only). */
-export function goIdToModelgrepId(goId: string): string | undefined {
-	return GO_TO_MODELGREP[goId];
-}
-
-// ─── Fuzzy matching (fallback for models not in the exact map) ─────────────
-// ponytail: naive inclusion match. Replace with levenshtein if model names drift.
+// ─── Fuzzy matching (fallback — no hardcoded model list) ────────────────
 
 function normalize(s: string): string {
 	return s.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -92,9 +59,11 @@ function similarity(a: string, b: string): number {
 const SIMILARITY_THRESHOLD = 0.7;
 
 /**
- * Try to fuzzy-match a Go model to a modelgrep model by name.
+ * Fuzzy-match a Go model to a modelgrep model by name.
  * Checks against: display name, maker-stripped name, and modelgrep model ID suffix.
  * Returns null if no model meets the threshold.
+ * Uses the algorithmically derived display name from goIdToName(),
+ * so new Go models resolve automatically — no code changes needed.
  */
 export function fuzzyMatchModelgrep(
 	goId: string,

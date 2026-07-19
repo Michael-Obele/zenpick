@@ -53,9 +53,6 @@ export interface GoModel {
 	/** API endpoint URL */
 	endpointUrl: string;
 
-	/** Whether model is new (not yet in modelgrep) */
-	isNew: boolean;
-
 	/** Modelgrep model ID (e.g. "deepseek/deepseek-v4-pro"), null if unmatched */
 	modelgrepId: string | null;
 

@@ -1,16 +1,17 @@
 /** Fetches Go pricing data from the official OpenCode docs page. */
 
 import { parse } from 'node-html-parser';
-import type { ModelPricing } from '$lib/types/models';
+import type { ModelPricing, GoModelEntry } from '$lib/types/models';
 import { cacheGet, cacheSet, GO_DOCS_PRICING_TTL } from '$lib/cache';
+import { goIdToName } from './opencode-go';
 
 const GO_DOCS_URL = 'https://opencode.ai/docs/go/';
+const GO_API_BASE = 'https://opencode.ai/zen/go/v1';
 const CACHE_KEY = 'go-docs-pricing';
 
 /**
  * Normalize a display name for matching.
  * Strips hyphens, spaces, lowercases, removes "v" prefix from version numbers.
- * This lets "MiMo V2.5 Pro" match "mimo-v2.5-pro" and "MiMo-V2.5-Pro".
  */
 function normalizeName(name: string): string {
 	return name
@@ -19,50 +20,41 @@ function normalizeName(name: string): string {
 		.replace(/^v(\d)/, '$1');
 }
 
-/** Build inverse map: normalized display name → Go model ID. */
-function buildNameToIdMap(): Map<string, string> {
-	// Reverse the goIdToName mapping from opencode-go.ts
-	const KNOWN_GO_IDS: Record<string, string> = {
-		'glm-5.2': 'GLM-5.2',
-		'glm-5.1': 'GLM-5.1',
-		'glm-5': 'GLM-5',
-		'kimi-k2.7-code': 'Kimi K2.7 Code',
-		'kimi-k2.6': 'Kimi K2.6',
-		'kimi-k2.5': 'Kimi K2.5',
-		'mimo-v2.5': 'MiMo-V2.5',
-		'mimo-v2.5-pro': 'MiMo-V2.5-Pro',
-		'mimo-v2-pro': 'MiMo-V2-Pro',
-		'mimo-v2-omni': 'MiMo-V2-Omni',
-		'minimax-m3': 'MiniMax M3',
-		'minimax-m2.7': 'MiniMax M2.7',
-		'minimax-m2.5': 'MiniMax M2.5',
-		'qwen3.7-max': 'Qwen3.7 Max',
-		'qwen3.7-plus': 'Qwen3.7 Plus',
-		'qwen3.6-plus': 'Qwen3.6 Plus',
-		'qwen3.5-plus': 'Qwen3.5 Plus',
-		'deepseek-v4-pro': 'DeepSeek V4 Pro',
-		'deepseek-v4-flash': 'DeepSeek V4 Flash'
-	};
+/**
+ * Fetch current Go model IDs from the API and build a dynamic
+ * display-name → model-ID map. No hardcoded model list.
+ */
+async function buildNameToIdMap(): Promise<Map<string, string>> {
+	let goModels: GoModelEntry[];
+	try {
+		const res = await fetch(`${GO_API_BASE}/models`);
+		if (!res.ok) {
+			console.error(`[go-docs] Go API returned ${res.status}: ${res.statusText}`);
+			return new Map();
+		}
+		const json = await res.json();
+		goModels = json.data as GoModelEntry[];
+	} catch (e) {
+		console.error('[go-docs] failed to fetch Go models:', e);
+		return new Map();
+	}
 
 	const map = new Map<string, string>();
-	for (const [goId, displayName] of Object.entries(KNOWN_GO_IDS)) {
-		map.set(normalizeName(displayName), goId);
-		// Also add the goId itself as a normalized entry
-		map.set(normalizeName(goId), goId);
+	for (const model of goModels) {
+		const name = goIdToName(model.id);
+		map.set(normalizeName(name), model.id);
+		map.set(normalizeName(model.id), model.id);
 	}
 	return map;
 }
 
-const nameToId = buildNameToIdMap();
-
 /**
- * Try to match a docs-page display name (e.g. "MiMo V2.5", "Qwen3.7 Plus (≤ 256K tokens)")
- * to a known Go model ID.
+ * Try to match a docs-page display name (e.g. "MiMo V2.5", "Qwen3.7 Plus")
+ * to a Go model ID using the provided name map.
  */
-function matchDisplayName(docsName: string): string | null {
-	// Try exact normalized match first
+function matchDisplayName(docsName: string, map: Map<string, string>): string | null {
 	const normalized = normalizeName(docsName);
-	const exact = nameToId.get(normalized);
+	const exact = map.get(normalized);
 	if (exact) return exact;
 
 	// For parenthetical variants like "Qwen3.7 Plus (≤ 256K tokens)", strip the parens and retry
@@ -70,12 +62,12 @@ function matchDisplayName(docsName: string): string | null {
 	if (parenIdx > 0) {
 		const baseName = docsName.substring(0, parenIdx).trim();
 		const baseNormalized = normalizeName(baseName);
-		const baseMatch = nameToId.get(baseNormalized);
+		const baseMatch = map.get(baseNormalized);
 		if (baseMatch) return baseMatch;
 	}
 
 	// Try substring: check if any known name is contained in or contains the docs name
-	for (const [normKey, goId] of nameToId) {
+	for (const [normKey, goId] of map) {
 		if (normKey.includes(normalized) || normalized.includes(normKey)) {
 			return goId;
 		}
@@ -132,6 +124,10 @@ async function refreshGoDocsPricing(): Promise<Record<string, ModelPricing>> {
 	}
 
 	const root = parse(text);
+
+	// Build name map once before the row loop — not per row
+	const nameMap = await buildNameToIdMap();
+
 	const result: Record<string, ModelPricing> = {};
 
 	// Find the pricing table by looking for a table whose headers include
@@ -165,7 +161,7 @@ async function refreshGoDocsPricing(): Promise<Record<string, ModelPricing>> {
 			const outputPrice = parsePrice(cells[2]);
 			const cachedRead = parsePrice(cells[3]);
 
-			const goId = matchDisplayName(docsName);
+			const goId = matchDisplayName(docsName, nameMap);
 			if (goId && inputPrice != null && outputPrice != null) {
 				result[goId] = {
 					inputPricePerM: inputPrice,

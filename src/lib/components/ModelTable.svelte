@@ -210,7 +210,7 @@
 					</Table.Head>
 				{/if}
 				<Table.Head class="hidden whitespace-nowrap text-muted-foreground md:table-cell"
-					>Best for</Table.Head
+					>Tags</Table.Head
 				>
 			</Table.Row>
 		</Table.Header>
@@ -234,12 +234,6 @@
 					<Table.Cell class="font-medium">
 						<div class="flex items-center gap-2">
 							<span class="text-foreground">{model.name}</span>
-							{#if model.isNew}
-								<span
-									class="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs font-semibold text-muted-foreground"
-									>NEW</span
-								>
-							{/if}
 						</div>
 						<div class="text-xs text-muted-foreground">{model.provider}</div>
 					</Table.Cell>

@@ -23,7 +23,7 @@ export function computeTags(
 		() => contextTags(ctx),
 		() => budgetTags(burnDetails),
 		() => speedTags(speed),
-		() => newModelTag(mgModel, lsModel)
+		() => unbenchmarkedTag(mgModel, lsModel)
 	];
 
 	const tags = builders.flatMap((b) => b());
@@ -97,13 +97,12 @@ function speedTags(speed: ModelSpeed | null): ModelTag[] {
 	return [];
 }
 
-function newModelTag(
+function unbenchmarkedTag(
 	mgModel: ModelgrepModelData | null,
 	lsModel?: LlmStatsModel | null
 ): ModelTag[] {
-	// A model is "new" only if neither source has data about it
 	if (!mgModel && !lsModel) {
-		return [{ label: 'New — benchmarking', icon: 'sparkles', source: 'computed' }];
+		return [{ label: 'Unbenchmarked', icon: 'flask-conical', source: 'computed' }];
 	}
 	return [];
 }

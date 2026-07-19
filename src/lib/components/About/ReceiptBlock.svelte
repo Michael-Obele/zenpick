@@ -60,7 +60,7 @@
 					<ArrowRightLeft class="size-3.5 text-primary" />
 					Switched to
 				</span>
-				<span class="tabular-nums text-primary">13 models</span>
+				<span class="tabular-nums text-primary">13+ models</span>
 			</div>
 		</div>
 

@@ -1,11 +1,7 @@
 import { query } from '$app/server';
 import { cacheGet, cacheSet, MODELS_TTL } from '$lib/cache';
 import { fetchGoModels } from '$lib/server/opencode-go';
-import {
-	fetchModelgrepModels,
-	goIdToModelgrepId,
-	fuzzyMatchModelgrep
-} from '$lib/server/modelgrep';
+import { fetchModelgrepModels, fuzzyMatchModelgrep } from '$lib/server/modelgrep';
 import { fetchGoDocsPricing } from '$lib/server/go-docs';
 import {
 	fetchLlmStatsModels,
@@ -16,7 +12,7 @@ import { inferModel } from '$lib/server/inference';
 import type { GoModel, ModelPricing, LlmStatsModel } from '$lib/types/models';
 import { LLM_STATS_API_KEY } from '$env/static/private';
 
-const CACHE_KEY = 'go-models-enriched-v10';
+const CACHE_KEY = 'go-models-enriched-v14';
 
 /**
  * Fetch all enriched Go models.
@@ -74,16 +70,10 @@ async function refreshCache(): Promise<GoModel[]> {
 
 	const filtered = goModels.filter((gm) => gm.id !== 'hy3-preview');
 	const enriched = filtered.map((gm) => {
-		// 1. Try exact map lookup for modelgrep
-		const mgId = goIdToModelgrepId(gm.id);
-		let mgModel = mgId ? (mgResult.byId.get(mgId) ?? null) : null;
+		// Fuzzy-match against modelgrep data (no hardcoded ID mapping)
+		const mgModel = fuzzyMatchModelgrep(gm.id, mgResult.all);
 
-		// 2. Fall back to fuzzy matching for models not in the map
-		if (!mgModel) {
-			mgModel = fuzzyMatchModelgrep(gm.id, mgResult.all);
-		}
-
-		// 3. Get pre-matched llm-stats model
+		// Get pre-matched llm-stats model
 		const lsModel = lsMatchCache.get(gm.id) ?? null;
 
 		return inferModel(gm.id, mgModel, docsPricing, lsModel);

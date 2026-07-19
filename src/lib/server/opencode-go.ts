@@ -14,45 +14,60 @@ export async function fetchGoModels(): Promise<GoModelEntry[]> {
 	return json.data as GoModelEntry[];
 }
 
-/** Map Go model ID to display name. */
+/** Brand display names for known model provider prefixes. */
+const BRAND_NAME: Record<string, string> = {
+	deepseek: 'DeepSeek',
+	glm: 'GLM',
+	kimi: 'Kimi',
+	mimo: 'MiMo',
+	minimax: 'MiniMax',
+	qwen: 'Qwen',
+	grok: 'Grok',
+	hy3: 'Hy3'
+};
+
+/**
+ * Derive a display name from a Go model ID algorithmically.
+ * No hardcoded model list — works for any model the Go API returns.
+ *
+ * Examples:
+ *   "deepseek-v4-pro"   → "DeepSeek V4 Pro"
+ *   "qwen3.7-max"       → "Qwen 3.7 Max"
+ *   "glm-5.2"           → "GLM 5.2"
+ *   "kimi-k2.7-code"    → "Kimi K2.7 Code"
+ */
 export function goIdToName(id: string): string {
-	const mapping: Record<string, string> = {
-		'glm-5.2': 'GLM-5.2',
-		'glm-5.1': 'GLM-5.1',
-		'glm-5': 'GLM-5',
-		'kimi-k2.7-code': 'Kimi K2.7 Code',
-		'kimi-k2.6': 'Kimi K2.6',
-		'kimi-k2.5': 'Kimi K2.5',
-		'mimo-v2.5': 'MiMo-V2.5',
-		'mimo-v2.5-pro': 'MiMo-V2.5-Pro',
-		'mimo-v2-pro': 'MiMo-V2-Pro',
-		'mimo-v2-omni': 'MiMo-V2-Omni',
-		'minimax-m3': 'MiniMax M3',
-		'minimax-m2.7': 'MiniMax M2.7',
-		'minimax-m2.5': 'MiniMax M2.5',
-		'qwen3.7-max': 'Qwen3.7 Max',
-		'qwen3.7-plus': 'Qwen3.7 Plus',
-		'qwen3.6-plus': 'Qwen3.6 Plus',
-		'qwen3.5-plus': 'Qwen3.5 Plus',
-		'deepseek-v4-pro': 'DeepSeek V4 Pro',
-		'deepseek-v4-flash': 'DeepSeek V4 Flash'
-	};
-	return mapping[id] ?? id;
+	// Split at the boundary between the alphabetic provider prefix and the first digit.
+	// Handles both "prefix-version" (e.g. "glm-5") and "prefixversion" (e.g. "qwen3").
+	const match = id.match(/^([a-z]+?)([0-9].*)$/);
+	if (!match) {
+		// No digit found — just title-case the whole thing
+		return id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' ');
+	}
+
+	const [, prefix, rest] = match;
+	const brand = BRAND_NAME[prefix] ?? prefix.charAt(0).toUpperCase() + prefix.slice(1);
+
+	// Format the version+suffix part: split on hyphens, capitalize suffix words
+	const parts = rest.split('-');
+	const formatted = parts
+		.map((word, i) => (i === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)))
+		.join(' ');
+
+	return `${brand} ${formatted}`;
 }
 
-/** Determine endpoint type from model ID. */
+/**
+ * Determine endpoint type from model ID.
+ * Uses prefix-based pattern matching — no hardcoded model IDs.
+ */
 export function goEndpointType(id: string): 'openai-compatible' | 'anthropic-compatible' {
-	// MiniMax and Qwen use Anthropic-compatible endpoints
-	const anthropicModels = [
-		'minimax-m3',
-		'minimax-m2.7',
-		'minimax-m2.5',
-		'qwen3.7-max',
-		'qwen3.7-plus',
-		'qwen3.6-plus',
-		'qwen3.5-plus'
-	];
-	return anthropicModels.includes(id) ? 'anthropic-compatible' : 'openai-compatible';
+	// Models from these provider prefixes use Anthropic-compatible endpoints
+	// Source: https://opencode.ai/docs/go/ endpoint table
+	const anthropicPrefixes = ['minimax', 'qwen'];
+	return anthropicPrefixes.some((p) => id.startsWith(p))
+		? 'anthropic-compatible'
+		: 'openai-compatible';
 }
 
 /** Get the API endpoint URL for a model. */
