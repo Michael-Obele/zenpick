@@ -15,6 +15,20 @@ html {
 	font-size: 17px;
 }
 
+/*
+ * LayerChart theme overrides — maps to your shadcn-svelte CSS vars.
+ * The default import (layerchart/shadcn-svelte.css) references
+ * --card-background and --card-muted, which don't exist in this theme,
+ * so we rebind them to the actual tokens here.
+ */
+.lc-root-container {
+	--color-primary: var(--primary);
+	--color-surface-100: var(--card);
+	--color-surface-200: var(--muted);
+	--color-surface-300: var(--border);
+	--color-surface-content: var(--card-foreground);
+}
+
 :root {
 	--background: oklch(1 0 0);
 	--foreground: oklch(0.147 0.004 49.25);
