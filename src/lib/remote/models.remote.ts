@@ -6,13 +6,14 @@ import { fetchGoDocsPricing } from '$lib/server/go-docs';
 import {
 	fetchLlmStatsModels,
 	filterRelevantModels,
+	filterFrontierModels,
 	matchLlmStatsModel
 } from '$lib/server/llm-stats';
 import { inferModel } from '$lib/server/inference';
 import type { GoModel, ModelPricing, LlmStatsModel } from '$lib/types/models';
 import { LLM_STATS_API_KEY } from '$env/static/private';
 
-const CACHE_KEY = 'go-models-enriched-v15';
+const CACHE_KEY = 'go-models-enriched-v21';
 
 /**
  * Fetch all enriched Go models.
@@ -55,6 +56,7 @@ async function refreshCache(): Promise<GoModel[]> {
 	]);
 
 	const relevantLs = filterRelevantModels(lsModels);
+	const frontierLs = filterFrontierModels(lsModels);
 
 	console.log(
 		`[refreshCache] goModels=${goModels.length} modelgrepModels=${mgResult.byId.size} docsModels=${Object.keys(docsPricing).length} llmStats=${lsModels.length} relevantLs=${relevantLs.length}`
@@ -76,7 +78,7 @@ async function refreshCache(): Promise<GoModel[]> {
 		// Get pre-matched llm-stats model
 		const lsModel = lsMatchCache.get(gm.id) ?? null;
 
-		return inferModel(gm.id, mgModel, docsPricing, lsModel);
+		return inferModel(gm.id, mgModel, docsPricing, lsModel, frontierLs);
 	});
 
 	cacheSet(CACHE_KEY, enriched, MODELS_TTL);

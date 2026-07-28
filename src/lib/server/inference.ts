@@ -20,13 +20,15 @@ import { inferBurnDetails } from './burn';
 import { computeScenarioScores } from './scoring';
 import { computeTags } from './tags';
 import { blendBenchmarks } from './blend';
+import { normalizeTopScore } from './llm-stats';
 
 /** Enrich a Go model ID with modelgrep data, llm-stats data, and optional docs pricing. */
 export function inferModel(
 	goId: string,
 	mgModel: ModelgrepModelData | null,
 	docsPricing?: Record<string, ModelPricing>,
-	lsModel?: LlmStatsModel | null
+	lsModel?: LlmStatsModel | null,
+	frontierModels: LlmStatsModel[] = []
 ): GoModel {
 	const name = goIdToName(goId);
 	const pricing = inferPricing(goId, mgModel, docsPricing);
@@ -47,7 +49,7 @@ export function inferModel(
 
 	const speed = extractModelgrepSpeed(mgModel);
 	const tags = computeTags(benchmarks, burnDetails, speed, mgModel, lsModel);
-	const migrationHints = inferMigrationHints(goId, pricing, benchmarks);
+	const migrationHints = inferMigrationHints(lsModel ?? null, frontierModels);
 	const scenarioScores = computeScenarioScores({
 		goId,
 		pricing,
@@ -98,44 +100,57 @@ function extractModelgrepSpeed(mgModel: ModelgrepModelData | null): ModelSpeed |
 
 // ─── Migration Hints ─────────────────────────────────────────────────────
 
+/**
+ * Data-driven "replaces" hints.
+ *
+ * For each capability category we compare the Go model's llm-stats score
+ * (via its matched `llmStatsId`) against every closed-source frontier model,
+ * finding the nearest neighbor. A model is only claimed as a "replacement"
+ * when the normalized gap is within MIGRATION_BAND — so we never assert a
+ * match that isn't backed by the live data. Hints are grouped by the frontier
+ * model they replace and the categories they match on.
+ */
+const MIGRATION_BAND = 12; // max normalized (0–100) gap to claim a "replaces"
+
 function inferMigrationHints(
-	_goId: string,
-	pricing: GoModel['pricing'],
-	benchmarks: GoModel['benchmarks']
+	lsModel: LlmStatsModel | null,
+	frontierModels: LlmStatsModel[]
 ): MigrationHint[] {
-	return [
-		codingMigrationHint(benchmarks.coding, pricing.inputPricePerM),
-		reasoningMigrationHint(benchmarks.reasoning),
-		budgetMigrationHint(pricing.inputPricePerM)
-	].filter((h): h is MigrationHint => h !== null);
-}
+	if (!lsModel || frontierModels.length === 0) return [];
 
-function codingMigrationHint(
-	score: number | null,
-	inputPrice: number | null
-): MigrationHint | null {
-	if (!score || score <= 50 || !inputPrice) return null;
-	const multiplier = inputPrice < 1 ? '10x+' : '5x';
-	return {
-		model: 'Claude Sonnet 4.6 / Opus 4.8',
-		reason: `Comparable coding quality at ~${multiplier} lower input cost`
-	};
-}
+	const cats: { key: string; label: string }[] = [
+		{ key: 'code', label: 'coding' },
+		{ key: 'reasoning', label: 'reasoning' },
+		{ key: 'math', label: 'math' }
+	];
 
-function reasoningMigrationHint(score: number | null): MigrationHint | null {
-	if (!score || score <= 50) return null;
-	return {
-		model: 'GPT-5.4 / Claude Mythos',
-		reason: 'Strong reasoning performance rivaling frontier closed-source models'
-	};
-}
+	// Group by the frontier model we'd replace, combining the categories it matches on.
+	const byModel = new Map<string, { name: string; cats: string[]; worstGap: number }>();
 
-function budgetMigrationHint(inputPrice: number | null): MigrationHint | null {
-	if (!inputPrice || inputPrice >= 0.3) return null;
-	return {
-		model: 'Any API pay-per-token plan',
-		reason: 'Included in $10/month Go subscription — no per-request billing'
-	};
+	for (const { key, label } of cats) {
+		const ours = normalizeTopScore(lsModel.top_scores?.[key]);
+		if (ours == null) continue;
+
+		let best: { name: string; gap: number } | null = null;
+		for (const fm of frontierModels) {
+			const theirs = normalizeTopScore(fm.top_scores?.[key]);
+			if (theirs == null) continue;
+			const gap = Math.abs(ours - theirs);
+			if (best == null || gap < best.gap) best = { name: fm.name, gap };
+		}
+
+		if (best && best.gap <= MIGRATION_BAND) {
+			const entry = byModel.get(best.name) ?? { name: best.name, cats: [], worstGap: 0 };
+			entry.cats.push(label);
+			entry.worstGap = Math.max(entry.worstGap, best.gap);
+			byModel.set(best.name, entry);
+		}
+	}
+
+	return [...byModel.values()].map((e) => ({
+		model: e.name,
+		reason: `Comparable on ${e.cats.join(' & ')} (per llm-stats)`
+	}));
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────

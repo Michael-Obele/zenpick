@@ -26,15 +26,26 @@ export async function fetchLlmStatsModels(apiKey: string): Promise<LlmStatsModel
 			const params = new URLSearchParams({ limit: '200' });
 			if (cursor) params.set('cursor', cursor);
 
-			const res = await fetch(`${LLM_STATS_BASE}?${params.toString()}`, {
-				headers: {
-					Authorization: `Bearer ${apiKey}`,
-					Accept: 'application/json'
+			// Retry transient failures (e.g. rate-limit 403/429) so a rebuild doesn't
+			// end up with a partial model list — an incomplete frontier set makes the
+			// "Replaces" hints come back empty for some models.
+			let res: Response | null = null;
+			for (let attempt = 0; attempt < 3; attempt++) {
+				res = await fetch(`${LLM_STATS_BASE}?${params.toString()}`, {
+					headers: {
+						Authorization: `Bearer ${apiKey}`,
+						Accept: 'application/json'
+					}
+				});
+				if (res.ok) break;
+				if (attempt < 2) {
+					console.warn(`[llm-stats] attempt ${attempt + 1} returned ${res.status}; retrying…`);
+					await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
 				}
-			});
+			}
 
-			if (!res.ok) {
-				console.error(`[llm-stats] API returned ${res.status}: ${res.statusText}`);
+			if (!res || !res.ok) {
+				console.error(`[llm-stats] API returned ${res?.status}: ${res?.statusText}`);
 				break;
 			}
 
@@ -62,6 +73,64 @@ export function filterRelevantModels(models: LlmStatsModel[]): LlmStatsModel[] {
 		const orgId = m.organization?.id ?? '';
 		return RELEVANT_ORGS.includes(orgId);
 	});
+}
+
+/** Closed-source labs whose models we treat as "frontier" replacement targets. */
+const FRONTIER_ORGS = [
+	'openai',
+	'anthropic',
+	'google',
+	'xai',
+	'meta',
+	'mistral',
+	'cohere',
+	'amazon',
+	'databricks',
+	'microsoft'
+];
+
+/**
+ * How recent a closed-source model must be to count as a "replacement" peer.
+ * Old generations (e.g. Claude 3.x, GPT-4) share the same compressed top_scores
+ * as current open models, so matching against them produces misleading "replaces"
+ * claims (a 2026 flagship ends up "comparable" to a 2024 small model). Restrict to
+ * models released within this window. Models without a release_date are kept
+ * (we can't verify their age, and the goal is only to drop known-old ones).
+ */
+const FRONTIER_MAX_AGE_DAYS = 200; // ~6 months
+
+/**
+ * Closed-source models from major frontier labs — the candidates an open-weight
+ * Go model can "replace". Open-weight orgs are excluded (they're already matched
+ * as the Go model itself), we only keep models that expose category scores, and
+ * we drop models older than FRONTIER_MAX_AGE_DAYS so comparisons stay peer-to-peer.
+ */
+export function filterFrontierModels(models: LlmStatsModel[]): LlmStatsModel[] {
+	const cutoff = Date.now() - FRONTIER_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+	return models.filter((m) => {
+		if (m.open_weight) return false;
+		const orgId = m.organization?.id ?? '';
+		if (!FRONTIER_ORGS.includes(orgId)) return false;
+		const ts = m.top_scores ?? {};
+		if (!(ts.code ?? ts.reasoning ?? ts.math)) return false;
+		if (m.release_date) {
+			const t = Date.parse(m.release_date);
+			if (!Number.isNaN(t) && t < cutoff) return false;
+		}
+		return true;
+	});
+}
+
+/**
+ * Normalize an llm-stats category score to a 0–100 scale.
+ * llm-stats stores some models' scores as 0–1 and others as 0–100, so we
+ * auto-detect: values ≤ 1 are treated as 0–1 and scaled up. Returns null if
+ * the input is null/undefined. This makes scores comparable across models
+ * despite the inconsistent source scale.
+ */
+export function normalizeTopScore(v: number | null | undefined): number | null {
+	if (v == null) return null;
+	return v <= 1 ? v * 100 : v;
 }
 
 // ─── Model Matching ───────────────────────────────────────────────────────
