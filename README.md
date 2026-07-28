@@ -4,7 +4,9 @@
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/91fb6716-5f3e-42ad-87cc-58d7fcc6b1ec/deploy-status)](https://app.netlify.com/projects/zenpick/deploys)
 
-[ZenPick](https://zenpick.netlify.app) compares every [OpenCode Go](https://opencode.ai/zen) model side-by-side with live benchmarks, algorithmic fit scores, and quota burn estimates. One $10/month subscription, 12+ models — pick the one that matches your task and your budget.
+[ZenPick](https://zp.svelte-apps.me/) compares every [OpenCode Go](https://opencode.ai/go) model side-by-side with live benchmarks, algorithmic fit scores, and quota burn estimates. One $10/month subscription, 13+ models — pick the one that matches your task and your budget.
+
+👉 [zp.svelte-apps.me](https://zp.svelte-apps.me/) · [github.com/Michael-Obele/zenpick](https://github.com/Michael-Obele/zenpick)
 
 ![ZenPick screenshot](static/screenshot.png)
 
