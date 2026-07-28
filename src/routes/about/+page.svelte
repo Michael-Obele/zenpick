@@ -426,7 +426,7 @@
 				</a>
 				<span class="text-muted-foreground/30" aria-hidden="true">·</span>
 				<a
-					href="https://github.com/Michael-Obele/zenpick"
+href="https://github.com/Michael-Obele/zenpick"
 					target="_blank"
 					rel="noopener noreferrer"
 					class="inline-flex items-center gap-1 underline-offset-4 hover:text-foreground hover:underline"
