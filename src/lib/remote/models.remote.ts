@@ -12,7 +12,7 @@ import { inferModel } from '$lib/server/inference';
 import type { GoModel, ModelPricing, LlmStatsModel } from '$lib/types/models';
 import { LLM_STATS_API_KEY } from '$env/static/private';
 
-const CACHE_KEY = 'go-models-enriched-v14';
+const CACHE_KEY = 'go-models-enriched-v15';
 
 /**
  * Fetch all enriched Go models.

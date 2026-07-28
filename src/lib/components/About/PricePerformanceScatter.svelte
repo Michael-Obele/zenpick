@@ -68,12 +68,12 @@
 		</Card.Description>
 	</Card.Header>
 	<Card.Content>
-		<Chart.Container config={chartConfig} class="aspect-16/10">
+		<Chart.Container config={chartConfig}>
 			<ScatterChart
 				data={chartData}
 				x="totalPrice"
 				y="codingScore"
-				height={280}
+				height={380}
 				axis="x"
 				props={{
 					xAxis: {

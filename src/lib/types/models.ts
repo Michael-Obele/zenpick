@@ -56,6 +56,9 @@ export interface GoModel {
 	/** Modelgrep model ID (e.g. "deepseek/deepseek-v4-pro"), null if unmatched */
 	modelgrepId: string | null;
 
+	/** LLM Stats model ID (slug used in llm-stats.com URLs), null if unmatched */
+	llmStatsId: string | null;
+
 	/** Last time this data was fetched */
 	fetchedAt: number;
 }

@@ -2,8 +2,9 @@
 	import type { GoModel } from '$lib/types/models';
 	import * as Drawer from '$lib/components/ui/drawer/index.js';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
-	import { ExternalLink, Copy, Check, Info } from '@lucide/svelte';
+	import { ExternalLink, Copy, Check, Info, GitCompare } from '@lucide/svelte';
 	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
+	import { compare, MAX_COMPARE } from '$lib/stores/compare.svelte';
 	import BurnBadge from './BurnBadge.svelte';
 	import FallbackBadge from './FallbackBadge.svelte';
 	import BurnGauge from './BurnGauge.svelte';
@@ -18,6 +19,8 @@
 	let { models, model, open = $bindable(false) }: Props = $props();
 
 	let copied = $state(false);
+	let isCompared = $derived(model ? compare.selection.includes(model.id) : false);
+	let compareFull = $derived(compare.selection.length >= MAX_COMPARE);
 
 	function copyModelId() {
 		if (!model) return;
@@ -215,9 +218,23 @@
 
 				<div class="border-t border-border bg-background/95 px-4 pb-4 pt-3 backdrop-blur-sm">
 					<div class="flex flex-wrap gap-2">
+					{#if model}
 						<button
-							class={buttonVariants({ variant: 'default', size: 'sm' })}
-							onclick={copyModelId}
+							type="button"
+							class={buttonVariants({
+								variant: isCompared ? 'default' : 'outline',
+								size: 'sm'
+							})}
+							disabled={!isCompared && compareFull}
+							onclick={() => compare.toggle(model.id)}
+						>
+							<GitCompare class="size-3.5" />
+							{isCompared ? 'In comparison' : 'Add to compare'}
+						</button>
+					{/if}
+					<button
+						class={buttonVariants({ variant: 'default', size: 'sm' })}
+						onclick={copyModelId}
 						>
 							{#if copied}
 								<Check class="size-3.5" />

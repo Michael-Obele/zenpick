@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { GoModel } from '$lib/types/models';
 	import * as Table from '$lib/components/ui/table/index.js';
-	import { ArrowUp, ArrowDown, ArrowUpDown, SearchX } from '@lucide/svelte';
+	import { ArrowUp, ArrowDown, ArrowUpDown, SearchX, Check, GitCompare } from '@lucide/svelte';
 	import BurnBadge from './BurnBadge.svelte';
 	import FallbackBadge from './FallbackBadge.svelte';
 
@@ -11,6 +11,10 @@
 		scenario: string;
 		selectedModelId?: string;
 		onSelectModel: (model: GoModel) => void;
+		/** IDs currently selected for side-by-side comparison. */
+		selectedIds?: string[];
+		/** Toggle a model in/out of the comparison selection. */
+		onToggleCompare?: (id: string) => void;
 	}
 
 	let {
@@ -18,7 +22,9 @@
 		filter = $bindable(''),
 		scenario,
 		selectedModelId,
-		onSelectModel
+		onSelectModel,
+		selectedIds = [],
+		onToggleCompare
 	}: Props = $props();
 
 	let filteredModels = $derived.by(() => {
@@ -122,6 +128,9 @@
 	<Table.Root>
 		<Table.Header class="sticky top-0 z-10 bg-card">
 			<Table.Row class="border-b border-border hover:bg-transparent">
+				<Table.Head class="w-10 text-center">
+					<GitCompare class="mx-auto size-4 text-muted-foreground" />
+				</Table.Head>
 				<Table.Head class="w-10 whitespace-nowrap text-muted-foreground">SN</Table.Head>
 				{@const nameSort = sortIndicator('name')}
 				<Table.Head
@@ -217,10 +226,11 @@
 		<Table.Body>
 			{#each sortedModels as model, index (model.id)}
 				{@const isSelected = selectedModelId === model.id}
+			{@const isCompared = selectedIds.includes(model.id)}
 				<Table.Row
 					class="cursor-pointer border-b border-border transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/50 {isSelected
 						? 'bg-muted/70 hover:bg-muted/80'
-						: ''}"
+						: ''} {isCompared ? 'bg-primary/4' : ''}"
 					onclick={() => onSelectModel(model)}
 					tabindex={0}
 					role="button"
@@ -228,6 +238,36 @@
 					data-state={isSelected ? 'selected' : undefined}
 					onkeydown={(e) => e.key === 'Enter' && onSelectModel(model)}
 				>
+					<Table.Cell
+						class="w-10 text-center"
+						onclick={(e) => e.stopPropagation()}
+						onkeydown={(e) => e.stopPropagation()}
+					>
+						<button
+							type="button"
+							role="checkbox"
+							aria-checked={isCompared}
+							aria-label={`${isCompared ? 'Remove' : 'Add'} ${model.name} from comparison`}
+							onclick={(e) => {
+								e.stopPropagation();
+								onToggleCompare?.(model.id);
+							}}
+							onkeydown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault();
+									e.stopPropagation();
+									onToggleCompare?.(model.id);
+								}
+							}}
+							class="flex size-5 items-center justify-center rounded-md border transition-colors {isCompared
+								? 'border-primary bg-primary text-primary-foreground'
+								: 'border-border bg-background hover:border-primary/50'}"
+						>
+							{#if isCompared}
+								<Check class="size-3.5" />
+							{/if}
+						</button>
+					</Table.Cell>
 					<Table.Cell class="w-10 text-sm tabular-nums text-muted-foreground/60">
 						{index + 1}
 					</Table.Cell>
@@ -323,7 +363,7 @@
 				</Table.Row>
 			{:else}
 				<Table.Row>
-					<Table.Cell colspan={scenario ? 8 : 7} class="py-12 text-center">
+					<Table.Cell colspan={scenario ? 9 : 8} class="py-12 text-center">
 						<div class="flex flex-col items-center gap-2 text-muted-foreground">
 							<SearchX class="size-8 opacity-40" />
 							<p>No models match your search.</p>

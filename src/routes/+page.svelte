@@ -6,6 +6,8 @@
 	import ModelTable from '$lib/components/ModelTable.svelte';
 	import ModelDrawer from '$lib/components/ModelDrawer.svelte';
 	import ScenarioHelpDialog from '$lib/components/ScenarioHelpDialog.svelte';
+	import CompareTray from '$lib/components/CompareTray.svelte';
+	import { compare } from '$lib/stores/compare.svelte';
 	import { Server, Brain, Zap, BarChart3, Compass, Wallet, Sparkles } from '@lucide/svelte';
 	import * as Card from '$lib/components/ui/card';
 
@@ -195,8 +197,11 @@
 				{scenario}
 				selectedModelId={selectedModel?.id}
 				onSelectModel={openDrawer}
+			selectedIds={compare.selection}
+			onToggleCompare={compare.toggle}
 			/>
 			<ModelDrawer {models} model={selectedModel} bind:open={drawerOpen} />
+			<CompareTray {models} />
 		{:catch err}
 			<div class="rounded-xl border border-red-500/20 bg-red-500/5 p-8 text-center">
 				<div class="text-red-400">Failed to load model data</div>

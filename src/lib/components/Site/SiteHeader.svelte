@@ -5,7 +5,8 @@
 	import GithubIcon from '$lib/assets/github.svelte';
 
 	const links = [
-		{ href: '/', label: 'Compare' },
+		{ href: '/', label: 'Models' },
+		{ href: '/compare', label: 'Compare' },
 		{ href: '/about', label: 'About' }
 	];
 

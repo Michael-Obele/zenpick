@@ -81,6 +81,7 @@ export function inferModel(
 		endpoint: goEndpointType(goId),
 		endpointUrl: goEndpointUrl(goId),
 		modelgrepId: mgModel?.id ?? null,
+		llmStatsId: lsModel?.id ?? null,
 		fetchedAt: Date.now()
 	};
 }
