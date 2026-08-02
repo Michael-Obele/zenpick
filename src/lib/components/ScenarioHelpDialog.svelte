@@ -1,7 +1,6 @@
 <script lang="ts">
 	import {
 		Brain,
-		Globe,
 		Bot,
 		Calculator,
 		Info,
@@ -19,12 +18,6 @@
 	import { buttonVariants } from '$lib/components/ui/button';
 
 	const scenarios: { value: string; label: string; icon: typeof Brain; tagline: string }[] = [
-		{
-			value: '',
-			label: 'All',
-			icon: Globe,
-			tagline: 'No scenario filter — compare by quota burn.'
-		},
 		{
 			value: 'brainstorming',
 			label: 'Brainstorming',
@@ -46,10 +39,6 @@
 	];
 
 	const scenarioDetails: Record<string, { quality: string; fit: string }> = {
-		'': {
-			quality: 'Uses overall benchmark averages.',
-			fit: 'Not applied — sorting falls back to burn rate.'
-		},
 		brainstorming: {
 			quality: 'Reasoning intelligence benchmarks.',
 			fit: 'Context length, intelligence, and reasoning support.'
@@ -115,7 +104,8 @@
 				How ZenPick works
 			</Dialog.Title>
 			<Dialog.Description>
-				Choose a scenario to rank models, or compare by burn rate when no scenario is selected.
+				Rank models by a need, optionally weighted by a task — or compare by burn rate when nothing
+				is selected.
 			</Dialog.Description>
 		</Dialog.Header>
 
@@ -147,7 +137,7 @@
 									</div>
 									<div>
 										<div class="text-sm font-semibold text-foreground">
-											{s.label || 'All Models'}
+											{s.label}
 										</div>
 										<div class="text-xs text-muted-foreground">{s.tagline}</div>
 									</div>

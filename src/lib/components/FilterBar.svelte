@@ -2,6 +2,7 @@
 	import { Search, X } from '@lucide/svelte';
 	import { SCENARIOS, scenarioLabel } from '$lib/scenarios';
 	import { NEEDS } from '$lib/needs';
+	import * as ToggleGroup from '$lib/components/ui/toggle-group';
 
 	interface Props {
 		filter: string;
@@ -14,17 +15,41 @@
 	let searchOpen = $state(false);
 
 	/**
-	 * The two rows are complementary dimensions: a Task (scenario) weights
-	 * the ranking, a Need (browse) supplies the metric. Coding and Design
-	 * live only as needs, so no scenario ever collides with a need.
+	 * One row, two dimensions — combined with AND semantics:
+	 *  - "Rank by"    (needs): the metric the table is ordered by (single-select).
+	 *  - "Weight by"  (scenarios): a task mode that weights that metric by fit
+	 *    (single-select). Selecting one from each merges the two filters into
+	 *    a fit-weighted ranking.
+	 * Single-select per group means the two controls can never conflict; the
+	 * merge is always exactly one need + one scenario.
 	 */
-	function applyScenario(value: string) {
-		scenario = value;
-	}
 
-	function applyNeed(slug: string) {
-		const activating = need !== slug;
-		need = activating ? slug : '';
+	/** Static Tailwind-safe active classes per need (data-state selectors must be literal). */
+	const NEED_ACTIVE: Record<string, string> = {
+		coding:
+			'data-[state=on]:border-transparent data-[state=on]:bg-sky-500/10 data-[state=on]:text-sky-500',
+		design:
+			'data-[state=on]:border-transparent data-[state=on]:bg-fuchsia-500/10 data-[state=on]:text-fuchsia-500',
+		smartest:
+			'data-[state=on]:border-transparent data-[state=on]:bg-violet-500/10 data-[state=on]:text-violet-500',
+		reasoning:
+			'data-[state=on]:border-transparent data-[state=on]:bg-amber-500/10 data-[state=on]:text-amber-500',
+		vision:
+			'data-[state=on]:border-transparent data-[state=on]:bg-emerald-500/10 data-[state=on]:text-emerald-500',
+		'open-source':
+			'data-[state=on]:border-transparent data-[state=on]:bg-slate-500/10 data-[state=on]:text-slate-500',
+		'long-context':
+			'data-[state=on]:border-transparent data-[state=on]:bg-teal-500/10 data-[state=on]:text-teal-500',
+		cheapest:
+			'data-[state=on]:border-transparent data-[state=on]:bg-orange-500/10 data-[state=on]:text-orange-500'
+	};
+
+	const ITEM_BASE =
+		'rounded-full border px-3 py-1.5 text-xs font-medium transition-all data-[state=off]:border-border data-[state=off]:bg-card data-[state=off]:text-muted-foreground hover:border-border hover:text-foreground';
+
+	function clearAll() {
+		need = '';
+		scenario = '';
 	}
 
 	function clearFilter() {
@@ -34,26 +59,83 @@
 </script>
 
 <div class="flex flex-col gap-3">
-	<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-		<!-- Task row: what you're doing — produces a fit score per model -->
-		<div class="flex flex-wrap items-center gap-1.5">
-			<span class="mr-1 text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
-				Task
-			</span>
-			{#each SCENARIOS as s (s.value)}
-				{@const Icon = s.icon}
-				<button
-					class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all {scenario ===
-					s.value
-						? 'border-primary/70 bg-primary/60 text-white/80'
-						: 'border-border bg-card text-muted-foreground hover:border-border hover:text-foreground'}"
-					onclick={() => applyScenario(s.value)}
-					title="Weighs the ranking by how well each model fits this task"
+	<div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+		<!-- One row: Rank by need + Weight by task (AND merge), then status -->
+		<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+			<!-- Rank by: browse-by-need metrics -->
+			<div class="flex items-center gap-1.5">
+				<span class="mr-1 text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
+					Rank by
+				</span>
+				<ToggleGroup.Root
+					type="single"
+					bind:value={need}
+					variant="outline"
+					size="sm"
+					spacing={2}
+					aria-label="Rank models by need"
 				>
-					<Icon class="size-3" />
-					{s.label}
+					{#each NEEDS as n (n.slug)}
+						{@const Icon = n.icon}
+						<ToggleGroup.Item
+							value={n.slug}
+							class="{ITEM_BASE} {NEED_ACTIVE[n.slug] ?? ''}"
+							title={n.description}
+						>
+							<Icon class="size-3" />
+							{n.cardTitle}
+						</ToggleGroup.Item>
+					{/each}
+				</ToggleGroup.Root>
+			</div>
+
+			<!-- Dimension divider -->
+			<span class="hidden h-6 w-px bg-border sm:block" aria-hidden="true"></span>
+
+			<!-- Weight by: task scenarios -->
+			<div class="flex items-center gap-1.5">
+				<span class="mr-1 text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
+					Weight by
+				</span>
+				<ToggleGroup.Root
+					type="single"
+					bind:value={scenario}
+					variant="outline"
+					size="sm"
+					spacing={2}
+					aria-label="Weight ranking by task"
+				>
+					{#each SCENARIOS as s (s.value)}
+						{@const Icon = s.icon}
+						<ToggleGroup.Item
+							value={s.value}
+							class="{ITEM_BASE} data-[state=on]:border-primary/70 data-[state=on]:bg-primary/60 data-[state=on]:text-white/80"
+							title="Weighs the ranking by how well each model fits this task"
+						>
+							<Icon class="size-3" />
+							{s.label}
+						</ToggleGroup.Item>
+					{/each}
+				</ToggleGroup.Root>
+			</div>
+
+			{#if need && scenario}
+				<span
+					class="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2.5 py-1.5 text-xs text-muted-foreground"
+				>
+					weighted by {scenarioLabel(scenario)} fit
+				</span>
+			{/if}
+
+			{#if need || scenario}
+				<button
+					class="inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+					onclick={clearAll}
+				>
+					<X class="size-3" />
+					Clear
 				</button>
-			{/each}
+			{/if}
 		</div>
 
 		<!-- Search -->
@@ -86,34 +168,5 @@
 				</div>
 			{/if}
 		</div>
-	</div>
-
-	<!-- Browse-by-need pills: one tap turns the table into a modelgrep-style ranked list -->
-	<div class="flex flex-wrap items-center gap-1.5">
-		<span class="mr-1 text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
-			Browse by need
-		</span>
-		{#each NEEDS as n (n.slug)}
-			{@const active = need === n.slug}
-			{@const Icon = n.icon}
-			<button
-				class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all {active
-					? 'border-transparent ' + n.bg + ' ' + n.accent
-					: 'border-border bg-card text-muted-foreground hover:border-border hover:text-foreground'}"
-				onclick={() => applyNeed(n.slug)}
-				title={n.description}
-				aria-pressed={active}
-			>
-				<Icon class="size-3" />
-				{n.cardTitle}
-			</button>
-		{/each}
-		{#if scenario && need}
-			<span
-				class="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2.5 py-1.5 text-xs text-muted-foreground"
-			>
-				weighted by {scenarioLabel(scenario)} fit
-			</span>
-		{/if}
 	</div>
 </div>

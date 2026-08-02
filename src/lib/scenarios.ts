@@ -1,5 +1,5 @@
 import type { Component } from 'svelte';
-import { Brain, Globe, Bot, Calculator } from '@lucide/svelte';
+import { Brain, Bot, Calculator } from '@lucide/svelte';
 
 export interface ScenarioSpec {
 	value: string;
@@ -8,19 +8,16 @@ export interface ScenarioSpec {
 }
 
 /**
- * Task scenarios — the "what are you doing" row of filters. Each scenario
- * produces a fit score per model; when combined with a browse-by-need
- * ranking, fit weights the metric so the two controls jointly determine
- * the output.
+ * Task scenarios — the "Weight by" row of filters. Each scenario produces
+ * a fit score per model; when combined with a browse-by-need ranking,
+ * fit weights the metric so the two controls jointly determine the output
+ * (one need + one scenario = a merged, fit-weighted ranking).
  *
- * Deliberately excludes Coding and Frontend UI: those are already
- * first-class one-click browse categories in the Browse-by-need row
- * (which carries richer data — live leaderboards with metric bars), so
- * duplicating them here only doubled the pills and forced an alias
- * clearing hack. The remaining scenarios are modes that no need covers.
+ * No "All" entry: no selection IS the default — an empty scenario means
+ * the table ranks purely by the chosen need (or burn rate when no need is
+ * selected either).
  */
 export const SCENARIOS: ScenarioSpec[] = [
-	{ value: '', label: 'All', icon: Globe },
 	{ value: 'brainstorming', label: 'Brainstorming', icon: Brain },
 	{ value: 'agentic', label: 'Agentic', icon: Bot },
 	{ value: 'budget', label: 'Budget', icon: Calculator }
