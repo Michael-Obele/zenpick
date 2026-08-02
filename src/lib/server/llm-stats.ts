@@ -7,14 +7,12 @@
  */
 
 import type { LlmStatsModel } from '$lib/types/models';
+import { goIdToName } from './opencode-go';
 
 const LLM_STATS_BASE = 'https://api.llm-stats.com/stats/v1/models';
 
-/** Organizations we care about (maps to our Go model providers). */
-const RELEVANT_ORGS = ['deepseek', 'zai-org', 'moonshotai', 'xiaomi', 'minimax', 'qwen', 'tencent'];
-
 /**
- * Fetch all models from the LLM Stats API, filtered to relevant organizations.
+ * Fetch all models from the LLM Stats API (the full catalog, every org).
  * Uses pagination via next_cursor. Returns empty array on failure.
  */
 export async function fetchLlmStatsModels(apiKey: string): Promise<LlmStatsModel[]> {
@@ -63,16 +61,6 @@ export async function fetchLlmStatsModels(apiKey: string): Promise<LlmStatsModel
 		console.error('[llm-stats] fetch failed:', e instanceof Error ? e.message : String(e));
 		return [];
 	}
-}
-
-/**
- * Filter to only models from organizations we care about.
- */
-export function filterRelevantModels(models: LlmStatsModel[]): LlmStatsModel[] {
-	return models.filter((m) => {
-		const orgId = m.organization?.id ?? '';
-		return RELEVANT_ORGS.includes(orgId);
-	});
 }
 
 /** Closed-source labs whose models we treat as "frontier" replacement targets. */
@@ -143,43 +131,38 @@ function normalize(id: string): string {
 }
 
 /**
- * Match a Go model ID to an LLM Stats model.
+ * Match a Go model ID to an LLM Stats model against the FULL catalog.
  *
- * Strategy (in order of precedence):
- * 1. Exact ID match (within relevant orgs)
+ * Company-agnostic by design: no org allow-list, so a Go model from any lab
+ * resolves as long as llm-stats tracks it. Strategy (in order of precedence):
+ * 1. Exact ID match
  * 2. Normalized exact match (ignoring dots/dashes)
  * 3. Fuzzy: Go ID is a prefix of LS ID (e.g., "deepseek-v4-flash" → "deepseek-v4-flash-max")
- * 4. Fuzzy: normalized substring inclusion (e.g., "glm-5" matches "glm-5")
- * 5. Exact ID match against the FULL catalog — the safety net for models in orgs
- *    we haven't categorized yet (e.g. "hy3" under tencent). Frontier orgs are
- *    NOT excluded here: the Go API itself now serves closed models
- *    (grok-4.5 under xai, gpt-5.6-luna under openai), and the Go API is the
- *    source of truth for what counts as a Go model.
+ * 4. Fuzzy: normalized substring inclusion (e.g., "glm-5" matches "glm-5",
+ *    preferring the same normalized length)
+ * 5. Name-based similarity (e.g., Go "microsoft-mai-1" → LS "Microsoft MAI-1"
+ *    when ID formats diverge)
  */
-export function matchLlmStatsModel(
-	goId: string,
-	relevantModels: LlmStatsModel[],
-	allModels: LlmStatsModel[] = []
-): LlmStatsModel | null {
+export function matchLlmStatsModel(goId: string, allModels: LlmStatsModel[]): LlmStatsModel | null {
 	const goNorm = normalize(goId);
 
 	// Pass 1: Exact match
-	const exact = relevantModels.find((m) => m.id === goId);
+	const exact = allModels.find((m) => m.id === goId);
 	if (exact) return exact;
 
 	// Pass 2: Normalized exact match
-	const normExact = relevantModels.find((m) => normalize(m.id) === goNorm);
+	const normExact = allModels.find((m) => normalize(m.id) === goNorm);
 	if (normExact) return normExact;
 
 	// Pass 3: Go ID is a prefix of LS model ID
-	const prefix = relevantModels.find((m) => {
+	const prefix = allModels.find((m) => {
 		const lsNorm = normalize(m.id);
 		return lsNorm.startsWith(goNorm) && lsNorm.length > goNorm.length;
 	});
 	if (prefix) return prefix;
 
 	// Pass 4: Normalized substring inclusion (prefer exact-length match)
-	const candidates = relevantModels.filter((m) => normalize(m.id).includes(goNorm));
+	const candidates = allModels.filter((m) => normalize(m.id).includes(goNorm));
 	if (candidates.length === 1) return candidates[0];
 	if (candidates.length > 1) {
 		// Prefer the one with the same normalized length (not "glm-5" matching "glm-5v-turbo")
@@ -187,12 +170,33 @@ export function matchLlmStatsModel(
 		return sameLen ?? candidates[0];
 	}
 
-	// Pass 5: Full-catalog exact match — catches Go models in any org, including
-	// frontier labs (grok-4.5, gpt-5.6-luna) that are now served by the Go API.
-	if (allModels.length) {
-		const full = allModels.find((m) => m.id === goId);
-		if (full) return full;
+	// Pass 5: Name-based similarity (catches ID-format divergence)
+	const goName = goIdToName(goId);
+	const nameCandidates = allModels
+		.map((m) => ({ m, score: nameSimilarity(goName, m.name) }))
+		.filter((x) => x.score >= 0.85);
+	if (nameCandidates.length === 1) return nameCandidates[0].m;
+	if (nameCandidates.length > 1) {
+		// Prefer the name whose normalized length is closest to the Go name's
+		const goLen = normalize(goName).length;
+		nameCandidates.sort(
+			(a, b) =>
+				Math.abs(normalize(a.m.name).length - goLen) - Math.abs(normalize(b.m.name).length - goLen)
+		);
+		return nameCandidates[0].m;
 	}
 
 	return null;
+}
+
+/**
+ * Name similarity score: 1 for exact normalized equality, 0.85 when one
+ * name contains the other (e.g. "Hy3 3" vs "Hy3"). 0 otherwise.
+ */
+function nameSimilarity(a: string, b: string): number {
+	const [na, nb] = [normalize(a), normalize(b)];
+	if (!na || !nb) return 0;
+	if (na === nb) return 1;
+	if (na.includes(nb) || nb.includes(na)) return 0.85;
+	return 0;
 }

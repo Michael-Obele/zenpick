@@ -14,38 +14,49 @@ export interface ModelgrepResult {
 	all: ModelgrepModelData[];
 }
 
-/** Batch-fetch all models by maker and index by modelgrep ID. */
-export async function fetchModelgrepModels(): Promise<ModelgrepResult> {
-	const makers = [
-		'deepseek',
-		'z-ai',
-		'moonshotai',
-		'xiaomi',
-		'minimax',
-		'qwen',
-		'tencent',
-		'x-ai',
-		'openai'
-	];
-	const results = await Promise.all(
-		makers.map(async (maker) => {
-			const url = `${MODELGREP_BASE}/models?q=${maker}&limit=30`;
-			try {
-				const res = await fetch(url);
-				if (!res.ok) {
-					console.error(`[modelgrep] ${maker} returned ${res.status}: ${res.statusText}`);
-					return [];
-				}
-				const json = await res.json();
-				return (json.data ?? []) as ModelgrepModelData[];
-			} catch (e) {
-				console.error(`[modelgrep] ${maker} fetch failed:`, e);
-				return [];
-			}
-		})
-	);
+/** Pagination metadata returned by the list endpoint. */
+interface ModelgrepListMeta {
+	total: number;
+	count: number;
+	limit: number;
+	offset: number;
+	has_more: boolean;
+	next_offset: number | null;
+}
 
-	const all = results.flat();
+/**
+ * Fetch the FULL modelgrep catalog (paginated) and index by modelgrep ID.
+ *
+ * Deliberately company-agnostic: no hardcoded maker list, so a Go model from
+ * any lab (known or brand-new) resolves automatically as long as modelgrep
+ * tracks it. Returns an empty result on failure.
+ */
+export async function fetchModelgrepModels(): Promise<ModelgrepResult> {
+	const all: ModelgrepModelData[] = [];
+	let offset = 0;
+
+	try {
+		while (true) {
+			const url = `${MODELGREP_BASE}/models?limit=200&offset=${offset}`;
+			const res = await fetch(url);
+			if (!res.ok) {
+				console.error(`[modelgrep] list returned ${res.status}: ${res.statusText}`);
+				break;
+			}
+			const json = await res.json();
+			all.push(...((json.data ?? []) as ModelgrepModelData[]));
+
+			const meta = json.meta as ModelgrepListMeta | undefined;
+			if (!meta?.has_more || meta.next_offset == null) break;
+			offset = meta.next_offset;
+		}
+
+		console.log(`[modelgrep] fetched ${all.length} models (full catalog)`);
+	} catch (e) {
+		console.error('[modelgrep] fetch failed:', e instanceof Error ? e.message : String(e));
+		return { byId: new Map(), all: [] };
+	}
+
 	const byId = new Map<string, ModelgrepModelData>();
 	for (const model of all) {
 		byId.set(model.id, model);

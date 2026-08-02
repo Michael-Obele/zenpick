@@ -1,13 +1,13 @@
 /** Fetches Go pricing data from the official OpenCode docs page. */
 
 import { parse } from 'node-html-parser';
-import type { ModelPricing, GoModelEntry } from '$lib/types/models';
+import type { ModelPricing, GoModelEntry, UsageLimits } from '$lib/types/models';
 import { cacheGet, cacheSet, GO_DOCS_PRICING_TTL } from '$lib/cache';
 import { goIdToName } from './opencode-go';
 
 const GO_DOCS_URL = 'https://opencode.ai/docs/go/';
 const GO_API_BASE = 'https://opencode.ai/zen/go/v1';
-const CACHE_KEY = 'go-docs-pricing';
+const CACHE_KEY = 'go-docs-data';
 
 /**
  * Normalize a display name for matching.
@@ -84,43 +84,74 @@ function parsePrice(s: string): number | null {
 }
 
 /**
- * Fetch Go pricing from the OpenCode docs page (cached).
- * Returns cached data instantly; refreshes in background if stale.
+ * Combined Go docs data: pricing (per 1M tokens) + usage limits
+ * (estimated request counts per quota window). Both are scraped from the
+ * same docs/go/ page in a single fetch.
  */
-export async function fetchGoDocsPricing(): Promise<Record<string, ModelPricing>> {
-	const cached = cacheGet<Record<string, ModelPricing>>(CACHE_KEY);
+export interface GoDocsData {
+	pricing: Record<string, ModelPricing>;
+	usageLimits: Record<string, UsageLimits>;
+}
+
+/**
+ * Fetch combined Go docs data (pricing + usage limits) from the OpenCode
+ * docs page (cached). Returns cached data instantly; refreshes in background
+ * if stale.
+ */
+export async function fetchGoDocsData(): Promise<GoDocsData> {
+	const cached = cacheGet<GoDocsData>(CACHE_KEY);
 
 	if (cached && !cached.stale) {
 		return cached.data;
 	}
 
 	if (cached && cached.stale) {
-		refreshGoDocsPricing().catch((e) => {
+		refreshGoDocsData().catch((e) => {
 			console.error('[go-docs] background refresh failed:', e);
 		});
 		return cached.data;
 	}
 
-	return await refreshGoDocsPricing();
+	return await refreshGoDocsData();
+}
+
+/** Backward-compatible accessor: just the pricing map. */
+export function fetchGoDocsPricing(): Promise<Record<string, ModelPricing>> {
+	return fetchGoDocsData().then((d) => d.pricing);
+}
+
+/** Estimated request counts per Go quota window, keyed by Go model ID. */
+export function fetchGoDocsUsageLimits(): Promise<Record<string, UsageLimits>> {
+	return fetchGoDocsData().then((d) => d.usageLimits);
+}
+
+/** Parse an integer that may contain thousands separators (e.g. "30,100"). */
+function parseCount(s: string): number | null {
+	const cleaned = s.replace(/[,\s]/g, '').trim();
+	if (!/^\d+$/.test(cleaned)) return null;
+	const n = parseInt(cleaned, 10);
+	return Number.isNaN(n) ? null : n;
 }
 
 /**
- * Fetch Go pricing from the OpenCode docs page.
- * Parses HTML tables using node-html-parser.
- * Returns a map of Go model ID → pricing.
+ * Fetch Go docs data (pricing + usage limits) from the OpenCode docs page.
+ * Parses two tables with node-html-parser:
+ *   - the usage-limits table (Model | requests/5h | requests/week | requests/month)
+ *   - the pricing table (Model | Input | Output | Cached Read | Cached Write | Usage)
+ * Returns a map of Go model ID → { pricing, usageLimits }.
  */
-async function refreshGoDocsPricing(): Promise<Record<string, ModelPricing>> {
+async function refreshGoDocsData(): Promise<GoDocsData> {
 	let text: string;
 	try {
 		const res = await fetch(GO_DOCS_URL);
 		if (!res.ok) {
 			console.error(`[go-docs] returned ${res.status}: ${res.statusText}`);
-			return {};
+			return { pricing: {}, usageLimits: {} };
 		}
 		text = await res.text();
 	} catch (e) {
 		console.error('[go-docs] fetch failed:', e);
-		return {};
+		return { pricing: {}, usageLimits: {} };
 	}
 
 	const root = parse(text);
@@ -128,25 +159,31 @@ async function refreshGoDocsPricing(): Promise<Record<string, ModelPricing>> {
 	// Build name map once before the row loop — not per row
 	const nameMap = await buildNameToIdMap();
 
-	const result: Record<string, ModelPricing> = {};
+	const pricing: Record<string, ModelPricing> = {};
+	const usageLimits: Record<string, UsageLimits> = {};
 
-	// Find the pricing table by looking for a table whose headers include
-	// "Model", "Input", "Output", and "Cached Read"
 	for (const table of root.querySelectorAll('table')) {
 		const headers = table
 			.querySelectorAll('thead th, tr:first-child td, tr:first-child th')
 			.map((th) => th.text.trim().toLowerCase());
 
 		const hasModel = headers.includes('model');
-		const hasInput = headers.includes('input');
-		const hasOutput = headers.includes('output');
-		const hasCachedRead = headers.some((h) => h.includes('cached read'));
 
-		if (!hasModel || !hasInput || !hasOutput || !hasCachedRead) {
-			continue;
-		}
+		// Usage-limits table: "Model", "requests per 5 hour", "requests per week", "requests per month"
+		const isUsageTable =
+			hasModel &&
+			headers.some((h) => h.includes('requests per')) &&
+			headers.some((h) => h.includes('5 hour') || h.includes('week'));
 
-		// Parse data rows (skip header row)
+		// Pricing table: "Model", "Input", "Output", "Cached Read", "Cached Write", "Usage"
+		const isPricingTable =
+			hasModel &&
+			headers.includes('input') &&
+			headers.includes('output') &&
+			headers.some((h) => h.includes('cached read'));
+
+		if (!isUsageTable && !isPricingTable) continue;
+
 		const rows = table.querySelectorAll('tbody tr, tr');
 		for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
 			const row = rows[rowIdx];
@@ -157,29 +194,49 @@ async function refreshGoDocsPricing(): Promise<Record<string, ModelPricing>> {
 			if (cells.length < 4) continue;
 
 			const docsName = cells[0];
-			const inputPrice = parsePrice(cells[1]);
-			const outputPrice = parsePrice(cells[2]);
-			const cachedRead = parsePrice(cells[3]);
-
 			const goId = matchDisplayName(docsName, nameMap);
-			if (goId && inputPrice != null && outputPrice != null) {
-				result[goId] = {
-					inputPricePerM: inputPrice,
-					outputPricePerM: outputPrice,
-					cachedReadPerM: cachedRead,
-					source: 'go-docs'
-				};
+			if (!goId) continue;
+
+			if (isPricingTable) {
+				const inputPrice = parsePrice(cells[1]);
+				const outputPrice = parsePrice(cells[2]);
+				const cachedRead = parsePrice(cells[3]);
+				if (inputPrice != null && outputPrice != null) {
+					pricing[goId] = {
+						inputPricePerM: inputPrice,
+						outputPricePerM: outputPrice,
+						cachedReadPerM: cachedRead,
+						source: 'go-docs'
+					};
+				}
+			} else if (isUsageTable) {
+				const per5h = parseCount(cells[1]);
+				const perWeek = parseCount(cells[2]);
+				const perMonth = parseCount(cells[3]);
+				if (per5h != null) {
+					usageLimits[goId] = {
+						requestsPer5h: per5h,
+						requestsPerWeek: perWeek ?? 0,
+						requestsPerMonth: perMonth ?? 0
+					};
+				}
 			}
 		}
 	}
 
-	const keys = Object.keys(result);
-	if (keys.length > 0) {
-		console.log(`[go-docs] scraped pricing for ${keys.length} models: ${keys.join(', ')}`);
+	const pKeys = Object.keys(pricing);
+	const uKeys = Object.keys(usageLimits);
+	if (pKeys.length > 0) {
+		console.log(`[go-docs] scraped pricing for ${pKeys.length} models: ${pKeys.join(', ')}`);
 	} else {
 		console.warn('[go-docs] no pricing rows parsed — page format may have changed');
 	}
+	if (uKeys.length > 0) {
+		console.log(`[go-docs] scraped usage limits for ${uKeys.length} models: ${uKeys.join(', ')}`);
+	} else {
+		console.warn('[go-docs] no usage-limit rows parsed — page format may have changed');
+	}
 
-	cacheSet(CACHE_KEY, result, GO_DOCS_PRICING_TTL);
-	return result;
+	cacheSet(CACHE_KEY, { pricing, usageLimits }, GO_DOCS_PRICING_TTL);
+	return { pricing, usageLimits };
 }

@@ -50,21 +50,33 @@
 
 	const burnTiers = [
 		{
-			name: 'slow',
-			range: '< $1.50',
+			name: 'excellent',
+			range: '> 11,000',
 			description: 'Workhorse models. Use these for volume.',
 			color: 'cyan'
 		},
 		{
+			name: 'good',
+			range: '3,500 – 11,000',
+			description: 'Economical for steady use.',
+			color: 'emerald'
+		},
+		{
 			name: 'moderate',
-			range: '$1.50 – $6.00',
+			range: '1,000 – 3,500',
 			description: 'Balanced daily drivers.',
 			color: 'amber'
 		},
 		{
-			name: 'fast',
-			range: '> $6.00',
-			description: 'Premium models for focused sessions.',
+			name: 'high',
+			range: '500 – 1,000',
+			description: 'Premium models for focused, short sessions.',
+			color: 'orange'
+		},
+		{
+			name: 'extreme',
+			range: '< 500',
+			description: 'Burns fastest. A handful of requests empties the $12 window.',
 			color: 'red'
 		}
 	];
@@ -353,19 +365,23 @@
 		</div>
 
 		<p class="mb-6 text-base leading-relaxed text-muted-foreground">
-			Every model in ZenPick is tagged with one of three thermal burn rates. It is a single
-			classification — derived from blended price per million tokens — that tells you how fast the
-			model will consume your $12/5h window.
+			Every model in ZenPick carries a thermal burn band. It is derived from OpenCode's published
+			usage-limit request counts — requests per $12 / 5h window, scraped from the Go docs — a direct
+			measure of how fast the model burns through your quota (not an inference from price).
 		</p>
 
-		<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+		<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
 			{#each burnTiers as tier (tier.name)}
 				{@const color =
 					tier.color === 'cyan'
 						? 'border-cyan-500/20 bg-cyan-500/5 text-cyan-500'
-						: tier.color === 'amber'
-							? 'border-amber-500/20 bg-amber-500/5 text-amber-500'
-							: 'border-red-500/20 bg-red-500/5 text-red-500'}
+						: tier.color === 'emerald'
+							? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-500'
+							: tier.color === 'amber'
+								? 'border-amber-500/20 bg-amber-500/5 text-amber-500'
+								: tier.color === 'orange'
+									? 'border-orange-500/20 bg-orange-500/5 text-orange-500'
+									: 'border-red-500/20 bg-red-500/5 text-red-500'}
 				<div class="rounded-lg border p-4 {color}">
 					<div class="mb-2 flex items-center gap-2">
 						<span class="inline-block h-2 w-2 rounded-full bg-current" aria-hidden="true"></span>
@@ -381,8 +397,8 @@
 			<Thermometer class="size-3" />
 			<span>
 				Source function:
-				<code class="font-mono text-foreground/80">burnRateFromPrice()</code> in
-				<code class="font-mono text-foreground/80">src/lib/burn.ts</code>
+				<code class="font-mono text-foreground/80">computeBurnScore()</code> in
+				<code class="font-mono text-foreground/80">src/lib/server/burn.ts</code>
 			</span>
 		</div>
 	</section>
@@ -426,7 +442,7 @@
 				</a>
 				<span class="text-muted-foreground/30" aria-hidden="true">·</span>
 				<a
-href="https://github.com/Michael-Obele/zenpick"
+					href="https://github.com/Michael-Obele/zenpick"
 					target="_blank"
 					rel="noopener noreferrer"
 					class="inline-flex items-center gap-1 underline-offset-4 hover:text-foreground hover:underline"

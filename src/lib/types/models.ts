@@ -80,6 +80,18 @@ export interface ModelPricing {
 	source: PricingSource;
 }
 
+/**
+ * OpenCode Go usage-limit request counts, scraped from the docs/go/
+ * "Usage limits" table. These are the ground-truth estimate of how many
+ * requests a model allows per Go quota window ($12 / 5h, $30 / week,
+ * $60 / month) — far more accurate than deriving requests from price.
+ */
+export interface UsageLimits {
+	requestsPer5h: number;
+	requestsPerWeek: number;
+	requestsPerMonth: number;
+}
+
 /** Detailed burn efficiency */
 export interface BurnDetails {
 	score: number;

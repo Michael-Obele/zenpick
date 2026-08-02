@@ -11,7 +11,8 @@ import type {
 	MigrationHint,
 	ModelPricing,
 	ModelSpeed,
-	LlmStatsModel
+	LlmStatsModel,
+	UsageLimits
 } from '$lib/types/models';
 import { goEndpointType, goEndpointUrl, goIdToName } from './opencode-go';
 import { inferPricing } from './pricing';
@@ -28,24 +29,36 @@ export function inferModel(
 	mgModel: ModelgrepModelData | null,
 	docsPricing?: Record<string, ModelPricing>,
 	lsModel?: LlmStatsModel | null,
-	frontierModels: LlmStatsModel[] = []
+	frontierModels: LlmStatsModel[] = [],
+	usageLimits?: Record<string, UsageLimits> | null
 ): GoModel {
 	const name = lsModel && lsModel.id === goId ? lsModel.name : goIdToName(goId);
 	// openWeight is data-driven: llm-stats marks closed models (e.g. grok-4.5,
 	// gpt-5.6-luna) as open_weight: false, and the Go API now serves them.
 	const openWeight = lsModel ? lsModel.open_weight : true;
 	const pricing = inferPricing(goId, mgModel, docsPricing);
-	const burnDetails = inferBurnDetails(pricing);
+	// OpenCode's published usage-limit request counts are the ground truth for
+	// how fast a model burns through the Go quota — prefer them over a
+	// price-based estimate (which assumes generic token patterns and is
+	// systematically off, e.g. Kimi K3 is ~12× slower-burning than it really is).
+	const usage = usageLimits?.[goId] ?? null;
+	const burnDetails = inferBurnDetails(pricing, usage);
 	const burnRate = burnRateFromPrice(
 		(pricing.inputPricePerM ?? 0) + (pricing.outputPricePerM ?? 0)
 	) as BurnRate;
 
-	const quota = estimateQuota(
-		pricing,
-		DEFAULT_QUOTA_INPUTS.inputTokens,
-		DEFAULT_QUOTA_INPUTS.outputTokens,
-		DEFAULT_QUOTA_INPUTS.cachedInputTokens
-	);
+	const quota = usage
+		? {
+				requestsPer5h: usage.requestsPer5h,
+				requestsPerWeek: usage.requestsPerWeek,
+				requestsPerMonth: usage.requestsPerMonth
+			}
+		: estimateQuota(
+				pricing,
+				DEFAULT_QUOTA_INPUTS.inputTokens,
+				DEFAULT_QUOTA_INPUTS.outputTokens,
+				DEFAULT_QUOTA_INPUTS.cachedInputTokens
+			);
 
 	const { benchmarks, meta } = blendBenchmarks(mgModel, lsModel ?? null);
 	benchmarks._meta = meta;
