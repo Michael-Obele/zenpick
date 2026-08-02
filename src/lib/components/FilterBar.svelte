@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Search, X } from '@lucide/svelte';
 	import { SCENARIOS, scenarioLabel } from '$lib/scenarios';
-	import { findNeed, NEEDS } from '$lib/needs';
+	import { NEEDS } from '$lib/needs';
 
 	interface Props {
 		filter: string;
@@ -15,25 +15,16 @@
 
 	/**
 	 * The two rows are complementary dimensions: a Task (scenario) weights
-	 * the ranking, a Need (browse) supplies the metric. But the Coding need
-	 * and the Coding scenario measure the same thing — selecting one clears
-	 * the other so the same dimension never double-applies.
+	 * the ranking, a Need (browse) supplies the metric. Coding and Design
+	 * live only as needs, so no scenario ever collides with a need.
 	 */
 	function applyScenario(value: string) {
-		if (value) {
-			const alias = findNeed(need)?.scenarioAlias;
-			if (alias && alias === value) need = '';
-		}
 		scenario = value;
 	}
 
 	function applyNeed(slug: string) {
 		const activating = need !== slug;
 		need = activating ? slug : '';
-		if (activating) {
-			const alias = findNeed(slug)?.scenarioAlias;
-			if (alias && alias === scenario) scenario = '';
-		}
 	}
 
 	function clearFilter() {

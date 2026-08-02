@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { Receipt, Menu, X, ExternalLink, Terminal } from '@lucide/svelte';
+	import { Receipt, Menu, ExternalLink, Terminal } from '@lucide/svelte';
 	import { page } from '$app/state';
 	import * as Sheet from '$lib/components/ui/sheet';
 	import GithubIcon from '$lib/assets/github.svelte';
 
 	const links = [
-		{ href: '/', label: 'Models' },
-		{ href: '/compare', label: 'Compare' },
-		{ href: '/about', label: 'About' }
+		{ href: '/', label: 'Models', primary: false },
+		{ href: '/compare', label: 'Compare', primary: true },
+		{ href: '/about', label: 'About', primary: false }
 	];
 
 	let open = $state(false);
@@ -33,7 +33,7 @@
 	></div>
 
 	<nav
-		class="relative mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4"
+		class="relative flex h-16 w-full items-center justify-between gap-4 px-4 md:px-6 lg:px-8"
 		aria-label="Primary"
 	>
 		<!-- Brand -->
@@ -55,21 +55,27 @@
 			class="hidden items-center gap-1 rounded-full border border-border/60 bg-muted/40 p-1 sm:flex"
 		>
 			{#each links as link (link.href)}
+				{@const active = isActive(link.href)}
+				{@const indicator = link.primary
+					? active
+						? 'bg-primary shadow-sm scale-100 opacity-100'
+						: 'bg-primary scale-95 opacity-0'
+					: active
+						? 'bg-primary ring-1 ring-primary/20 scale-100 opacity-100'
+						: 'bg-background ring-1 ring-border/60 scale-95 opacity-0'}
 				<a
 					href={link.href}
-					aria-current={isActive(link.href) ? 'page' : undefined}
-					class="relative rounded-full px-4 py-1.5 text-sm font-medium transition-all {isActive(
-						link.href
-					)
-						? 'text-foreground'
+					aria-current={active ? 'page' : undefined}
+					class="group relative rounded-full px-4 py-1.5 text-sm font-medium transition-colors {active
+						? link.primary
+							? 'text-primary-foreground'
+							: 'text-white'
 						: 'text-muted-foreground hover:text-foreground'}"
 				>
-					{#if isActive(link.href)}
-						<span
-							class="absolute inset-0 rounded-full bg-background shadow-sm ring-1 ring-border/60"
-							aria-hidden="true"
-						></span>
-					{/if}
+					<span
+						class="absolute inset-0 rounded-full shadow-sm transition-all duration-300 {indicator}"
+						aria-hidden="true"
+					></span>
 					<span class="relative">{link.label}</span>
 				</a>
 			{/each}
@@ -81,10 +87,10 @@
 				href="https://opencode.ai/docs/go/"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:inline-flex"
+				class="group hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:inline-flex"
 				aria-label="OpenCode Go documentation"
 			>
-				<Terminal class="size-3.5" />
+				<Terminal class="size-3.5 transition-transform group-hover:-rotate-6" />
 				<span class="font-mono">Docs</span>
 			</a>
 
@@ -123,19 +129,25 @@
 
 					<nav class="flex flex-col gap-1 px-3" aria-label="Mobile primary">
 						{#each links as link (link.href)}
+							{@const active = isActive(link.href)}
 							<a
 								href={link.href}
-								aria-current={isActive(link.href) ? 'page' : undefined}
-								class="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors {isActive(
-									link.href
-								)
-									? 'bg-primary/10 text-foreground'
+								aria-current={active ? 'page' : undefined}
+								class="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors {active
+									? link.primary
+										? 'bg-primary text-primary-foreground shadow-sm'
+										: 'bg-primary/10 text-foreground'
 									: 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
 								onclick={closeMenu}
 							>
 								{link.label}
-								{#if isActive(link.href)}
-									<span class="size-1.5 rounded-full bg-primary" aria-hidden="true"></span>
+								{#if active}
+									<span
+										class="size-1.5 rounded-full {link.primary
+											? 'bg-primary-foreground'
+											: 'bg-primary'}"
+										aria-hidden="true"
+									></span>
 								{/if}
 							</a>
 						{/each}

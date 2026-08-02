@@ -1,11 +1,8 @@
 <script lang="ts">
 	import {
 		Brain,
-		Code,
 		Globe,
-		Trophy,
 		Bot,
-		Layout,
 		Calculator,
 		Info,
 		LayoutGrid,
@@ -34,24 +31,11 @@
 			icon: Brain,
 			tagline: 'Open-ended ideation and creative thinking.'
 		},
-		{ value: 'coding', label: 'Coding', icon: Code, tagline: 'Agentic coding and software tasks.' },
-		{
-			value: 'competitive',
-			label: 'Competitive',
-			icon: Trophy,
-			tagline: 'One-shot hard reasoning and problem solving.'
-		},
 		{
 			value: 'agentic',
 			label: 'Agentic',
 			icon: Bot,
 			tagline: 'Long-running agent workflows and multi-step tasks.'
-		},
-		{
-			value: 'frontend',
-			label: 'Frontend UI',
-			icon: Layout,
-			tagline: 'UI/website generation and visual implementation.'
 		},
 		{
 			value: 'budget',
@@ -70,21 +54,9 @@
 			quality: 'Reasoning intelligence benchmarks.',
 			fit: 'Context length, intelligence, and reasoning support.'
 		},
-		coding: {
-			quality: 'Coding benchmarks (AA TrueSkill).',
-			fit: 'Speed, tool support, and uptime.'
-		},
-		competitive: {
-			quality: 'GPQA graduate-level reasoning + intelligence.',
-			fit: 'Context length and reasoning support.'
-		},
 		agentic: {
-			quality: 'Same coding benchmarks as the Coding scenario.',
+			quality: 'Coding benchmarks (AA TrueSkill).',
 			fit: 'Context length, speed, tool support, and uptime.'
-		},
-		frontend: {
-			quality: 'Design Arena Elo + intelligence + coding.',
-			fit: 'Vision, speed, tool support, and uptime.'
 		},
 		budget: {
 			quality: 'Lower price is better.',

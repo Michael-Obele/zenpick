@@ -76,12 +76,6 @@ export interface NeedSpec {
 	answerStyle: AnswerStyle;
 	/** Natural-language task phrase used in the answer sentence. */
 	answerPhrase: string;
-	/**
-	 * Scenario value this need duplicates (e.g. the Coding need and the
-	 * Coding scenario measure the same thing). Selecting one clears the
-	 * other so the two filter rows can't double-apply the same dimension.
-	 */
-	scenarioAlias?: string;
 }
 
 // ─── Metric extractors ────────────────────────────────────────────────
@@ -126,8 +120,7 @@ export const NEEDS: NeedSpec[] = [
 		direction: 'desc',
 		barScale: 'linear',
 		answerStyle: 'score',
-		answerPhrase: 'coding',
-		scenarioAlias: 'coding'
+		answerPhrase: 'coding'
 	},
 	{
 		slug: 'design',
@@ -144,8 +137,7 @@ export const NEEDS: NeedSpec[] = [
 		direction: 'desc',
 		barScale: 'linear',
 		answerStyle: 'score',
-		answerPhrase: 'design & frontend work',
-		scenarioAlias: 'frontend'
+		answerPhrase: 'design & frontend work'
 	},
 	{
 		slug: 'smartest',

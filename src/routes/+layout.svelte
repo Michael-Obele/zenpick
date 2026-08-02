@@ -1,8 +1,16 @@
 <script lang="ts">
 	import './layout.css';
+	import { browser, dev } from '$app/environment';
 	import favicon from '$lib/assets/favicon.svg';
 	import SiteHeader from '$lib/components/Site/SiteHeader.svelte';
 	import SiteFooter from '$lib/components/Site/SiteFooter.svelte';
+	import { Agentation, type AnnotationProps } from 'sv-agentation';
+
+	let playgroundAnnotationProps: AnnotationProps = {
+		toolbarPosition: 'bottom-left',
+		outputMode: 'detailed',
+		clearOnCopy: true
+	};
 
 	let { children } = $props();
 </script>
@@ -16,3 +24,7 @@
 	</div>
 	<SiteFooter />
 </div>
+
+{#if browser && dev}
+	<Agentation {...playgroundAnnotationProps} />
+{/if}

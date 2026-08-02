@@ -1,5 +1,5 @@
 import type { Component } from 'svelte';
-import { Brain, Calculator, Code, Globe, Layout, Trophy, Bot } from '@lucide/svelte';
+import { Brain, Globe, Bot, Calculator } from '@lucide/svelte';
 
 export interface ScenarioSpec {
 	value: string;
@@ -12,14 +12,17 @@ export interface ScenarioSpec {
  * produces a fit score per model; when combined with a browse-by-need
  * ranking, fit weights the metric so the two controls jointly determine
  * the output.
+ *
+ * Deliberately excludes Coding and Frontend UI: those are already
+ * first-class one-click browse categories in the Browse-by-need row
+ * (which carries richer data — live leaderboards with metric bars), so
+ * duplicating them here only doubled the pills and forced an alias
+ * clearing hack. The remaining scenarios are modes that no need covers.
  */
 export const SCENARIOS: ScenarioSpec[] = [
 	{ value: '', label: 'All', icon: Globe },
 	{ value: 'brainstorming', label: 'Brainstorming', icon: Brain },
-	{ value: 'coding', label: 'Coding', icon: Code },
-	{ value: 'competitive', label: 'Competitive', icon: Trophy },
 	{ value: 'agentic', label: 'Agentic', icon: Bot },
-	{ value: 'frontend', label: 'Frontend UI', icon: Layout },
 	{ value: 'budget', label: 'Budget', icon: Calculator }
 ];
 

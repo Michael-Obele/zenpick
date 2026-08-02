@@ -19,13 +19,17 @@
 </script>
 
 <footer class="border-t border-border/60 bg-muted/20">
-	<div class="mx-auto max-w-6xl px-4 py-10 sm:py-12">
-		<div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr]">
+	<div class="px-4 py-8 sm:py-10 md:px-6 lg:px-8">
+		<div class="signal-board-enter grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.25fr_0.9fr_1.4fr]">
 			<!-- Brand -->
 			<div class="space-y-4">
-				<a href="/" class="group inline-flex items-center gap-2.5" aria-label="ZenPick home">
+				<a
+					href="/"
+					class="group inline-flex items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					aria-label="ZenPick home"
+				>
 					<span
-						class="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/10 transition-all group-hover:bg-primary/15"
+						class="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/10 transition-all group-hover:bg-primary/15 group-hover:ring-primary/20"
 					>
 						<Receipt class="size-4" />
 					</span>
@@ -57,7 +61,7 @@
 						<li>
 							<a
 								href={link.href}
-								class="group inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+								class="group inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								{link.label}
 								<ArrowUpRight class="size-3 opacity-0 transition-opacity group-hover:opacity-60" />
@@ -68,10 +72,18 @@
 			</div>
 
 			<!-- Data & source -->
-			<div class="space-y-4">
-				<h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
-					Data & source
-				</h3>
+			<div class="space-y-3 rounded-lg border border-border/60 bg-muted/40 p-4">
+				<div class="space-y-1">
+					<h3
+						class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80"
+					>
+						<Database class="size-3.5" />
+						Data & source
+					</h3>
+					<p class="text-xs leading-relaxed text-muted-foreground/80">
+						Benchmarks, pricing, and quota burn are compiled from the public sources below.
+					</p>
+				</div>
 				<ul class="space-y-2">
 					{#each dataLinks as link (link.href)}
 						<li>
@@ -79,7 +91,7 @@
 								href={link.href}
 								target="_blank"
 								rel="noopener noreferrer"
-								class="group inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+								class="group inline-flex items-center gap-1.5 rounded-md text-sm text-muted-foreground outline-none transition-all duration-200 hover:translate-x-0.5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								{#if link.href.includes('github')}
 									<span class="size-3.5"><GithubIcon class="size-full" /></span>
@@ -106,7 +118,7 @@
 				href="https://github.com/Michael-Obele/zenpick"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+				class="inline-flex items-center gap-1.5 rounded-md outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<span class="size-3.5"><GithubIcon class="size-full" /></span>
 				<span class="font-mono">Michael-Obele/zenpick</span>

@@ -10,7 +10,7 @@
 	import { findNeed, needAnswer, rankNeed } from '$lib/needs';
 	import { scenarioLabel } from '$lib/scenarios';
 	import { compare } from '$lib/stores/compare.svelte';
-	import { Server, Brain, Wallet, X } from '@lucide/svelte';
+	import { ArrowRight, Brain, Wallet, Server, X } from '@lucide/svelte';
 
 	let filter = $state('');
 	let scenario = $state('');
@@ -30,13 +30,10 @@
 	/** Task label when both a need and a scenario are active (blended ranking). */
 	let weightLabel = $derived(needSpec && scenario ? scenarioLabel(scenario) : null);
 	/** Blend options for the banner ranking — same shape the table uses. */
-	let blendOpts = $derived<
-		{ fitOf: (m: GoModel) => number | null } | undefined
-	>(
+	let blendOpts = $derived<{ fitOf: (m: GoModel) => number | null } | undefined>(
 		scenario
 			? {
-					fitOf: (m) =>
-						m.scenarioScores[scenario as keyof GoModel['scenarioScores']] ?? null
+					fitOf: (m) => m.scenarioScores[scenario as keyof GoModel['scenarioScores']] ?? null
 				}
 			: undefined
 	);
@@ -58,59 +55,62 @@
 	<div class="bg-hero-glow absolute inset-0"></div>
 
 	<div class="relative mx-auto max-w-6xl px-4 pb-6 pt-16 sm:pt-20">
-		<!-- Hero -->
 		<section class="mb-16 text-center">
+			<!-- Headline -->
 			<h1
-				class="animate-fade-in-up animation-delay-100 mb-5 text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl"
+				class="signal-board-enter mb-5 text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl"
 			>
-				Pick the right
+				Choose a model by
 				<br class="hidden sm:inline" />
-				<span class="text-primary">OpenCode Go</span> model
+				<span class="text-primary">task and quota</span>
 			</h1>
+
+			<!-- Supporting copy -->
 			<p
-				class="animate-fade-in-up animation-delay-200 mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-muted-foreground"
+				class="signal-board-enter motion-delay-200 mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-muted-foreground"
 			>
 				Live benchmarks, algorithmic recommendations, and quota burn estimates — so you make
 				<span class="text-foreground/80">economically informed</span> decisions, not guesses.
 			</p>
 
-			<!-- Stat pills -->
+			<!-- CTAs -->
 			<div
-				class="animate-fade-in-up animation-delay-300 flex flex-wrap items-center justify-center gap-3"
+				class="signal-board-enter motion-delay-300 mb-10 flex flex-wrap items-center justify-center gap-3"
 			>
-				<div
-					class="flex items-center gap-2.5 rounded-xl border border-border bg-card/80 px-4 py-2.5 shadow-sm backdrop-blur-sm"
+				<a
+					href="#compare-models"
+					class="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
 				>
-					<div class="flex size-8 items-center justify-center rounded-lg bg-violet-500/10">
-						<Server class="size-4 text-violet-500" />
-					</div>
-					<div class="text-left">
-						<div class="text-sm font-semibold text-foreground">13+ models</div>
-						<div class="text-xs text-muted-foreground">Live tracking</div>
-					</div>
-				</div>
-				<div
-					class="flex items-center gap-2.5 rounded-xl border border-border bg-card/80 px-4 py-2.5 shadow-sm backdrop-blur-sm"
+					Compare models
+					<ArrowRight class="size-4" />
+				</a>
+				<a
+					href="#quota-calculator"
+					class="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
 				>
-					<div class="flex size-8 items-center justify-center rounded-lg bg-sky-500/10">
-						<Brain class="size-4 text-sky-500" />
-					</div>
-					<div class="text-left">
-						<div class="text-sm font-semibold text-foreground">Live benchmarks</div>
-						<div class="text-xs text-muted-foreground">From modelgrep + LLM Stats</div>
-					</div>
-				</div>
-				<div
-					class="flex items-center gap-2.5 rounded-xl border border-border bg-card/80 px-4 py-2.5 shadow-sm backdrop-blur-sm"
-				>
-					<div class="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10">
-						<Wallet class="size-4 text-emerald-500" />
-					</div>
-					<div class="text-left">
-						<div class="text-sm font-semibold text-foreground">$10/month</div>
-						<div class="text-xs text-muted-foreground">Subscription tier</div>
-					</div>
-				</div>
+					Estimate quota
+					<ArrowRight class="size-4" />
+				</a>
+			</div>
+
+			<!-- Status strip -->
+			<div
+				class="signal-board-enter motion-delay-300 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground"
+			>
+				<span class="inline-flex items-center gap-1.5">
+					<Server class="size-3" />
+					{#await modelsPromise then models}
+						{models.length} models
+					{/await}
+				</span>
+				<span class="inline-flex items-center gap-1.5">
+					<Brain class="size-3" />
+					Benchmarks from modelgrep + LLM Stats
+				</span>
+				<span class="inline-flex items-center gap-1.5">
+					<Wallet class="size-3" />
+					$10/month subscription tier
+				</span>
 			</div>
 		</section>
 	</div>
@@ -119,7 +119,7 @@
 <!-- Main content -->
 <div class="mx-auto max-w-6xl px-4 pb-16">
 	<!-- Calculator -->
-	<section class="mb-12">
+	<section id="quota-calculator" class="signal-board-enter motion-delay-100 mb-12 scroll-mt-24">
 		{#await modelsPromise then models}
 			<QuotaCalculator
 				models={models.map((m) => ({
@@ -138,7 +138,7 @@
 	</section>
 
 	<!-- Model Table -->
-	<section>
+	<section id="compare-models" class="signal-board-enter motion-delay-200 scroll-mt-24">
 		{#await modelsPromise}
 			<div class="space-y-3">
 				<div class="h-10 animate-pulse rounded-lg bg-muted"></div>
@@ -203,8 +203,6 @@
 				selectedIds={compare.selection}
 				onToggleCompare={compare.toggle}
 			/>
-			<ModelDrawer {models} model={selectedModel} bind:open={drawerOpen} />
-			<CompareTray {models} />
 		{:catch err}
 			<div class="rounded-xl border border-red-500/20 bg-red-500/5 p-8 text-center">
 				<div class="text-red-400">Failed to load model data</div>
@@ -212,6 +210,11 @@
 			</div>
 		{/await}
 	</section>
+
+	{#await modelsPromise then models}
+		<ModelDrawer {models} model={selectedModel} bind:open={drawerOpen} />
+		<CompareTray {models} />
+	{/await}
 
 	<!-- Footer (in-page attribution & tagline) -->
 	<div class="mt-20 text-center text-sm text-muted-foreground/60">
