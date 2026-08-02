@@ -3,6 +3,7 @@
 	import BurnBadge from './BurnBadge.svelte';
 	import CompareRow from './CompareRow.svelte';
 	import { X, Scale, Check, Minus, ExternalLink, Replace } from '@lucide/svelte';
+	import { llmStatsModelUrl } from '$lib/utils/llm-stats-url';
 
 	interface Props {
 		models: GoModel[];
@@ -357,16 +358,14 @@
 						<ExternalLink class="size-3" /> modelgrep
 					</a>
 				{/if}
-				{#if m.llmStatsId}
-					<a
-						href={'https://llm-stats.com/models/' + m.llmStatsId}
-						target="_blank"
-						rel="noopener noreferrer"
-						class="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-					>
-						<ExternalLink class="size-3" /> llm-stats
-					</a>
-				{/if}
+				<a
+					href={llmStatsModelUrl(m)}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+				>
+					<ExternalLink class="size-3" /> llm-stats
+				</a>
 			</div>
 		{/each}
 	</div>

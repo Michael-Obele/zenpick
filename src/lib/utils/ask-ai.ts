@@ -1,4 +1,5 @@
 import type { GoModel } from '$lib/types/models';
+import { buildLlmStatsCompareUrl, llmStatsModelUrl } from './llm-stats-url';
 
 export type AiProviderId = 'grok' | 'chatgpt' | 'claude' | 'gemini';
 
@@ -14,9 +15,6 @@ export interface AiProvider {
 }
 
 const enc = (s: string) => encodeURIComponent(s);
-
-/** Max models llm-stats.com allows in a single compare URL (their API caps at 4). */
-export const LLM_STATS_MAX_COMPARE = 4;
 
 /** Canonical OpenCode Go docs — the AI can read these for deeper context. */
 const OPENCODE_GO_DOCS = 'https://opencode.ai/docs/go/';
@@ -126,7 +124,9 @@ function buildResearchLinks(models: GoModel[]): string {
 
 	for (const m of models) {
 		const links: string[] = [];
-		if (m.llmStatsId) links.push(`LLM Stats: https://llm-stats.com/models/${m.llmStatsId}`);
+		// llmStatsModelUrl prefers the verified llm-stats match and falls back to
+		// the Go ID, which llm-stats serves directly or canonical-redirects.
+		links.push(`LLM Stats: ${llmStatsModelUrl(m)}`);
 		if (m.modelgrepId) links.push(`modelgrep: https://modelgrep.com/models/${m.modelgrepId}`);
 		if (links.length) {
 			lines.push(`- ${m.name} → ${links.join(' | ')}`);
@@ -134,19 +134,6 @@ function buildResearchLinks(models: GoModel[]): string {
 	}
 
 	return lines.join('\n');
-}
-
-/** Build the llm-stats.com side-by-side compare URL (e.g. .../compare/a-vs-b-vs-c).
- *  Uses each model's matched llm-stats slug (m.llmStatsId). The Go model ID (m.id)
- *  is a different namespace and is NOT a valid llm-stats slug, so it is never used as a
- *  fallback — doing so produces a URL llm-stats can't resolve. Returns '' unless every
- *  model has a matched slug and the count is within llm-stats' 2–4 limit. */
-export function buildLlmStatsCompareUrl(models: GoModel[]): string {
-	if (models.length < 2) return '';
-	if (models.length > LLM_STATS_MAX_COMPARE) return '';
-	const slugs = models.map((m) => m.llmStatsId).filter((s): s is string => Boolean(s));
-	if (slugs.length !== models.length) return '';
-	return `https://llm-stats.com/models/compare/${slugs.join('-vs-')}`;
 }
 
 /** Build the deep-link URL for a provider with the given models' context. */

@@ -11,7 +11,7 @@ import type { LlmStatsModel } from '$lib/types/models';
 const LLM_STATS_BASE = 'https://api.llm-stats.com/stats/v1/models';
 
 /** Organizations we care about (maps to our Go model providers). */
-const RELEVANT_ORGS = ['deepseek', 'zai-org', 'moonshotai', 'xiaomi', 'minimax', 'qwen'];
+const RELEVANT_ORGS = ['deepseek', 'zai-org', 'moonshotai', 'xiaomi', 'minimax', 'qwen', 'tencent'];
 
 /**
  * Fetch all models from the LLM Stats API, filtered to relevant organizations.
@@ -146,14 +146,20 @@ function normalize(id: string): string {
  * Match a Go model ID to an LLM Stats model.
  *
  * Strategy (in order of precedence):
- * 1. Exact ID match
+ * 1. Exact ID match (within relevant orgs)
  * 2. Normalized exact match (ignoring dots/dashes)
  * 3. Fuzzy: Go ID is a prefix of LS ID (e.g., "deepseek-v4-flash" → "deepseek-v4-flash-max")
  * 4. Fuzzy: normalized substring inclusion (e.g., "glm-5" matches "glm-5")
+ * 5. Exact ID match against the FULL catalog — the safety net for models in orgs
+ *    we haven't categorized yet (e.g. "hy3" under tencent). Frontier orgs are
+ *    NOT excluded here: the Go API itself now serves closed models
+ *    (grok-4.5 under xai, gpt-5.6-luna under openai), and the Go API is the
+ *    source of truth for what counts as a Go model.
  */
 export function matchLlmStatsModel(
 	goId: string,
-	relevantModels: LlmStatsModel[]
+	relevantModels: LlmStatsModel[],
+	allModels: LlmStatsModel[] = []
 ): LlmStatsModel | null {
 	const goNorm = normalize(goId);
 
@@ -179,6 +185,13 @@ export function matchLlmStatsModel(
 		// Prefer the one with the same normalized length (not "glm-5" matching "glm-5v-turbo")
 		const sameLen = candidates.find((m) => normalize(m.id).length === goNorm.length);
 		return sameLen ?? candidates[0];
+	}
+
+	// Pass 5: Full-catalog exact match — catches Go models in any org, including
+	// frontier labs (grok-4.5, gpt-5.6-luna) that are now served by the Go API.
+	if (allModels.length) {
+		const full = allModels.find((m) => m.id === goId);
+		if (full) return full;
 	}
 
 	return null;

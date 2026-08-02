@@ -23,6 +23,7 @@ const BRAND_NAME: Record<string, string> = {
 	minimax: 'MiniMax',
 	qwen: 'Qwen',
 	grok: 'Grok',
+	gpt: 'GPT',
 	hy3: 'Hy3'
 };
 

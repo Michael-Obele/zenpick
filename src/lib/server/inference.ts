@@ -30,7 +30,10 @@ export function inferModel(
 	lsModel?: LlmStatsModel | null,
 	frontierModels: LlmStatsModel[] = []
 ): GoModel {
-	const name = goIdToName(goId);
+	const name = lsModel && lsModel.id === goId ? lsModel.name : goIdToName(goId);
+	// openWeight is data-driven: llm-stats marks closed models (e.g. grok-4.5,
+	// gpt-5.6-luna) as open_weight: false, and the Go API now serves them.
+	const openWeight = lsModel ? lsModel.open_weight : true;
 	const pricing = inferPricing(goId, mgModel, docsPricing);
 	const burnDetails = inferBurnDetails(pricing);
 	const burnRate = burnRateFromPrice(
@@ -62,11 +65,11 @@ export function inferModel(
 	return {
 		id: goId,
 		name,
-		provider: mgModel?.maker ?? inferProvider(goId),
-		description: mgModel?.description ?? '',
-		openWeight: true,
-		contextWindow: mgModel?.context_length ?? inferContextWindow(goId),
-		releaseDate: null,
+		provider: mgModel?.maker ?? lsModel?.organization?.name ?? inferProvider(goId),
+		description: mgModel?.description ?? lsModel?.description ?? '',
+		openWeight,
+		contextWindow: mgModel?.context_length ?? lsModel?.context_window ?? inferContextWindow(goId),
+		releaseDate: lsModel?.release_date ?? null,
 		pricing,
 		quota: {
 			requestsPer5h: quota?.requestsPer5h ?? 0,
@@ -133,6 +136,10 @@ function inferMigrationHints(
 
 		let best: { name: string; gap: number } | null = null;
 		for (const fm of frontierModels) {
+			// Skip the Go model itself — a closed model served by the Go API
+			// (e.g. grok-4.5) is also a frontier candidate, and comparing it to
+			// itself would claim "replaces grok-4.5".
+			if (fm.id === lsModel.id) continue;
 			const theirs = normalizeTopScore(fm.top_scores?.[key]);
 			if (theirs == null) continue;
 			const gap = Math.abs(ours - theirs);
@@ -163,6 +170,7 @@ const PROVIDER_BY_PREFIX: Record<string, string> = {
 	minimax: 'MiniMax',
 	mimo: 'Xiaomi',
 	grok: 'xAI',
+	gpt: 'OpenAI',
 	hy3: 'Hy3'
 };
 

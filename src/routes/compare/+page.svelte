@@ -7,7 +7,7 @@
 	import ModelCompare from '$lib/components/ModelCompare.svelte';
 	import AskAiMenu from '$lib/components/AskAiMenu.svelte';
 	import { compare, MAX_COMPARE } from '$lib/stores/compare.svelte';
-	import { buildLlmStatsCompareUrl } from '$lib/utils/ask-ai';
+	import { buildLlmStatsCompareUrl } from '$lib/utils/llm-stats-url';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import { GitCompare, Plus, X, ArrowLeft, Info, ExternalLink, Copy, Check } from '@lucide/svelte';

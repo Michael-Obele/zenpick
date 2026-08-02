@@ -6,9 +6,9 @@
 	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
 	import { compare, MAX_COMPARE } from '$lib/stores/compare.svelte';
 	import BurnBadge from './BurnBadge.svelte';
-	import FallbackBadge from './FallbackBadge.svelte';
 	import BurnGauge from './BurnGauge.svelte';
 	import ModelScatterContext from './ModelScatterContext.svelte';
+	import { llmStatsModelUrl } from '$lib/utils/llm-stats-url';
 
 	interface Props {
 		models: GoModel[];
@@ -218,23 +218,23 @@
 
 				<div class="border-t border-border bg-background/95 px-4 pb-4 pt-3 backdrop-blur-sm">
 					<div class="flex flex-wrap gap-2">
-					{#if model}
+						{#if model}
+							<button
+								type="button"
+								class={buttonVariants({
+									variant: isCompared ? 'default' : 'outline',
+									size: 'sm'
+								})}
+								disabled={!isCompared && compareFull}
+								onclick={() => compare.toggle(model.id)}
+							>
+								<GitCompare class="size-3.5" />
+								{isCompared ? 'In comparison' : 'Add to compare'}
+							</button>
+						{/if}
 						<button
-							type="button"
-							class={buttonVariants({
-								variant: isCompared ? 'default' : 'outline',
-								size: 'sm'
-							})}
-							disabled={!isCompared && compareFull}
-							onclick={() => compare.toggle(model.id)}
-						>
-							<GitCompare class="size-3.5" />
-							{isCompared ? 'In comparison' : 'Add to compare'}
-						</button>
-					{/if}
-					<button
-						class={buttonVariants({ variant: 'default', size: 'sm' })}
-						onclick={copyModelId}
+							class={buttonVariants({ variant: 'default', size: 'sm' })}
+							onclick={copyModelId}
 						>
 							{#if copied}
 								<Check class="size-3.5" />
@@ -256,7 +256,7 @@
 							</a>
 						{/if}
 						<a
-							href={'https://llm-stats.com/models/' + model.id}
+							href={llmStatsModelUrl(model)}
 							target="_blank"
 							rel="noopener noreferrer"
 							class={buttonVariants({ variant: 'outline', size: 'sm' })}

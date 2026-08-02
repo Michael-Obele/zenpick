@@ -16,7 +16,17 @@ export interface ModelgrepResult {
 
 /** Batch-fetch all models by maker and index by modelgrep ID. */
 export async function fetchModelgrepModels(): Promise<ModelgrepResult> {
-	const makers = ['deepseek', 'z-ai', 'moonshotai', 'xiaomi', 'minimax', 'qwen'];
+	const makers = [
+		'deepseek',
+		'z-ai',
+		'moonshotai',
+		'xiaomi',
+		'minimax',
+		'qwen',
+		'tencent',
+		'x-ai',
+		'openai'
+	];
 	const results = await Promise.all(
 		makers.map(async (maker) => {
 			const url = `${MODELGREP_BASE}/models?q=${maker}&limit=30`;

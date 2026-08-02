@@ -14,41 +14,44 @@
 import type { ModelBenchmarks, BenchmarkMeta, BenchmarkSource } from '$lib/types/models';
 import type { ModelgrepModelData } from '$lib/types/models';
 import type { LlmStatsModel } from '$lib/types/models';
+import { normalizeTopScore } from './llm-stats';
 
 // ─── Math Blending ─────────────────────────────────────────────────────
 
 /**
  * Blend math scores from GPQA (modelgrep) and llm-stats math composite.
  * Both are 0-1 accuracy scores, making them methodologically comparable.
+ * llm-stats values are normalized first (it serves a mixed 0-1 / 0-100 scale).
  */
 function blendMath(gpqa: number | null, lsMath: number | null): number | null {
-	if (gpqa != null && lsMath != null) {
-		return Math.round((gpqa * 0.6 + lsMath * 0.4) * 100);
+	const ls = normalizeTopScore(lsMath);
+	if (gpqa != null && ls != null) {
+		return Math.round(gpqa * 60 + ls * 0.4);
 	}
 	if (gpqa != null) return Math.round(gpqa * 100);
-	if (lsMath != null) return Math.round(lsMath * 100);
-	return null;
+	return ls;
 }
 
 // ─── llm-stats Normalization ───────────────────────────────────────────
 
 /**
- * Convert llm-stats 0-1 composite to display scale (0-100).
- * Returns null if value is null/undefined.
+ * Convert llm-stats category scores to display scale (0-100).
+ * llm-stats serves a mixed scale (some models 0-1, others 0-100), so we
+ * auto-detect via normalizeTopScore instead of blindly multiplying by 100.
  */
 function lsToDisplay(value: number | null | undefined): number | null {
-	if (value == null) return null;
-	return Math.round(value * 100);
+	const n = normalizeTopScore(value);
+	return n == null ? null : Math.round(n);
 }
 
 /**
  * Guard against extreme llm-stats reasoning outliers.
- * Some models (MiMo-V2-Omni, etc.) report reasoning scores > 100,
+ * Some models (MiMo-V2-Omni, Grok 4.5, etc.) report reasoning scores > 100,
  * which indicates a different scale — return null in those cases.
  */
 function lsReasoningSafe(value: number | null | undefined): number | null {
-	if (value == null) return null;
-	return value > 100 ? null : lsToDisplay(value);
+	const n = normalizeTopScore(value);
+	return n == null || n > 100 ? null : Math.round(n);
 }
 
 // ─── Source Tracking ────────────────────────────────────────────────────

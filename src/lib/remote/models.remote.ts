@@ -13,7 +13,7 @@ import { inferModel } from '$lib/server/inference';
 import type { GoModel, ModelPricing, LlmStatsModel } from '$lib/types/models';
 import { LLM_STATS_API_KEY } from '$env/static/private';
 
-const CACHE_KEY = 'go-models-enriched-v21';
+const CACHE_KEY = 'go-models-enriched-v24';
 
 /**
  * Fetch all enriched Go models.
@@ -62,11 +62,13 @@ async function refreshCache(): Promise<GoModel[]> {
 		`[refreshCache] goModels=${goModels.length} modelgrepModels=${mgResult.byId.size} docsModels=${Object.keys(docsPricing).length} llmStats=${lsModels.length} relevantLs=${relevantLs.length}`
 	);
 
-	// Pre-match each Go model to its llm-stats counterpart
+	// Pre-match each Go model to its llm-stats counterpart. The full catalog is
+	// passed too, so the matcher can catch exact-id models in orgs outside
+	// RELEVANT_ORGS (e.g. hy3 under tencent) as a safety net.
 	const lsMatchCache = new Map<string, LlmStatsModel | null>();
 	for (const gm of goModels) {
 		if (!lsMatchCache.has(gm.id)) {
-			lsMatchCache.set(gm.id, matchLlmStatsModel(gm.id, relevantLs));
+			lsMatchCache.set(gm.id, matchLlmStatsModel(gm.id, relevantLs, lsModels));
 		}
 	}
 
