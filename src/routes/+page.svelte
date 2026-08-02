@@ -7,14 +7,17 @@
 	import ModelDrawer from '$lib/components/ModelDrawer.svelte';
 	import ScenarioHelpDialog from '$lib/components/ScenarioHelpDialog.svelte';
 	import CompareTray from '$lib/components/CompareTray.svelte';
+	import { findNeed, needAnswer, rankNeed } from '$lib/needs';
+	import { scenarioLabel } from '$lib/scenarios';
 	import { compare } from '$lib/stores/compare.svelte';
-	import { Server, Brain, Zap, BarChart3, Compass, Wallet, Sparkles } from '@lucide/svelte';
-	import * as Card from '$lib/components/ui/card';
+	import { Server, Brain, Wallet, X } from '@lucide/svelte';
 
 	let filter = $state('');
 	let scenario = $state('');
 	let selectedModel = $state<GoModel | null>(null);
 	let drawerOpen = $state(false);
+	/** Active "browse by need" slug ('' = plain table). */
+	let need = $state('');
 
 	function openDrawer(model: GoModel) {
 		selectedModel = model;
@@ -23,32 +26,20 @@
 
 	const modelsPromise = getModels();
 
-	const features = [
-		{
-			icon: BarChart3,
-			title: 'Live Benchmarks',
-			description:
-				'Real-time coding & reasoning scores from modelgrep and LLM Stats — never stale.',
-			accent: 'text-violet-500',
-			bg: 'bg-violet-500/10'
-		},
-		{
-			icon: Compass,
-			title: 'Smart Recommendations',
-			description:
-				'Algorithmic best-for tags based on scenario scores — brainstorming, coding, agentic.',
-			accent: 'text-sky-500',
-			bg: 'bg-sky-500/10'
-		},
-		{
-			icon: Wallet,
-			title: 'Quota Burn Estimates',
-			description:
-				'See how fast each model burns your $10/month — make economically informed choices.',
-			accent: 'text-emerald-500',
-			bg: 'bg-emerald-500/10'
-		}
-	];
+	let needSpec = $derived(findNeed(need) ?? null);
+	/** Task label when both a need and a scenario are active (blended ranking). */
+	let weightLabel = $derived(needSpec && scenario ? scenarioLabel(scenario) : null);
+	/** Blend options for the banner ranking — same shape the table uses. */
+	let blendOpts = $derived<
+		{ fitOf: (m: GoModel) => number | null } | undefined
+	>(
+		scenario
+			? {
+					fitOf: (m) =>
+						m.scenarioScores[scenario as keyof GoModel['scenarioScores']] ?? null
+				}
+			: undefined
+	);
 </script>
 
 <svelte:head>
@@ -122,29 +113,6 @@
 				</div>
 			</div>
 		</section>
-
-		<!-- Feature cards -->
-		<section class="mb-16">
-			<div class="grid gap-4 sm:grid-cols-3">
-				{#each features as feature, i (feature.title)}
-					{@const Icon = feature.icon}
-					<Card.Root
-						class="animate-fade-in-up group border-border/60 bg-card/50 transition-all duration-200 hover:border-border hover:shadow-md"
-						style="animation-delay: {200 + i * 100}ms"
-					>
-						<Card.Content class="p-5">
-							<div
-								class="mb-3 flex size-10 items-center justify-center rounded-xl {feature.bg} transition-transform duration-200 group-hover:scale-105"
-							>
-								<Icon class="size-5 {feature.accent}" />
-							</div>
-							<h3 class="mb-1 text-sm font-semibold text-foreground">{feature.title}</h3>
-							<p class="text-sm leading-relaxed text-muted-foreground">{feature.description}</p>
-						</Card.Content>
-					</Card.Root>
-				{/each}
-			</div>
-		</section>
 	</div>
 </div>
 
@@ -188,17 +156,52 @@
 					<ScenarioHelpDialog />
 				</div>
 			</div>
+			{#if needSpec}
+				{@const entries = rankNeed(needSpec, models, blendOpts)}
+				{@const Icon = needSpec.icon}
+				<div
+					class="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
+				>
+					<div class="flex size-9 shrink-0 items-center justify-center rounded-lg {needSpec.bg}">
+						<Icon class="size-4 {needSpec.accent}" />
+					</div>
+					<div class="min-w-0 flex-1">
+						<div class="flex flex-wrap items-center gap-2">
+							<h3 class="text-sm font-semibold text-foreground">{needSpec.title}</h3>
+							{#if weightLabel}
+								<span
+									class="inline-flex items-center rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground"
+								>
+									weighted by {weightLabel} fit
+								</span>
+							{/if}
+						</div>
+						<p class="text-xs leading-relaxed text-muted-foreground">
+							{needAnswer(needSpec, entries, { weightLabel: weightLabel ?? undefined })}
+						</p>
+					</div>
+					<button
+						class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+						onclick={() => (need = '')}
+					>
+						<X class="size-4" />
+						All models
+					</button>
+				</div>
+			{/if}
 			<div class="mb-4">
-				<FilterBar bind:filter bind:scenario />
+				<FilterBar bind:filter bind:scenario bind:need />
 			</div>
 			<ModelTable
 				{models}
 				{filter}
 				{scenario}
+				need={needSpec}
+				onExitNeed={() => (need = '')}
 				selectedModelId={selectedModel?.id}
 				onSelectModel={openDrawer}
-			selectedIds={compare.selection}
-			onToggleCompare={compare.toggle}
+				selectedIds={compare.selection}
+				onToggleCompare={compare.toggle}
 			/>
 			<ModelDrawer {models} model={selectedModel} bind:open={drawerOpen} />
 			<CompareTray {models} />

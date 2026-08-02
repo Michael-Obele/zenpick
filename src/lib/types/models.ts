@@ -44,6 +44,9 @@ export interface GoModel {
 	/** Speed metrics from modelgrep */
 	speed: ModelSpeed | null;
 
+	/** Capability flags from modelgrep (null when unmatched) */
+	capabilities: { vision: boolean; reasoning: boolean } | null;
+
 	/** Migration hints: closed-source models this replaces */
 	migrationHints: MigrationHint[];
 
@@ -129,6 +132,8 @@ export interface ModelBenchmarks {
 	reasoning: number | null;
 	math: number | null;
 	sweBenchVerified: number | null;
+	/** Design Arena Elo — human-preference votes for UI generation (modelgrep) */
+	designElo: number | null;
 	codeArena: number | null;
 	/** All raw scores keyed by benchmark name */
 	allScores: Record<string, number>;

@@ -94,6 +94,12 @@ export function inferModel(
 		tags,
 		benchmarks,
 		speed,
+		capabilities: mgModel
+			? {
+					vision: mgModel.capabilities?.vision ?? false,
+					reasoning: mgModel.capabilities?.reasoning ?? false
+				}
+			: null,
 		migrationHints,
 		scenarioScores,
 		endpoint: goEndpointType(goId),

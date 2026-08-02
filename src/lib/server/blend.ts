@@ -101,11 +101,15 @@ export function blendBenchmarks(
 	// SciCode (sweBenchVerified): modelgrep only
 	const scicode = aa?.scicode ?? null;
 
+	// Design Arena Elo: modelgrep only — human-preference votes for UI generation
+	const designElo = mgModel?.benchmarks?.design_arena?.elo ?? null;
+
 	const benchmarks: ModelBenchmarks = {
 		coding,
 		reasoning,
 		math,
 		sweBenchVerified: scicode,
+		designElo,
 		codeArena: null,
 		allScores: {}
 	};
