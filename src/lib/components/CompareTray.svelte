@@ -4,7 +4,7 @@
 	import { goto } from '$app/navigation';
 	import type { GoModel } from '$lib/types/models';
 	import { GitCompare, X, ArrowRight } from '@lucide/svelte';
-	import { buttonVariants } from '$lib/components/ui/button/index.js';
+	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 
 	interface Props {
 		models: GoModel[];
@@ -16,7 +16,7 @@
 
 	function goCompare() {
 		if (!selected.length) return;
-		goto(`/compare?models=${selected.join(',')}`);
+		return `/compare?models=${selected.join(',')}`;
 	}
 </script>
 
@@ -43,14 +43,10 @@
 					<X class="size-3.5" />
 					Clear
 				</button>
-				<button
-					class={buttonVariants({ variant: 'default', size: 'sm' })}
-					onclick={goCompare}
-					disabled={!selected.length}
-				>
+				<Button variant="default" size="sm" href={goCompare()} disabled={!selected.length}>
 					Compare
 					<ArrowRight class="size-3.5" />
-				</button>
+				</Button>
 			</div>
 		</div>
 	</div>
