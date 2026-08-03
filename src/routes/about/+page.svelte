@@ -271,11 +271,11 @@
 
 		<div class="space-y-4 text-base leading-relaxed text-foreground/85">
 			<p>
-				Every model gets a 0–100 fit score for five scenarios — <em>Brainstorming</em>,
-				<em>Coding</em>, <em>Competitive</em>, <em>Agentic</em>, and <em>Budget</em>. Scores are
-				normalized across the current model population, so the ordering is always meaningful and
-				always non-empty. The table sorts by the active scenario; if no scenario is active, it sorts
-				by raw coding benchmark.
+				Every model gets a 0–100 fit score for six scenarios — <em>Brainstorming</em>,
+				<em>Coding</em>, <em>Competitive</em>, <em>Agentic</em>, <em>Budget</em>, and
+				<em>Frontend</em>. Scores are normalized across the current model population, so the
+				ordering is always meaningful and always non-empty. The table sorts by the active scenario;
+				if no scenario is active, it sorts by raw coding benchmark.
 			</p>
 			<p>
 				Tags, migration hints, and thermal burn rates are inferred. Nothing on the page is
