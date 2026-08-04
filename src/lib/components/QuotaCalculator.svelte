@@ -5,6 +5,7 @@
 		ChevronsUpDown,
 		Clock,
 		Flame,
+		Layers,
 		Share,
 		Snowflake,
 		Target,
@@ -44,7 +45,6 @@
 	const SCENARIO_LABELS: Record<string, string> = {
 		coding: 'Coding',
 		agentic: 'Agentic',
-		competitive: 'Competitive',
 		brainstorming: 'Brainstorming',
 		budget: 'Budget',
 		frontend: 'Frontend'
@@ -80,7 +80,7 @@
 			const explicit = models.find((m) => m.id === explicitModelId);
 			if (explicit) return explicit;
 		}
-		return recommendation?.model ?? null;
+		return recommendation?.winner.model ?? null;
 	});
 
 	let hasCachedPricing = $derived(selectedModel?.pricing.cachedReadPerM != null);
@@ -286,7 +286,7 @@
 		<!-- Live region announcing the recommendation update -->
 		<div role="status" aria-live="polite" class="sr-only">
 			{#if recommendation}
-				Recommended {recommendation.model.name} for {scenarioValue
+				Recommended {recommendation.winner.model.name} for {scenarioValue
 					? (SCENARIO_LABELS[scenarioValue] ?? scenarioValue)
 					: 'your workload'}.
 			{/if}
@@ -309,7 +309,7 @@
 							{selectedModel.name}
 						</div>
 						<p class="mt-1 text-sm leading-relaxed text-muted-foreground">
-							{recommendation.rationale}
+							{recommendation.winner.rationale}
 						</p>
 					</div>
 					{#if burnLevel}
@@ -350,6 +350,34 @@
 						<div class="text-xs text-muted-foreground/60">requests</div>
 					</div>
 				</div>
+
+				<!-- Also consider: runner-ups from the same ranking -->
+				{#if recommendation.top.length > 1}
+					<div class="space-y-2 border-t border-primary/10 pt-3">
+						<div
+							class="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground/70"
+						>
+							<Layers class="size-3" />
+							Also consider
+						</div>
+						<div class="flex flex-wrap gap-2">
+							{#each recommendation.top.slice(1) as alt (alt.model.id)}
+								<button
+									type="button"
+									onclick={() => handleModelChange(alt.model.id)}
+									class="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+									aria-label={`Compare ${alt.model.name} instead`}
+								>
+									{alt.model.name}
+									<span class="tabular-nums text-muted-foreground/50">{alt.score.toFixed(1)}</span>
+								</button>
+							{/each}
+						</div>
+						<p class="text-xs text-muted-foreground/60">
+							Ranked by the same fit · quota · quality blend. Click one to compare it directly.
+						</p>
+					</div>
+				{/if}
 
 				<div class="flex flex-wrap items-center gap-2">
 					<Button

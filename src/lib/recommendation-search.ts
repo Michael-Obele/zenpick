@@ -11,14 +11,7 @@ import * as v from 'valibot';
  * or missing URL value gracefully falls back to the documented defaults.
  */
 
-const RECOMMEND_SCENARIOS = [
-	'coding',
-	'agentic',
-	'competitive',
-	'brainstorming',
-	'budget',
-	'frontend'
-] as const;
+const RECOMMEND_SCENARIOS = ['coding', 'agentic', 'brainstorming', 'budget', 'frontend'] as const;
 
 const scenarioSchema = v.union([v.literal(''), v.picklist(RECOMMEND_SCENARIOS)]);
 

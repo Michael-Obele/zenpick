@@ -8,9 +8,24 @@
 	import AskAiMenu from '$lib/components/AskAiMenu.svelte';
 	import { compare, MAX_COMPARE } from '$lib/stores/compare.svelte';
 	import { buildLlmStatsCompareUrl } from '$lib/utils/llm-stats-url';
+	import {
+		catalogQualityAnchor,
+		catalogValueAnchor,
+		defaultComparePair
+	} from '$lib/compare-defaults';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
-	import { GitCompare, Plus, X, ArrowLeft, Info, ExternalLink, Copy, Check } from '@lucide/svelte';
+	import {
+		GitCompare,
+		Plus,
+		X,
+		ArrowLeft,
+		Info,
+		ExternalLink,
+		Copy,
+		Check,
+		Target
+	} from '@lucide/svelte';
 
 	const modelsPromise = getModels();
 
@@ -37,7 +52,15 @@
 	});
 
 	let allModels = $state<GoModel[]>([]);
-	modelsPromise.then((m) => (allModels = m));
+	modelsPromise.then((m) => {
+		allModels = m;
+		// Smart defaults: a direct visit with no explicit ?models= selection
+		// seeds a quality+value pair once per session. Explicit user intent
+		// (URL params, homepage Compare buttons, Clear all) always wins.
+		if (browser && !urlModels.length) {
+			compare.seedDefaults(defaultComparePair(m).map((x) => x.id));
+		}
+	});
 
 	let selectedModels = $derived(
 		compare.selection
@@ -47,6 +70,17 @@
 	let available = $derived(allModels.filter((m) => !compare.selection.includes(m.id)));
 	let atMax = $derived(compare.selection.length >= MAX_COMPARE);
 	let llmStatsCompareUrl = $derived(buildLlmStatsCompareUrl(selectedModels));
+
+	// Catalog-wide anchor roles — computed from ALL models so the chips stay
+	// truthful even when the user swaps models in or out of the comparison.
+	let anchors = $derived.by(() => {
+		const map: Record<string, 'quality' | 'value'> = {};
+		const quality = catalogQualityAnchor(allModels);
+		const value = catalogValueAnchor(allModels);
+		if (quality) map[quality.id] = 'quality';
+		if (value) map[value.id] = 'value';
+		return map;
+	});
 
 	let pick = $state<string | undefined>(undefined);
 	function handlePick(v: string | undefined) {
@@ -58,6 +92,13 @@
 	}
 	function clearAll() {
 		compare.clear();
+	}
+	function loadSuggested() {
+		if (!allModels.length) return;
+		compare.seedDefaults(
+			defaultComparePair(allModels).map((m) => m.id),
+			true
+		);
 	}
 
 	let copied = $state(false);
@@ -184,11 +225,21 @@
 			<GitCompare class="size-10 text-muted-foreground/40" />
 			<p class="text-sm font-medium text-foreground">No models selected yet</p>
 			<p class="max-w-sm text-sm text-muted-foreground">
-				Use the <span class="font-medium">Add model…</span> menu above, or pick models from the
-				<a href="/" class="text-primary hover:underline">browse page</a> and choose “Compare”.
+				Start with a suggested pair — a top-quality pick against the best value pick — or choose
+				your own from the <span class="font-medium">Add model…</span> menu above.
 			</p>
+			{#if allModels.length}
+				<button
+					type="button"
+					class={buttonVariants({ variant: 'outline', size: 'default' })}
+					onclick={loadSuggested}
+				>
+					<Target class="size-4" />
+					Load suggested models
+				</button>
+			{/if}
 		</div>
 	{:else}
-		<ModelCompare models={selectedModels} onRemove={removeModel} />
+		<ModelCompare models={selectedModels} onRemove={removeModel} {anchors} />
 	{/if}
 </div>

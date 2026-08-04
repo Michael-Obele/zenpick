@@ -113,7 +113,6 @@ export interface BenchmarkDisplay {
 export interface ScenarioScores {
 	brainstorming: number;
 	coding: number;
-	competitive: number;
 	agentic: number;
 	budget: number;
 	frontend: number;

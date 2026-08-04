@@ -48,6 +48,7 @@
 	"type": "module",
 	"dependencies": {
 		"@fontsource-variable/jetbrains-mono": "^5.2.8",
+		"motion-sv": "^0.1.13",
 		"node-html-parser": "^9.0.0",
 		"runed": "^0.37.1",
 		"sv-agentation": "^0.4.0",

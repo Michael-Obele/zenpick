@@ -173,6 +173,19 @@ html {
 			transparent
 		);
 	}
+	/* Light-rays color token (resolved by --light-rays-color inside the component) */
+	.hero-rays {
+		--ray-color: oklch(0.45 0.11 190 / 0.6);
+	}
+	.dark .hero-rays {
+		--ray-color: oklch(0.78 0.12 190 / 0.5);
+	}
+	/* motion-sv drives rays via JS, so the global reduced-motion guard can't touch it */
+	@media (prefers-reduced-motion: reduce) {
+		.hero-rays {
+			display: none;
+		}
+	}
 	.animate-fade-in {
 		animation: fade-in 0.5s ease-out both;
 	}

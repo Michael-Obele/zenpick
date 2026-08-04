@@ -14,11 +14,11 @@
 
 ## Why ZenPick
 
-OpenCode Go gives you a single API key to 12+ curated coding models. But which one do you actually use? Some burn through your $60 monthly quota in hours; others last all month. Some are built for competitive programming, others for long-context agentic work.
+OpenCode Go gives you a single API key to 12+ curated coding models. But which one do you actually use? Some burn through your $60 monthly quota in hours; others last all month. Some are built for frontend UI work, others for long-context agentic work.
 
 ZenPick answers three questions:
 
-1. **Which model fits my task?** — Scenario scores rank every model for Brainstorming, Coding, Competitive, Agentic, and Budget use cases.
+1. **Which model fits my task?** — Scenario scores rank every model for Brainstorming, Coding, Agentic, Budget, and Frontend UI use cases.
 2. **How fast will it burn my quota?** — Thermal burn badges and request-per-window estimates show you the economics at a glance.
 3. **What closed-source model does it replace?** — Migration hints map each Go model to its frontier equivalent (e.g. "if you used Claude Sonnet 4.6, try DeepSeek V4 Pro").
 

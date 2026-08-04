@@ -96,35 +96,6 @@ function scoreFitBrainstorming(ctx: number, mgModel: ModelgrepModelData | null):
 	return weight > 0 ? score / weight : 0.5;
 }
 
-function scoreQualityCompetitive(mgModel: ModelgrepModelData | null): number {
-	// One-shot hard reasoning — distinct from `coding` (which measures agentic coding).
-	//   60% AA.gpqa         — graduate-level reasoning, best proxy for hard single-shot
-	//   40% AA.intelligence — overall reasoning quality
-	const gpqa = mgModel?.benchmarks?.artificial_analysis?.gpqa;
-	const intel = mgModel?.benchmarks?.artificial_analysis?.intelligence;
-	let score = 0;
-	let weight = 0;
-	if (gpqa != null) {
-		score += normalize(gpqa, 100) * 0.6;
-		weight += 0.6;
-	}
-	if (intel != null) {
-		score += normalize(intel, 100) * 0.4;
-		weight += 0.4;
-	}
-	return weight > 0 ? score / weight : 0;
-}
-
-function scoreFitCompetitive(mgModel: ModelgrepModelData | null): number {
-	//   50% context       — long problems need long context
-	//   50% reasoning flag — extended thinking helps one-shot hard problems
-	if (mgModel == null) return 0.5; // neutral floor — see scoreFitCoding
-	const ctx = mgModel.context_length ?? 0;
-	const ctxScore = normalize(ctx, 1_000_000) * 0.5;
-	const reasonScore = (mgModel.capabilities?.reasoning ? 1 : 0.5) * 0.5;
-	return ctxScore + reasonScore;
-}
-
 function scoreQualityAgentic(
 	benchmarks: ModelBenchmarks,
 	mgModel: ModelgrepModelData | null
@@ -237,10 +208,6 @@ export function computeScenarioScores(inputs: ScenarioInputs): ScenarioScores {
 		brainstorming: computeScore(
 			scoreQualityReasoning(inputs.mgModel),
 			scoreFitBrainstorming(inputs.mgModel?.context_length ?? 128_000, inputs.mgModel)
-		),
-		competitive: computeScore(
-			scoreQualityCompetitive(inputs.mgModel),
-			scoreFitCompetitive(inputs.mgModel)
 		),
 		agentic: computeScore(
 			scoreQualityAgentic(inputs.benchmarks, inputs.mgModel),

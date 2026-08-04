@@ -2,15 +2,26 @@
 	import type { GoModel } from '$lib/types/models';
 	import BurnBadge from './BurnBadge.svelte';
 	import CompareRow from './CompareRow.svelte';
-	import { X, Scale, Check, Minus, ExternalLink, Replace } from '@lucide/svelte';
+	import { X, Scale, Check, Minus, ExternalLink, Replace, Trophy, Wallet } from '@lucide/svelte';
 	import { llmStatsModelUrl } from '$lib/utils/llm-stats-url';
+	import Badge from '$lib/components/ui/badge/badge.svelte';
+
+	/** Catalog-wide anchor roles for model columns (from compare smart defaults). */
+	type AnchorRole = 'quality' | 'value';
+
+	const ANCHOR_META: Record<AnchorRole, { label: string; icon: typeof Trophy }> = {
+		quality: { label: 'Top quality', icon: Trophy },
+		value: { label: 'Best value', icon: Wallet }
+	};
 
 	interface Props {
 		models: GoModel[];
 		onRemove?: (id: string) => void;
+		/** Model id → anchor role, used to render a data-derived chip in the column header. */
+		anchors?: Record<string, AnchorRole>;
 	}
 
-	let { models, onRemove }: Props = $props();
+	let { models, onRemove, anchors = {} }: Props = $props();
 
 	const cols = $derived(`160px repeat(${models.length}, minmax(190px, 1fr))`);
 
@@ -104,6 +115,14 @@
 				{/if}
 				<div class="pr-5 text-sm font-semibold text-foreground">{m.name}</div>
 				<div class="text-xs text-muted-foreground">{m.provider}</div>
+				{#if anchors[m.id]}
+					{@const a = ANCHOR_META[anchors[m.id]]}
+					{@const Icon = a.icon}
+					<Badge variant="outline" class="mt-1.5 border-primary/20 bg-primary/10 text-primary">
+						<Icon class="size-3" />
+						{a.label}
+					</Badge>
+				{/if}
 				<div class="mt-2">
 					<BurnBadge burnDetails={m.burnDetails} />
 				</div>

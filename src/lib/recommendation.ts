@@ -9,12 +9,38 @@ import type { GoModel, ModelPricing, ScenarioScores } from '$lib/types/models';
  *
  * Weights (from the funnel design doc):
  *   - 45% scenario fit
- *   - 30% quota capacity (estimated requests per 5-hour window)
+ *   - 30% quota capacity (requests per 5-hour window)
  *   - 25% benchmark quality
  *
+ * Three design rules keep the ranking honest across the whole catalog:
+ *
+ * 1. **Workload-aware capacity** — requests per 5-hour window are derived
+ *    from the user's assumptions (avg tokens per request + cached-read %).
+ *    When OpenCode publishes usage-limit counts they calibrate the estimate:
+ *    the published number was measured at a fixed reference workload, so we
+ *    apply the same workload ratio to the user's numbers. The sliders stay
+ *    meaningful while preserving the ground-truth correction for models
+ *    whose price under- or over-states real burn.
+ *
+ * 2. **Log-scale capacity** — capacity is normalized on a fixed log scale
+ *    (1 → 0, 1000 requests/5h → 100) instead of linearly against the
+ *    cheapest model. A 10× price difference no longer crushes every other
+ *    signal, so the recommendation reacts to scenario and quality instead
+ *    of always defaulting to the cheapest model.
+ *
+ * 3. **Absolute fit & quality** — scenario fit and benchmark quality keep
+ *    their 0–100 meaning (no min-max across the catalog), so a stronger
+ *    model wins by its real margin instead of a frontier model landslide
+ *    that would otherwise hand every scenario to the same premium pick.
+ *
+ * 4. **Workload-scaled weights** — at the reference workload the blend is
+ *    the design-doc 45/30/25; above it, capacity weight grows (up to 65%)
+ *    so heavy requests let burn rate decide while light requests let fit
+ *    and quality decide.
+ *
  * The function never throws on missing data; models with insufficient
- * pricing are ranked conservatively. The returned score is rounded to
- * one decimal so URL/snapshot comparisons stay stable.
+ * pricing are ranked conservatively. Scores are rounded to one decimal so
+ * URL/snapshot comparisons stay stable.
  */
 
 export type RecommendationScenario = keyof ScenarioScores;
@@ -34,22 +60,67 @@ export interface RecommendationResult {
 	rationale: string;
 }
 
+/** Ranked shortlist — `top` is best-fit first; `winner` aliases `top[0]`. */
+export interface RecommendationReport {
+	top: RecommendationResult[];
+	winner: RecommendationResult;
+}
+
 const WEIGHT_FIT = 0.45;
 const WEIGHT_CAPACITY = 0.3;
 const WEIGHT_QUALITY = 0.25;
 
+/** Capacity weight ceiling — burn rate can never fully override fit+quality. */
+const CAPACITY_WEIGHT_MAX = 0.65;
+
+/** Fixed log-scale anchors for capacity: 1 request/5h → 0, 1000 requests/5h → 100. */
+const CAPACITY_ANCHOR_MIN = 1;
+const CAPACITY_ANCHOR_MAX = 1000;
+
+/** How many ranked results to surface in the shortlist. */
+const SHORTLIST_SIZE = 3;
+
+/**
+ * Reference workload used to calibrate published quota limits to the user's
+ * assumptions. Mirrors the funnel URL defaults (50K tokens, 50% cached).
+ * Exported so the compare page's smart defaults anchor to the same workload.
+ */
+export const REFERENCE_TOKENS = 50_000;
+export const REFERENCE_CACHED_PCT = 50;
+
 /** Default scenario blend when none is selected — favors well-rounded models. */
 const DEFAULT_FIT_KEYS: RecommendationScenario[] = ['coding', 'agentic', 'brainstorming'];
+
+/**
+ * Workload-scaled blend weights.
+ *
+ * At the reference workload the design-doc weights apply (45/30/25). Above
+ * it, capacity matters more: each 10× in tokens adds up to 35 points of
+ * weight (capped at 65%), and fit/quality renormalize proportionally.
+ * Heavy requests make burn rate the deciding factor; light requests let
+ * fit and quality decide.
+ */
+function workloadWeights(tokens: number): { fit: number; capacity: number; quality: number } {
+	const growth =
+		tokens <= REFERENCE_TOKENS
+			? 0
+			: Math.min(
+					CAPACITY_WEIGHT_MAX - WEIGHT_CAPACITY,
+					0.35 * Math.log10(tokens / REFERENCE_TOKENS)
+				);
+	const wCap = WEIGHT_CAPACITY + growth;
+	const rest = 1 - wCap;
+	const fitShare = WEIGHT_FIT / (WEIGHT_FIT + WEIGHT_QUALITY);
+	return {
+		fit: fitShare * rest,
+		capacity: wCap,
+		quality: (1 - fitShare) * rest
+	};
+}
 
 /** Clamp a number into an inclusive range. */
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(max, Math.max(min, value));
-}
-
-/** Normalize `value` from the [min, max] range into 0..100. Safe for collapsed ranges. */
-function normalize(value: number, min: number, max: number): number {
-	if (!Number.isFinite(value) || max <= min) return 0;
-	return clamp(((value - min) / (max - min)) * 100, 0, 100);
 }
 
 /**
@@ -75,11 +146,52 @@ function costPerRequest(pricing: ModelPricing, tokens: number, cachedPct: number
 	);
 }
 
-/** Estimate requests per 5-hour window using the official $12 limit. */
-function requestsPer5h(pricing: ModelPricing, tokens: number, cachedPct: number): number {
+/**
+ * Estimate requests per 5-hour window from pricing for the user's workload.
+ * Fallback only — published usage limits are preferred when available.
+ */
+function estimateRequestsPer5h(pricing: ModelPricing, tokens: number, cachedPct: number): number {
 	const cost = costPerRequest(pricing, tokens, cachedPct);
 	if (cost == null || cost <= 0) return 0;
 	return Math.floor(12 / cost);
+}
+
+/**
+ * Requests per 5-hour window for the user's workload.
+ *
+ * Starts from the user's token mix and cached-read rate, then calibrates
+ * against OpenCode's published usage limit: the published count was
+ * measured at the reference workload, so the same workload ratio is
+ * applied to the user's numbers. This keeps both sliders meaningful while
+ * preserving the ground-truth correction for models whose price-based
+ * estimate is systematically off (e.g. Kimi K3 burns ~12× slower than its
+ * price suggests).
+ *
+ * Exported for the compare page, which uses it as the catalog-wide
+ * "Best value" anchor at the reference workload.
+ */
+export function capacityPer5h(model: GoModel, tokens: number, cachedPct: number): number {
+	const userEstimate = estimateRequestsPer5h(model.pricing, tokens, cachedPct);
+	const official = model.quota.requestsPer5h;
+	if (!(official > 0)) return userEstimate;
+	const refEstimate = estimateRequestsPer5h(model.pricing, REFERENCE_TOKENS, REFERENCE_CACHED_PCT);
+	if (refEstimate <= 0) return official;
+	// At the reference workload this collapses to the published number;
+	// heavier or lighter workloads scale it proportionally.
+	return userEstimate * (official / refEstimate);
+}
+
+/**
+ * Log-scale capacity score on fixed anchors: 1 request/5h → 0, 1000 → 100.
+ * Each 10× in capacity adds ~33 points, so cheap models stay competitive
+ * without silencing every other signal.
+ */
+function capacityScore(capacity: number): number {
+	if (!Number.isFinite(capacity) || capacity <= 0) return 0;
+	const logFloor = Math.log10(CAPACITY_ANCHOR_MIN);
+	const logCeil = Math.log10(CAPACITY_ANCHOR_MAX);
+	const logVal = Math.log10(capacity);
+	return clamp(((logVal - logFloor) / (logCeil - logFloor)) * 100, 0, 100);
 }
 
 /** Average available benchmark fields, skipping nulls. Returns 0..100. */
@@ -109,32 +221,34 @@ function scenarioFit(model: GoModel, scenario?: RecommendationScenario): number 
 }
 
 /**
- * Rank every model in the candidate set, then return the highest-scoring
- * entry with a short rationale. Returns `null` for an empty list.
+ * Rank every model in the candidate set and return a shortlist of the best
+ * fits with short rationales. Returns `null` for an empty list.
  */
 export function recommendModel(
 	models: GoModel[],
 	options: RecommendationOptions
-): RecommendationResult | null {
+): RecommendationReport | null {
 	if (!Array.isArray(models) || models.length === 0) return null;
 	const { tokens, cachedPct, scenario } = options;
 
-	// Pass 1 — compute raw capacity per model.
-	const capacities = models.map((m) => ({
-		model: m,
-		capacity: requestsPer5h(m.pricing, tokens, cachedPct)
+	// Pass 1 — raw signals per model: capacity, fit, benchmark quality.
+	const rows = models.map((model) => ({
+		model,
+		capacity: capacityPer5h(model, tokens, cachedPct),
+		fit: scenarioFit(model, scenario),
+		quality: benchmarkQuality(model)
 	}));
-	const maxCapacity = Math.max(...capacities.map((c) => c.capacity), 0);
 
-	// Pass 2 — combine weighted signals.
-	const ranked = capacities.map(({ model, capacity }) => {
-		const fit = scenarioFit(model, scenario);
+	// Pass 2 — combine weighted signals. Fit and quality keep their absolute
+	// 0–100 meaning; capacity is absolute on the fixed log scale, and its
+	// weight grows with the workload so burn rate decides heavy requests.
+	const w = workloadWeights(tokens);
+	const ranked = rows.map(({ model, capacity, fit, quality }) => {
 		const fitScore = clamp(fit, 0, 100);
-		const capacityScore = normalize(capacity, 0, maxCapacity);
-		const qualityScore = clamp(benchmarkQuality(model), 0, 100);
-		const score =
-			fitScore * WEIGHT_FIT + capacityScore * WEIGHT_CAPACITY + qualityScore * WEIGHT_QUALITY;
-		return { model, score, capacity, fit, qualityScore };
+		const qualityScore = clamp(quality, 0, 100);
+		const capScore = capacityScore(capacity);
+		const score = fitScore * w.fit + capScore * w.capacity + qualityScore * w.quality;
+		return { model, score, capacity, capacitySource: capacitySourceOf(model) };
 	});
 
 	// Deterministic order: score desc, then name asc for ties.
@@ -143,20 +257,47 @@ export function recommendModel(
 		return a.model.name.localeCompare(b.model.name);
 	});
 
-	const winner = ranked[0];
-	const roundedScore = Math.round(winner.score * 10) / 10;
 	const scenarioLabel = scenario ? humanizeScenario(scenario) : 'your workload';
-	const requestsRounded = winner.capacity.toLocaleString();
-	const rationale =
-		winner.capacity > 0
-			? `Strong fit for ${scenarioLabel} with approximately ${requestsRounded} requests per 5-hour window at your workload.`
-			: `Strong fit for ${scenarioLabel} at your workload. Quota estimate unavailable with current pricing.`;
+	const winnerPhrase = scenario ? `Strong ${scenarioLabel} fit` : 'Strong fit for your workload';
+	const top = ranked.slice(0, SHORTLIST_SIZE).map((row, index) => {
+		const hasCapacity = row.capacity > 0;
+		const requests = row.capacity.toLocaleString();
+		const capacityNote = capacitySourceNote(row.capacitySource);
+		const rationale = !hasCapacity
+			? `${winnerPhrase} at your workload. Quota estimate unavailable with current pricing.`
+			: index === 0
+				? `${winnerPhrase} with approximately ${requests} requests per 5-hour window at your workload${capacityNote}.`
+				: `Strong alternative for ${scenarioLabel} with approximately ${requests} requests per 5-hour window.`;
+		return {
+			model: row.model,
+			score: Math.round(row.score * 10) / 10,
+			rationale
+		};
+	});
 
-	return {
-		model: winner.model,
-		score: roundedScore,
-		rationale
-	};
+	return { top, winner: top[0] };
+}
+
+/** Where a model's capacity estimate came from. */
+type CapacitySource = 'calibrated' | 'official' | 'estimated';
+
+function capacitySourceOf(model: GoModel): CapacitySource {
+	if (model.quota.requestsPer5h > 0) {
+		const ref = estimateRequestsPer5h(model.pricing, REFERENCE_TOKENS, REFERENCE_CACHED_PCT);
+		return ref > 0 ? 'calibrated' : 'official';
+	}
+	return 'estimated';
+}
+
+function capacitySourceNote(source: CapacitySource): string {
+	switch (source) {
+		case 'calibrated':
+			return ' — OpenCode quota limits scaled to your workload';
+		case 'official':
+			return ' — based on OpenCode’s published quota limits';
+		case 'estimated':
+			return ' — estimated from current pricing and your workload';
+	}
 }
 
 function humanizeScenario(scenario: RecommendationScenario): string {
@@ -165,8 +306,6 @@ function humanizeScenario(scenario: RecommendationScenario): string {
 			return 'brainstorming';
 		case 'coding':
 			return 'coding';
-		case 'competitive':
-			return 'competitive tasks';
 		case 'agentic':
 			return 'agentic work';
 		case 'budget':
