@@ -74,7 +74,6 @@
 		['coding', 'Coding'],
 		['agentic', 'Agentic'],
 		['brainstorming', 'Brainstorm'],
-		['competitive', 'Competitive'],
 		['budget', 'Budget'],
 		['frontend', 'Frontend']
 	];

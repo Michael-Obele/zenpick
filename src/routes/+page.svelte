@@ -121,19 +121,7 @@
 	<!-- Calculator -->
 	<section id="quota-calculator" class="signal-board-enter motion-delay-100 mb-12 scroll-mt-24">
 		{#await modelsPromise then models}
-			<QuotaCalculator
-				models={models.map((m) => ({
-					id: m.id,
-					name: m.name,
-					pricing: m.pricing,
-					burnRate: m.burnRate
-				})) as Array<{
-					id: string;
-					name: string;
-					pricing: import('$lib/types/models').ModelPricing;
-					burnRate: string;
-				}>}
-			/>
+			<QuotaCalculator {models} />
 		{/await}
 	</section>
 

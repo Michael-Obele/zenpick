@@ -88,7 +88,7 @@ export function buildComparePrompt(models: GoModel[]): string {
 			}
 - Scenario fit (0-100): Coding ${s.coding}, Agentic ${s.agentic}, Brainstorming ${
 				s.brainstorming
-			}, Competitive ${s.competitive}, Budget ${s.budget}, Frontend ${s.frontend}
+			}, Budget ${s.budget}, Frontend ${s.frontend}
 - Pricing: ${fmtPrice(m.pricing.inputPricePerM)}/1M input, ${fmtPrice(
 				m.pricing.outputPricePerM
 			)}/1M output
