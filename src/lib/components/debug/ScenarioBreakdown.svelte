@@ -11,7 +11,7 @@
 	let selectedModelId = $state('');
 	let selectedScenario = $state('coding');
 
-	let scenarios = ['coding', 'brainstorming', 'competitive', 'agentic', 'budget', 'frontend'];
+	let scenarios = ['coding', 'brainstorming', 'agentic', 'budget', 'frontend'];
 
 	let model = $derived(models.find((m) => m.id === selectedModelId) ?? null);
 	let score = $derived(
@@ -21,7 +21,6 @@
 	let scenarioLabels: Record<string, string> = {
 		coding: 'Coding — quality(coding benchmarks) × fit(speed + burn)',
 		brainstorming: 'Brainstorming — quality(reasoning) × fit(context + moderate burn)',
-		competitive: 'Competitive — quality(SWE-bench + code arena) × fit(rank stability)',
 		agentic: 'Agentic — quality(coding benchmarks) × fit(context + speed + tools)',
 		budget: 'Budget — quality(price + burn) × fit(always relevant)',
 		frontend:

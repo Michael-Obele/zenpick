@@ -22,9 +22,9 @@
 				<th class="p-2 font-medium">Burn Score</th>
 				<th class="p-2 font-medium">Coding</th>
 				<th class="p-2 font-medium">Brain</th>
-				<th class="p-2 font-medium">Comp</th>
 				<th class="p-2 font-medium">Agent</th>
 				<th class="p-2 font-medium">Budget</th>
+				<th class="p-2 font-medium">Front</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -39,7 +39,7 @@
 							{m.burnDetails.score} ({m.burnDetails.requestsPer12?.toLocaleString() ?? '?'}/$12)
 						{:else}—{/if}
 					</td>
-					{#each ['coding', 'brainstorming', 'competitive', 'agentic', 'budget'] as sc}
+					{#each ['coding', 'brainstorming', 'agentic', 'budget', 'frontend'] as sc}
 						<td class="p-2 tabular-nums text-muted-foreground">
 							{m.scenarioScores[sc as keyof typeof m.scenarioScores]}
 						</td>
