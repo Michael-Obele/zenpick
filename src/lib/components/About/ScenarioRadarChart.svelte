@@ -12,14 +12,7 @@
 
 	let { models }: Props = $props();
 
-	const scenarios = [
-		'Brainstorming',
-		'Coding',
-		'Competitive',
-		'Agentic',
-		'Budget',
-		'Frontend'
-	] as const;
+	const scenarios = ['Brainstorming', 'Coding', 'Agentic', 'Budget', 'Frontend'] as const;
 
 	interface RadarDataPoint {
 		scenario: string;
@@ -33,11 +26,10 @@
 				const avg =
 					(scores.brainstorming +
 						scores.coding +
-						scores.competitive +
 						scores.agentic +
 						scores.budget +
 						scores.frontend) /
-					6;
+					5;
 				return { model: m, avg };
 			})
 			.sort((a, b) => b.avg - a.avg)
@@ -129,10 +121,10 @@
 		<div class="flex w-full items-start gap-2 text-sm">
 			<div class="grid gap-1">
 				<div class="flex items-center gap-2 leading-none font-medium text-foreground">
-					Each model's 6 scenario scores form a unique shape
+					Each model's 5 scenario scores form a unique shape
 				</div>
 				<div class="text-muted-foreground flex items-center gap-2 leading-none">
-					Brainstorming · Coding · Competitive · Agentic · Budget · Frontend
+					Brainstorming · Coding · Agentic · Budget · Frontend
 				</div>
 			</div>
 		</div>

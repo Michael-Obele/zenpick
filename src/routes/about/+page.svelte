@@ -18,8 +18,12 @@
 		Flame,
 		Sparkles,
 		Wallet,
-		ArrowUpRight
+		ArrowUpRight,
+		ArrowRight,
+		Timer,
+		CircleCheck
 	} from '@lucide/svelte';
+	import Github from '$lib/assets/github.svelte';
 
 	let mounted = $state(false);
 	const modelsPromise = getModels();
@@ -123,6 +127,23 @@
 			windows. But it does not tell you which model fits which task. That is what ZenPick is for.
 		</p>
 
+		<p class="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+			<span class="inline-flex items-center gap-1.5">
+				<Github class="size-4" />
+				Built by
+				<a
+					href="https://github.com/Michael-Obele"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
+				>
+					Michael Obubelebra Amachree
+				</a>
+			</span>
+			<span class="text-muted-foreground/30" aria-hidden="true">·</span>
+			<span>Open source · Free to use</span>
+		</p>
+
 		<div class="mt-8 flex flex-wrap items-center gap-3 text-sm">
 			<a
 				href="/"
@@ -221,7 +242,7 @@
 			<div class="ml-auto hidden h-px flex-1 bg-border sm:block" aria-hidden="true"></div>
 		</div>
 
-		<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+		<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
 			<StatCard figure="10" unit="/mo" label="subscription" footnote="First month $5." />
 			<StatCard figure="13" unit="+" label="models tracked" footnote="Across 6 providers." />
 			<StatCard figure="6" unit="h" label="cache TTL" footnote="Stale-while-revalidate." />
@@ -229,6 +250,11 @@
 				figure="324"
 				label="upstream models"
 				footnote="Cross-referenced via modelgrep + LLM Stats."
+			/>
+			<StatCard
+				figure="50%"
+				label="cheaper"
+				footnote="Same features at half the cost of what it replaced."
 			/>
 		</div>
 
@@ -252,11 +278,32 @@
 			{/await}
 		</div>
 
+		<div class="mt-3 flex items-center justify-end gap-1.5 text-xs text-muted-foreground/70">
+			<span>Live price-vs-performance from upstream data.</span>
+			<a
+				href="/#compare-models"
+				class="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
+			>
+				Interact with it — filter by task
+				<ArrowRight class="size-3" />
+			</a>
+		</div>
+
 		<Callout variant="cyan" label="methodology note">
 			"Upstream" refers to the data aggregated at modelgrep.com (OpenRouter pricing + Artificial
 			Analysis benchmarks) and llm-stats.com (benchmark scores, rankings, and pricing), which tracks
 			every model we cross-check against.
 		</Callout>
+
+		<div class="mt-8 text-center">
+			<a
+				href="/#compare-models"
+				class="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background px-4 py-2 text-sm text-foreground hover:underline underline-offset-12"
+			>
+				See all 13+ models ranked
+				<ArrowRight class="size-4" />
+			</a>
+		</div>
 	</section>
 
 	<!-- 04 METHODOLOGY -->
@@ -271,8 +318,8 @@
 
 		<div class="space-y-4 text-base leading-relaxed text-foreground/85">
 			<p>
-				Every model gets a 0–100 fit score for six scenarios — <em>Brainstorming</em>,
-				<em>Coding</em>, <em>Competitive</em>, <em>Agentic</em>, <em>Budget</em>, and
+				Every model gets a 0–100 fit score for five scenarios — <em>Brainstorming</em>,
+				<em>Coding</em>, <em>Agentic</em>, <em>Budget</em>, and
 				<em>Frontend</em>. Scores are normalized across the current model population, so the
 				ordering is always meaningful and always non-empty. The table sorts by the active scenario;
 				if no scenario is active, it sorts by raw coding benchmark.
@@ -354,6 +401,16 @@
 			The 6-hour cache is the longest ZenPick will let any number go without re-fetching. A red
 			indicator appears on the comparison page if upstream data is unreachable.
 		</Callout>
+
+		<div class="mt-10 flex justify-center">
+			<a
+				href="/#compare-models"
+				class="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+			>
+				Data checks out? Try the comparison
+				<ArrowRight class="size-4" />
+			</a>
+		</div>
 	</section>
 
 	<!-- 06 THERMAL KEY -->
@@ -409,18 +466,31 @@
 			<div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
 				<div>
 					<h2 id="try-it" class="mb-2 text-2xl font-semibold tracking-tight text-foreground">
-						Ready to compare?
+						Your $12 quota window is ticking.
 					</h2>
 					<p class="max-w-xl text-muted-foreground">
-						Find the model that matches your task and keep your OpenCode Go quota from disappearing
-						too fast.
+						Every model burns quota at a different rate — pick the right one and the window lasts;
+						pick wrong and it empties in minutes.
+					</p>
+					<p
+						class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground/70"
+					>
+						<span class="inline-flex items-center gap-1.5">
+							<CircleCheck class="size-3.5 text-emerald-500" />
+							Free, no account
+						</span>
+						<span class="inline-flex items-center gap-1.5">
+							<CircleCheck class="size-3.5 text-emerald-500" />
+							Live data from 3 upstream sources
+						</span>
 					</p>
 				</div>
 				<a
-					href="/"
+					href="/#compare-models"
 					class="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
 				>
-					Open comparison
+					<Timer class="size-4" />
+					Find my model before my next session
 					<ArrowUpRight class="size-4" />
 				</a>
 			</div>
