@@ -1,21 +1,21 @@
 <script lang="ts">
-	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
-	import { browser } from '$app/environment';
-	import { getModels } from '$lib/remote/models.remote';
+	import { onMount } from 'svelte';
+	import { useSearchParams } from 'runed/kit';
 	import type { GoModel } from '$lib/types/models';
 	import ModelCompare from '$lib/components/ModelCompare.svelte';
 	import AskAiMenu from '$lib/components/AskAiMenu.svelte';
 	import { compare, MAX_COMPARE } from '$lib/stores/compare.svelte';
 	import { buildLlmStatsCompareUrl } from '$lib/utils/llm-stats-url';
+	import { compareSearchSchema } from '$lib/compare-search';
 	import {
 		catalogQualityAnchor,
 		catalogValueAnchor,
-		defaultComparePair
+		randomSuggestedPair
 	} from '$lib/compare-defaults';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import {
+		Dices,
 		GitCompare,
 		Plus,
 		X,
@@ -23,83 +23,108 @@
 		Info,
 		ExternalLink,
 		Copy,
-		Check,
-		Target
+		Check
 	} from '@lucide/svelte';
+	import type { PageProps } from './$types';
 
-	const modelsPromise = getModels();
+	let { data }: PageProps = $props();
+	// Re-declared via $derived so a re-navigation with a fresh catalog
+	// (different array identity) stays reactive in deriveds.
+	let models = $derived(data.models);
 
-	// Seed the shared store from the URL (?models=a,b,c) on first load.
-	const urlModels = (page.url.searchParams.get('models') ?? '')
-		.split(',')
-		.map((s) => s.trim())
-		.filter(Boolean);
-	if (browser && urlModels.length && compare.selection.length === 0) {
-		compare.selection = urlModels;
-	}
-
-	// Keep the URL in sync for shareable deep links.
-	$effect(() => {
-		const next = compare.selection.join(',');
-		const current = page.url.searchParams.get('models') ?? '';
-		if (current !== next) {
-			goto(compare.selection.length ? `/compare?models=${next}` : '/compare', {
-				replaceState: true,
-				keepFocus: true,
-				noScroll: true
-			});
-		}
+	// ── URL is the single source of truth for DISPLAY ─────────────────────
+	// `params` is runed's live, schema-validated URL state — it syncs from
+	// back/forward and tabs internally, so all display below is derived
+	// with zero effects. Mutations are plain functions that write BOTH the
+	// store (homepage bridge + dismissal flag) and `params` (URL).
+	const params = useSearchParams(compareSearchSchema, {
+		pushHistory: false,
+		noScroll: true
 	});
 
-	let allModels = $state<GoModel[]>([]);
-	modelsPromise.then((m) => {
-		allModels = m;
-		// Smart defaults: a direct visit with no explicit ?models= selection
-		// seeds a quality+value pair once per session. Explicit user intent
-		// (URL params, homepage Compare buttons, Clear all) always wins.
-		if (browser && !urlModels.length) {
-			compare.seedDefaults(defaultComparePair(m).map((x) => x.id));
-		}
-	});
+	/** Validated model IDs from the URL (reactive). */
+	let urlIds = $derived(
+		params.models
+			.split(',')
+			.map((s) => s.trim())
+			.filter(Boolean)
+			.filter((id) => models.some((m) => m.id === id))
+	);
 
 	let selectedModels = $derived(
-		compare.selection
-			.map((id) => allModels.find((m) => m.id === id))
-			.filter((m): m is GoModel => Boolean(m))
+		urlIds.map((id) => models.find((m) => m.id === id)).filter((m): m is GoModel => Boolean(m))
 	);
-	let available = $derived(allModels.filter((m) => !compare.selection.includes(m.id)));
-	let atMax = $derived(compare.selection.length >= MAX_COMPARE);
+	let available = $derived(models.filter((m) => !urlIds.includes(m.id)));
+	let atMax = $derived(urlIds.length >= MAX_COMPARE);
 	let llmStatsCompareUrl = $derived(buildLlmStatsCompareUrl(selectedModels));
 
 	// Catalog-wide anchor roles — computed from ALL models so the chips stay
 	// truthful even when the user swaps models in or out of the comparison.
 	let anchors = $derived.by(() => {
 		const map: Record<string, 'quality' | 'value'> = {};
-		const quality = catalogQualityAnchor(allModels);
-		const value = catalogValueAnchor(allModels);
+		const quality = catalogQualityAnchor(models);
+		const value = catalogValueAnchor(models);
 		if (quality) map[quality.id] = 'quality';
 		if (value) map[value.id] = 'value';
 		return map;
 	});
 
-	let pick = $state<string | undefined>(undefined);
+	// ── Mutations: functions, no effects ──────────────────────────────────
+	// Every mutation goes through the store (guards + dismissedDefaults)
+	// and then mirrors the result into the URL — one write, both sides.
+
+	function syncUrl() {
+		params.models = compare.selection.join(',');
+	}
+
 	function handlePick(v: string | undefined) {
-		if (v) compare.add(v);
+		if (v) {
+			compare.add(v);
+			syncUrl();
+		}
 		pick = undefined;
 	}
+
 	function removeModel(id: string) {
 		compare.remove(id);
+		syncUrl();
 	}
+
 	function clearAll() {
-		compare.clear();
+		compare.clear(); // also sets dismissedDefaults
+		syncUrl(); // params.models = '' → clean URL
 	}
+
 	function loadSuggested() {
-		if (!allModels.length) return;
+		if (!models.length) return;
 		compare.seedDefaults(
-			defaultComparePair(allModels).map((m) => m.id),
+			randomSuggestedPair(models).map((m) => m.id),
 			true
 		);
+		syncUrl();
 	}
+
+	// ── One-time seed (initial mount only) ────────────────────────────────
+	// Client navigations back to this route re-run `load`, which syncs the
+	// store from the URL — so only the very first mount needs this.
+	// Precedence: explicit ?models= share link → homepage store bridge →
+	// fresh random pair (unless dismissed with "Clear all").
+	onMount(() => {
+		if (urlIds.length) {
+			// Share link: the URL is already displayed; mirror it to the
+			// store so the homepage tray stays truthful.
+			compare.selection = urlIds;
+		} else if (compare.selection.length) {
+			// Homepage → compare: carry the tray selection into the URL.
+			params.models = compare.selection.join(',');
+		} else if (!compare.dismissedDefaults) {
+			compare.seedDefaults(randomSuggestedPair(models).map((m) => m.id));
+			params.models = compare.selection.join(',');
+		}
+	});
+
+	// Combobox state (ephemeral UI, event-driven — not URL state)
+	let pick = $state<string | undefined>(undefined);
 
 	let copied = $state(false);
 	async function copyLlmStats() {
@@ -225,16 +250,16 @@
 			<GitCompare class="size-10 text-muted-foreground/40" />
 			<p class="text-sm font-medium text-foreground">No models selected yet</p>
 			<p class="max-w-sm text-sm text-muted-foreground">
-				Start with a suggested pair — a top-quality pick against the best value pick — or choose
-				your own from the <span class="font-medium">Add model…</span> menu above.
+				Start with a fresh suggested pair — randomized from the top of the catalog each visit — or
+				choose your own from the <span class="font-medium">Add model…</span> menu above.
 			</p>
-			{#if allModels.length}
+			{#if models.length}
 				<button
 					type="button"
 					class={buttonVariants({ variant: 'outline', size: 'default' })}
 					onclick={loadSuggested}
 				>
-					<Target class="size-4" />
+					<Dices class="size-4" />
 					Load suggested models
 				</button>
 			{/if}
