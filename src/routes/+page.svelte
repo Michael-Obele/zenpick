@@ -69,7 +69,7 @@
 				>
 					Choose a model by
 					<br class="hidden sm:inline" />
-					<span class="text-primary">task and quota</span>
+					<span class="text-primary text-stroke-bg">task and quota</span>
 				</h1>
 
 				<!-- Supporting copy -->
