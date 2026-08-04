@@ -5,6 +5,7 @@
 	import SiteHeader from '$lib/components/Site/SiteHeader.svelte';
 	import SiteFooter from '$lib/components/Site/SiteFooter.svelte';
 	import { Agentation, type AnnotationProps } from 'sv-agentation';
+	import { Toaster } from '$lib/components/ui/sonner/index.js';
 
 	let playgroundAnnotationProps: AnnotationProps = {
 		toolbarPosition: 'bottom-left',
@@ -24,6 +25,8 @@
 	</div>
 	<SiteFooter />
 </div>
+
+<Toaster />
 
 {#if browser && dev}
 	<Agentation {...playgroundAnnotationProps} />
