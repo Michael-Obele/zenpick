@@ -24,6 +24,7 @@
 		CircleCheck
 	} from '@lucide/svelte';
 	import Github from '$lib/assets/github.svelte';
+	import { LightRays } from '@/magic/light-rays';
 
 	let mounted = $state(false);
 	const modelsPromise = getModels();
@@ -94,7 +95,9 @@
 	/>
 </svelte:head>
 
-<main class="relative mx-auto max-w-5xl px-4 py-12 sm:py-16">
+<LightRays class="rays-quiet" count={3} blur={26} speed={46} length="55%" />
+
+<main class="relative mx-auto max-w-6xl px-4 py-12 sm:py-16">
 	<!-- subtle receipt paper texture background -->
 	<div
 		class="pointer-events-none absolute inset-x-0 top-0 h-[60vh] bg-linear-to-b from-primary/3 to-transparent"
@@ -137,7 +140,7 @@
 					rel="noopener noreferrer"
 					class="font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
 				>
-					Michael Obubelebra Amachree
+					Michael
 				</a>
 			</span>
 			<span class="text-muted-foreground/30" aria-hidden="true">·</span>

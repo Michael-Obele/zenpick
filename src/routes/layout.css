@@ -173,6 +173,28 @@ html {
 			transparent
 		);
 	}
+	/* Compare page: dot grid that fades out below the header band */
+	.bg-dot-grid-fade {
+		background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
+		background-size: 24px 24px;
+		mask-image: radial-gradient(ellipse 80% 90% at 50% 0%, black 15%, transparent 72%);
+		-webkit-mask-image: radial-gradient(ellipse 80% 90% at 50% 0%, black 15%, transparent 72%);
+	}
+	/* Compare page: quiet warm glow anchoring the foot of the page */
+	.bg-glow-warm {
+		background: radial-gradient(
+			ellipse 55% 60% at 50% 100%,
+			oklch(0.9 0.02 85 / 0.45),
+			transparent 72%
+		);
+	}
+	.dark .bg-glow-warm {
+		background: radial-gradient(
+			ellipse 55% 60% at 50% 100%,
+			oklch(0.5 0.02 85 / 0.12),
+			transparent 72%
+		);
+	}
 	/* Light-rays color token (resolved by --light-rays-color inside the component) */
 	.hero-rays {
 		--ray-color: oklch(0.45 0.11 190 / 0.6);
@@ -180,12 +202,14 @@ html {
 	.dark .hero-rays {
 		--ray-color: oklch(0.78 0.12 190 / 0.5);
 	}
-	/* motion-sv drives rays via JS, so the global reduced-motion guard can't touch it */
-	@media (prefers-reduced-motion: reduce) {
-		.hero-rays {
-			display: none;
-		}
+	/* Compare page: dimmer ray color — a work surface, not a hero */
+	.rays-quiet {
+		--ray-color: oklch(0.45 0.11 190 / 0.32);
 	}
+	.dark .rays-quiet {
+		--ray-color: oklch(0.78 0.12 190 / 0.26);
+	}
+
 	.animate-fade-in {
 		animation: fade-in 0.5s ease-out both;
 	}
