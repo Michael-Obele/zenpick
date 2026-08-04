@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { GoModel } from '$lib/types/models';
+	import { benchmarkToPercent } from '$lib/compare-defaults';
 
 	interface Props {
 		models: GoModel[];
@@ -30,7 +31,8 @@
 					Benchmarks: coding={m.benchmarks.coding?.toFixed(1) ?? '—'}
 					reasoning={m.benchmarks.reasoning?.toFixed(1) ?? '—'}
 					math={m.benchmarks.math?.toFixed(1) ?? '—'}
-					SWE={m.benchmarks.sweBenchVerified?.toFixed(1) ?? '—'}
+					SWE={benchmarkToPercent(m.benchmarks.sweBenchVerified, 'sweBenchVerified')?.toFixed(1) ??
+						'—'}
 					ctx={(m.contextWindow ?? 0).toLocaleString()}
 				</div>
 			{:else}

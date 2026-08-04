@@ -9,6 +9,7 @@
 	import BurnGauge from './BurnGauge.svelte';
 	import ModelScatterContext from './ModelScatterContext.svelte';
 	import { llmStatsModelUrl } from '$lib/utils/llm-stats-url';
+	import { benchmarkToPercent } from '$lib/compare-defaults';
 
 	interface Props {
 		models: GoModel[];
@@ -155,7 +156,7 @@
 					<section>
 						<h3 class="mb-2 text-sm font-medium text-muted-foreground">Benchmarks</h3>
 						<div class="space-y-3">
-							{#each [{ label: 'Coding', value: model.benchmarks.coding }, { label: 'Reasoning', value: model.benchmarks.reasoning }, { label: 'Math', value: model.benchmarks.math }, { label: 'SciCode', value: model.benchmarks.sweBenchVerified }] as bench (bench.label)}
+							{#each [{ label: 'Coding', value: model.benchmarks.coding }, { label: 'Reasoning', value: model.benchmarks.reasoning }, { label: 'Math', value: model.benchmarks.math }, { label: 'SciCode', value: benchmarkToPercent(model.benchmarks.sweBenchVerified, 'sweBenchVerified') }] as bench (bench.label)}
 								{#if bench.value !== null}
 									<div>
 										<div class="mb-1 flex justify-between text-sm">

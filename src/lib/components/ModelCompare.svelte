@@ -5,6 +5,8 @@
 	import { X, Scale, Check, Minus, ExternalLink, Replace, Trophy, Wallet } from '@lucide/svelte';
 	import { llmStatsModelUrl } from '$lib/utils/llm-stats-url';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
+	import { benchmarkToPercent } from '$lib/compare-defaults';
+	import { tieRound } from '$lib/utils';
 
 	/** Catalog-wide anchor roles for model columns (from compare smart defaults). */
 	type AnchorRole = 'quality' | 'value';
@@ -36,48 +38,89 @@
 	}
 
 	// ─── Verdict ────────────────────────────────────────────────────────────
+	const benchKeys: (keyof GoModel['benchmarks'])[] = [
+		'coding',
+		'reasoning',
+		'math',
+		'sweBenchVerified'
+	];
+	/** Tie precision per benchmark: sweBenchVerified is stored 0–1 (SciCode
+	 *  fraction), so 3 decimals there ≈ 1 display decimal on the 0–100 scale. */
+	const benchTieDecimals: Partial<Record<keyof GoModel['benchmarks'], number>> = {
+		sweBenchVerified: 3
+	};
+
 	let verdict = $derived(buildVerdict(models));
 
-	function buildVerdict(ms: GoModel[]): string {
-		if (ms.length < 2) return '';
-		const benchKeys: (keyof GoModel['benchmarks'])[] = [
-			'coding',
-			'reasoning',
-			'math',
-			'sweBenchVerified'
-		];
+	/** Wins per model id across the benchmark categories (draws count for nobody). */
+	function countBenchWins(ms: GoModel[]): Record<string, number> {
 		const wins: Record<string, number> = {};
 		ms.forEach((m) => (wins[m.id] = 0));
 		for (const k of benchKeys) {
+			const decimals = benchTieDecimals[k] ?? 1;
 			const nums = ms
 				.map((m) => ({ id: m.id, v: m.benchmarks[k] as number | null }))
-				.filter((x) => x.v != null) as { id: string; v: number }[];
+				.filter((x) => x.v != null)
+				.map((x) => ({ id: x.id, v: tieRound(x.v as number, decimals) }));
 			if (!nums.length) continue;
 			const max = Math.max(...nums.map((x) => x.v));
 			const leaders = nums.filter((x) => x.v === max);
+			// Draws count for nobody.
 			if (leaders.length === 1) wins[leaders[0].id]++;
 		}
-		const top = [...ms].sort((a, b) => wins[b.id] - wins[a.id])[0];
+		return wins;
+	}
+
+	/** "X leads on N of 4…" — names every leader when the verdict is a draw. */
+	function leaderSentence(ms: GoModel[], wins: Record<string, number>): string {
+		const ranked = [...ms].sort((a, b) => wins[b.id] - wins[a.id] || a.name.localeCompare(b.name));
+		const maxWins = wins[ranked[0].id];
+		const leaders = ranked.filter((m) => wins[m.id] === maxWins);
+		if (leaders.length === 1) {
+			return `${leaders[0].name} leads on ${maxWins} of ${benchKeys.length} benchmark categories.`;
+		}
+		if (maxWins === 0) {
+			return `No clear leader across the ${benchKeys.length} benchmark categories — every category is tied.`;
+		}
+		return `${leaders.map((m) => m.name).join(' and ')} are tied, leading on ${maxWins} of ${benchKeys.length} benchmark categories.`;
+	}
+
+	/** Cheapest on input pricing, acknowledging price ties instead of breaking them. */
+	function priceSentence(ms: GoModel[]): string | null {
 		const priced = ms.filter((m) => m.pricing.inputPricePerM != null);
-		const cheapest = priced.length
-			? [...priced].sort(
-					(a, b) => (a.pricing.inputPricePerM ?? 0) - (b.pricing.inputPricePerM ?? 0)
-				)[0]
-			: null;
-		const longest = ms.filter((m) => m.contextWindow).length
-			? [...ms].sort((a, b) => (b.contextWindow ?? 0) - (a.contextWindow ?? 0))[0]
-			: null;
-		const parts: string[] = [];
-		parts.push(`${top.name} leads on ${wins[top.id]} of ${benchKeys.length} benchmark categories.`);
-		if (cheapest)
-			parts.push(
-				`${cheapest.name} is cheapest on input pricing (${fmtPrice(cheapest.pricing.inputPricePerM)}/1M).`
-			);
-		if (longest)
-			parts.push(
-				`${longest.name} offers the largest context window (${fmtTokens(longest.contextWindow)} tokens).`
-			);
-		return parts.join(' ');
+		if (!priced.length) return null;
+		const cheapestPrice = Math.min(...priced.map((m) => m.pricing.inputPricePerM as number));
+		const cheapest = priced.filter(
+			(m) => tieRound(m.pricing.inputPricePerM as number, 2) === tieRound(cheapestPrice, 2)
+		);
+		const who =
+			cheapest.length > 1
+				? `${cheapest.map((m) => m.name).join(' and ')} are tied cheapest on input pricing`
+				: `${cheapest[0].name} is cheapest on input pricing`;
+		return `${who} (${fmtPrice(cheapestPrice)}/1M).`;
+	}
+
+	/** Largest context window, acknowledging size ties instead of breaking them. */
+	function contextSentence(ms: GoModel[]): string | null {
+		const withCtx = ms.filter((m) => m.contextWindow);
+		if (!withCtx.length) return null;
+		const largestCtx = Math.max(...withCtx.map((m) => m.contextWindow as number));
+		const largest = withCtx.filter(
+			(m) => tieRound(m.contextWindow as number, 0) === tieRound(largestCtx, 0)
+		);
+		const who =
+			largest.length > 1
+				? `${largest.map((m) => m.name).join(' and ')} are tied for the largest context window`
+				: `${largest[0].name} offers the largest context window`;
+		return `${who} (${fmtTokens(largestCtx)} tokens).`;
+	}
+
+	function buildVerdict(ms: GoModel[]): string {
+		if (ms.length < 2) return '';
+		const wins = countBenchWins(ms);
+		return [leaderSentence(ms, wins), priceSentence(ms), contextSentence(ms)]
+			.filter((s): s is string => s != null)
+			.join(' ');
 	}
 
 	// ─── Scenario fit rows ─────────────────────────────────────────────────
@@ -178,7 +221,7 @@
 		<CompareRow
 			label="SWE-Bench"
 			{models}
-			getValue={(m) => m.benchmarks.sweBenchVerified}
+			getValue={(m) => benchmarkToPercent(m.benchmarks.sweBenchVerified, 'sweBenchVerified')}
 			hint="0-100"
 		>
 			{#snippet format(value, isBest)}
@@ -194,6 +237,7 @@
 			{models}
 			getValue={(m) => m.pricing.inputPricePerM}
 			higherIsBetter={false}
+			tieDecimals={2}
 		>
 			{#snippet format(value, isBest)}
 				<span
@@ -208,6 +252,7 @@
 			{models}
 			getValue={(m) => m.pricing.outputPricePerM}
 			higherIsBetter={false}
+			tieDecimals={2}
 		>
 			{#snippet format(value, isBest)}
 				<span
@@ -218,7 +263,13 @@
 		</CompareRow>
 
 		<!-- Context & quota -->
-		<CompareRow label="Context" {models} getValue={(m) => m.contextWindow} hint="tokens">
+		<CompareRow
+			label="Context"
+			{models}
+			getValue={(m) => m.contextWindow}
+			hint="tokens"
+			tieDecimals={0}
+		>
 			{#snippet format(value, isBest)}
 				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground/80'}"
 					>{fmtTokens(value)}</span
@@ -226,7 +277,7 @@
 			{/snippet}
 		</CompareRow>
 
-		<CompareRow label="Req / 5h" {models} getValue={(m) => m.quota.requestsPer5h}>
+		<CompareRow label="Req / 5h" {models} getValue={(m) => m.quota.requestsPer5h} tieDecimals={0}>
 			{#snippet format(value, isBest)}
 				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground/80'}"
 					>{value == null ? '—' : value.toLocaleString()}</span
@@ -234,7 +285,12 @@
 			{/snippet}
 		</CompareRow>
 
-		<CompareRow label="Req / week" {models} getValue={(m) => m.quota.requestsPerWeek}>
+		<CompareRow
+			label="Req / week"
+			{models}
+			getValue={(m) => m.quota.requestsPerWeek}
+			tieDecimals={0}
+		>
 			{#snippet format(value, isBest)}
 				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground/80'}"
 					>{value == null ? '—' : value.toLocaleString()}</span
@@ -242,7 +298,12 @@
 			{/snippet}
 		</CompareRow>
 
-		<CompareRow label="Req / month" {models} getValue={(m) => m.quota.requestsPerMonth}>
+		<CompareRow
+			label="Req / month"
+			{models}
+			getValue={(m) => m.quota.requestsPerMonth}
+			tieDecimals={0}
+		>
 			{#snippet format(value, isBest)}
 				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground/80'}"
 					>{value == null ? '—' : value.toLocaleString()}</span
@@ -256,6 +317,7 @@
 			getValue={(m) => (m.burnDetails.score == null ? null : 100 - m.burnDetails.score)}
 			higherIsBetter={false}
 			hint="lower better"
+			tieDecimals={0}
 		>
 			{#snippet format(value, isBest)}
 				<span

@@ -32,10 +32,11 @@ const QUALITY_KEYS = ['coding', 'reasoning', 'math', 'sweBenchVerified'] as cons
  * Normalize one benchmark value to the 0–100 display scale.
  * `sweBenchVerified` is actually the SciCode benchmark (see `server/tags.ts`),
  * which modelgrep reports as a 0–1 fraction — scale it to percent so it can
- * be averaged against the 0–100 fields.
+ * be compared and averaged against the 0–100 fields. Null-safe for use in
+ * compare rows and model drawers.
  */
-function toPercent(value: number, key: string): number {
-	return key === 'sweBenchVerified' && value < 1 ? value * 100 : value;
+export function benchmarkToPercent(value: number | null | undefined, key: string): number | null {
+	return value == null ? null : key === 'sweBenchVerified' && value < 1 ? value * 100 : value;
 }
 
 /**
@@ -58,7 +59,7 @@ function hasSolidBenchmark(model: GoModel): boolean {
 export function compositeBenchmark(model: GoModel): number | null {
 	const scores = QUALITY_KEYS.map((k) => {
 		const v = model.benchmarks[k];
-		return v == null || !Number.isFinite(v) ? null : toPercent(v, k);
+		return v == null || !Number.isFinite(v) ? null : benchmarkToPercent(v, k);
 	}).filter((v): v is number => v != null);
 	if (!scores.length) return null;
 	return scores.reduce((a, b) => a + b, 0) / scores.length;
