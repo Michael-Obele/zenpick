@@ -352,7 +352,7 @@
 						href={'https://modelgrep.com/models/' + m.modelgrepId}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+						class="inline-flex items-center gap-1 text-xs hover:underline"
 					>
 						<ExternalLink class="size-3" /> modelgrep
 					</a>
@@ -361,7 +361,7 @@
 					href={llmStatsModelUrl(m)}
 					target="_blank"
 					rel="noopener noreferrer"
-					class="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+					class="inline-flex items-center gap-1 text-xs hover:underline"
 				>
 					<ExternalLink class="size-3" /> llm-stats
 				</a>
