@@ -93,7 +93,7 @@
 		></div>
 		{#each rays as ray (ray.id)}
 			<motion.div
-				class="pointer-events-none absolute -top-[12%] h-(--light-rays-length) origin-top -translate-x-1/2 rounded-full bg-linear-to-b from-[color-mix(in_srgb,var(--light-rays-color)_70%,transparent)] to-transparent opacity-0 blur-(--light-rays-blur)"
+				class="pointer-events-none absolute top-[-12%] h-(--light-rays-length) origin-top -translate-x-1/2 rounded-full bg-linear-to-b from-[color-mix(in_srgb,var(--light-rays-color)_70%,transparent)] to-transparent opacity-0 blur-(--light-rays-blur)"
 				style={{ left: `${ray.left}%`, width: `${ray.width}px` }}
 				initial={{ rotate: ray.rotate }}
 				animate={{
