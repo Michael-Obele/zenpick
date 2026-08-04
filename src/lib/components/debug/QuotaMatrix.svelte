@@ -45,10 +45,11 @@
 <!-- Interactive knobs -->
 <div class="mb-6 grid grid-cols-3 gap-4 rounded-lg border border-border bg-muted/30 p-4">
 	<div>
-		<label class="mb-1 block text-xs text-muted-foreground"
+		<label for="qm-input-tokens" class="mb-1 block text-xs text-muted-foreground"
 			>Input tokens: {inputTokens.toLocaleString()}</label
 		>
 		<input
+			id="qm-input-tokens"
 			type="range"
 			min="100"
 			max="50000"
@@ -58,10 +59,11 @@
 		/>
 	</div>
 	<div>
-		<label class="mb-1 block text-xs text-muted-foreground"
+		<label for="qm-output-tokens" class="mb-1 block text-xs text-muted-foreground"
 			>Output tokens: {outputTokens.toLocaleString()}</label
 		>
 		<input
+			id="qm-output-tokens"
 			type="range"
 			min="50"
 			max="20000"
@@ -71,8 +73,11 @@
 		/>
 	</div>
 	<div>
-		<label class="mb-1 block text-xs text-muted-foreground">Cached reads: {cachedPct}%</label>
+		<label for="qm-cached-pct" class="mb-1 block text-xs text-muted-foreground"
+			>Cached reads: {cachedPct}%</label
+		>
 		<input
+			id="qm-cached-pct"
 			type="range"
 			min="0"
 			max="90"

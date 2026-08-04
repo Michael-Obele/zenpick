@@ -59,21 +59,17 @@
 
 	type SortKey = 'name' | 'coding' | 'price' | 'quota' | 'fit' | 'burn' | 'score';
 
-	// `userSort` is the user's explicit column choice (or null). When null,
-	// the sort follows the scenario: scenario picked → fit desc, no scenario → burn asc.
-	// Picking a new scenario clears `userSort` so Fit auto-activates again.
-	type ExplicitSort = { key: SortKey; dir: 'asc' | 'desc' } | null;
+	// `userSort` is the user's explicit column choice (or null), stamped with
+	// the scenario it was chosen under. When the scenario changes, the stamp no
+	// longer matches and the override is ignored (derived → null), so Fit
+	// auto-activates again — pure derived, no $effect to reset state.
+	type ExplicitSort = { key: SortKey; dir: 'asc' | 'desc'; forScenario: string } | null;
 	let userSort = $state<ExplicitSort>(null);
 
-	$effect(() => {
-		// Subscribe to scenario; when it changes, drop the user's column override
-		// so Fit auto-activates for the new scenario.
-		void scenario;
-		userSort = null;
-	});
+	let effectiveSort = $derived(userSort && userSort.forScenario === scenario ? userSort : null);
 
-	let sortKey = $derived<SortKey>(userSort?.key ?? (scenario ? 'fit' : 'burn'));
-	let sortDir = $derived<'asc' | 'desc'>(userSort?.dir ?? (scenario ? 'desc' : 'asc'));
+	let sortKey = $derived<SortKey>(effectiveSort?.key ?? (scenario ? 'fit' : 'burn'));
+	let sortDir = $derived<'asc' | 'desc'>(effectiveSort?.dir ?? (scenario ? 'desc' : 'asc'));
 
 	let sortedModels = $derived.by(() =>
 		[...filteredModels].sort((a, b) => compareModels(a, b, scenario, sortKey, sortDir))
@@ -95,8 +91,7 @@
 		if (!need) return null;
 		return scenario
 			? rankNeed(need, models, {
-					fitOf: (m) =>
-						m.scenarioScores[scenario as keyof GoModel['scenarioScores']] ?? null
+					fitOf: (m) => m.scenarioScores[scenario as keyof GoModel['scenarioScores']] ?? null
 				})
 			: rankNeed(need, models);
 	});
@@ -182,12 +177,12 @@
 	}
 
 	function toggleSort(key: SortKey) {
-		const currentKey = userSort?.key ?? (scenario ? 'fit' : 'burn');
-		const currentDir = userSort?.dir ?? (scenario ? 'desc' : 'asc');
+		const currentKey = effectiveSort?.key ?? (scenario ? 'fit' : 'burn');
+		const currentDir = effectiveSort?.dir ?? (scenario ? 'desc' : 'asc');
 		if (currentKey === key) {
-			userSort = { key, dir: currentDir === 'asc' ? 'desc' : 'asc' };
+			userSort = { key, dir: currentDir === 'asc' ? 'desc' : 'asc', forScenario: scenario };
 		} else {
-			userSort = { key, dir: 'desc' };
+			userSort = { key, dir: 'desc', forScenario: scenario };
 		}
 	}
 
@@ -282,7 +277,11 @@
 					onclick={() => handleSort('coding')}
 				>
 					<span class="inline-flex items-center gap-1">
-						{need ? (fitLabel ? `${need.metricLabel} · ${fitLabel} fit` : need.metricLabel) : 'Coding'}
+						{need
+							? fitLabel
+								? `${need.metricLabel} · ${fitLabel} fit`
+								: need.metricLabel
+							: 'Coding'}
 						<codingSort.icon
 							class="size-3 {codingSort.active ? 'text-foreground' : 'text-muted-foreground/40'}"
 						/>

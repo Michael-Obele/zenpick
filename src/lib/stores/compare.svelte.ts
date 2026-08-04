@@ -13,28 +13,31 @@ class CompareState {
 	selection = $state<string[]>([]);
 
 	/**
-	 * Whether smart defaults have been seeded — or the user has taken over
-	 * the selection — this session. Once set, auto-seeding never runs again,
-	 * so "Clear all" stays clear and homepage Compare buttons always win.
+	 * The user explicitly cleared the selection ("Clear all") — suppress
+	 * auto-seeding for the rest of the session so clearing actually sticks.
+	 * Unlike the old "took over" flag, manual add/remove/toggle and simple
+	 * navigation do NOT set this, so the suggested pair keeps coming back
+	 * whenever the selection is empty again. "Load suggested models"
+	 * re-enables auto-seeding (it clears the flag).
 	 */
-	hasSeededDefaults = $state(false);
+	dismissedDefaults = $state(false);
 
 	/**
 	 * Auto-seed the smart-default pair, but only when the session has no
-	 * selection yet and defaults have not already been decided. Use `force`
-	 * for explicit user actions (e.g. a "Load suggested models" button).
+	 * selection yet and the user hasn't explicitly dismissed suggestions
+	 * with "Clear all". Use `force` for explicit user actions (e.g. a
+	 * "Load suggested models" button) — it re-seeds even after a clear.
 	 */
 	seedDefaults = (ids: string[], force = false): void => {
-		if (!force && (this.hasSeededDefaults || this.selection.length)) return;
+		if (!force && (this.dismissedDefaults || this.selection.length)) return;
 		const room = ids.slice(0, MAX_COMPARE).filter((id) => !this.selection.includes(id));
 		if (!room.length) return;
 		this.selection = room;
-		this.hasSeededDefaults = true;
+		this.dismissedDefaults = false;
 	};
 
 	/** Toggle a model in/out of the comparison selection. */
 	toggle = (id: string): void => {
-		this.hasSeededDefaults = true;
 		if (this.selection.includes(id)) {
 			this.selection = this.selection.filter((x) => x !== id);
 		} else if (this.selection.length < MAX_COMPARE) {
@@ -45,20 +48,18 @@ class CompareState {
 	/** Add a model if there is room and it is not already selected. */
 	add = (id: string): void => {
 		if (this.selection.includes(id) || this.selection.length >= MAX_COMPARE) return;
-		this.hasSeededDefaults = true;
 		this.selection = [...this.selection, id];
 	};
 
 	/** Remove a model from the selection. */
 	remove = (id: string): void => {
-		this.hasSeededDefaults = true;
 		this.selection = this.selection.filter((x) => x !== id);
 	};
 
-	/** Clear the entire selection. */
+	/** Clear the entire selection — and keep it clear for this session. */
 	clear = (): void => {
 		this.selection = [];
-		this.hasSeededDefaults = true;
+		this.dismissedDefaults = true;
 	};
 }
 

@@ -108,3 +108,17 @@ Default to **Remote Functions** (experimental `@sveltejs/kit` features or standa
 - **Memory MCP**: Persist useful context by writing to and reading from the Memory MCP during work to maintain consistency across sessions.
 - **Documentation**: Use `mcp_svelte_get-documentation` for the latest Svelte 5/Kit logic and `mcp_svelte_svelte-autofixer` to validate components before finalizing.
 - **shadcn-svelte Workflow**: Never author shadcn-svelte components manually. Always use the CLI commands recommended by MCP documentation or equivalent trusted research to create, add, or update them.
+
+## Fallow Quality Gate
+
+- **Run**: `bun run check:quality` → `fallow dead-code --fail-on-regression` + `fallow health`.
+- **Baseline**: `fallow.toml` embeds a `[regression.baseline]` (dead-code counts) — the gate
+  only fails on NEW dead code. Refresh with `fallow dead-code --save-regression-baseline`.
+- **Health overrides**: known-safe functions/templates have `[[health.thresholdOverrides]]`
+  ceilings pinned at their current scores — any growth re-flags. Add an override with a
+  `reason` instead of loosening global thresholds.
+- **Bundler convention**: runtime deps live in devDependencies (Vite bundles everything);
+  `dev-dependencies-in-production` is set to `warn` so it never blocks.
+- **Ignore deps**: `mode-watcher`, `tailwind-variants`, `vaul-svelte` are consumed by the
+  excluded `ui/` folder — listed in `ignoreDependencies` so they don't report as unused.
+- Requires fallow >= 3.14 (older versions silently drop `thresholdOverrides`).

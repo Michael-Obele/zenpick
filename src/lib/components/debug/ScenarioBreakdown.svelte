@@ -36,26 +36,27 @@
 
 <div class="mb-4 grid grid-cols-2 gap-4">
 	<div>
-		<label class="mb-1 block text-xs text-muted-foreground">Model</label>
+		<label for="sb-model-select" class="mb-1 block text-xs text-muted-foreground">Model</label>
 		<Select.Root type="single" bind:value={selectedModelId}>
-			<Select.Trigger class="w-full">
+			<Select.Trigger id="sb-model-select" class="w-full">
 				{model?.name ?? '— Pick a model —'}
 			</Select.Trigger>
 			<Select.Content>
-				{#each models as m}
+				{#each models as m (m.id)}
 					<Select.Item value={m.id} label={m.name}>{m.name}</Select.Item>
 				{/each}
 			</Select.Content>
 		</Select.Root>
 	</div>
 	<div>
-		<label class="mb-1 block text-xs text-muted-foreground">Scenario</label>
+		<label for="sb-scenario-select" class="mb-1 block text-xs text-muted-foreground">Scenario</label
+		>
 		<Select.Root type="single" bind:value={selectedScenario}>
-			<Select.Trigger class="w-full">
+			<Select.Trigger id="sb-scenario-select" class="w-full">
 				{selectedScenario}
 			</Select.Trigger>
 			<Select.Content>
-				{#each scenarios as sc}
+				{#each scenarios as sc (sc)}
 					<Select.Item value={sc} label={sc}>{sc}</Select.Item>
 				{/each}
 			</Select.Content>

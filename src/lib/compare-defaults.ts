@@ -4,7 +4,7 @@ import { capacityPer5h, REFERENCE_CACHED_PCT, REFERENCE_TOKENS } from '$lib/reco
 /**
  * Compare-page smart defaults
  * ---------------------------
- * Deterministic, catalog-wide anchors used to pre-seed the compare page so
+ * Data-driven anchors and suggestions used to pre-seed the compare page so
  * a direct visit never lands on an empty comparison:
  *
  * - **Quality anchor** — highest composite benchmark score across the core
@@ -14,10 +14,14 @@ import { capacityPer5h, REFERENCE_CACHED_PCT, REFERENCE_TOKENS } from '$lib/reco
  *   workload (50K tokens / 50% cached), using the recommendation engine's
  *   own `capacityPer5h` so the "Best value" label means the same thing as
  *   "quota capacity" everywhere else in the app.
+ * - **Random suggested pair** — `randomSuggestedPair()` draws two distinct
+ *   models from the top composite-quality pool with usable capacity, so
+ *   suggestions are always credible AND fresh: each visit (and each
+ *   "Load suggested models" click) can surface a different pair.
  *
- * Both anchors are data-driven (no hardcoded model IDs), so they track the
- * catalog as models are added or retired. When both anchors resolve to the
- * same model, only one is returned. Functions never throw and return `null`
+ * Anchors are deterministic (no hardcoded model IDs) and track the catalog
+ * as models are added or retired. When both anchors resolve to the same
+ * model, only one is returned. Functions never throw and return `null`
  * when the catalog has no usable data.
  */
 
@@ -101,4 +105,40 @@ export function defaultComparePair(models: GoModel[]): GoModel[] {
 		}
 	}
 	return out;
+}
+
+/** How many top models the random suggestion pair draws from. */
+const RANDOM_POOL_SIZE = 6;
+
+/** Pick a random element (uniform). Returns `undefined` for an empty list. */
+function pickRandom<T>(items: T[]): T | undefined {
+	return items.length ? items[Math.floor(Math.random() * items.length)] : undefined;
+}
+
+/**
+ * A fresh, credible suggestion pair — randomized for variety across visits.
+ *
+ * Draws two distinct models from the top `RANDOM_POOL_SIZE` composite-quality
+ * models that also have usable quota capacity, so the pair is always "good"
+ * while still changing each call (and each "Load suggested models" click).
+ * Falls back to the deterministic quality+value anchors when the pool is
+ * too small to randomize.
+ */
+export function randomSuggestedPair(models: GoModel[]): GoModel[] {
+	const pool = models
+		.filter(
+			(m) => hasSolidBenchmark(m) && capacityPer5h(m, REFERENCE_TOKENS, REFERENCE_CACHED_PCT) > 0
+		)
+		.map((m) => ({ m, s: compositeBenchmark(m) }))
+		.filter((x): x is { m: GoModel; s: number } => x.s != null)
+		.sort((a, b) => b.s - a.s)
+		.slice(0, RANDOM_POOL_SIZE)
+		.map((x) => x.m);
+
+	if (pool.length >= 2) {
+		const first = pickRandom(pool);
+		const second = pickRandom(pool.filter((m) => m.id !== first?.id));
+		if (first && second) return [first, second];
+	}
+	return defaultComparePair(models);
 }

@@ -34,7 +34,6 @@
 		...props
 	}: LightRaysProps = $props();
 
-	let rays = $state<LightRay[]>([]);
 	let cycleDuration = $derived(Math.max(speed, 0.1));
 
 	let createRays = (count: number, cycle: number): LightRay[] => {
@@ -62,13 +61,9 @@
 		});
 	};
 
-	// onMount(() => {
-	// 	rays = createRays(count, cycleDuration);
-	// });
-
-	$effect(() => {
-		rays = createRays(count, cycleDuration);
-	});
+	// Rays regenerate whenever `count` or `speed` changes. Deriving keeps
+	// the prop mirroring declarative — no $effect needed.
+	let rays = $derived(createRays(count, cycleDuration));
 </script>
 
 <div

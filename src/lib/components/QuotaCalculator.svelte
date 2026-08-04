@@ -70,7 +70,7 @@
 		recommendModel(models, {
 			tokens: tokenInput,
 			cachedPct: cachedPctValue,
-			scenario: scenarioValue ? (scenarioValue as never) : undefined
+			scenario: scenarioValue || undefined
 		})
 	);
 

@@ -8,24 +8,175 @@ entry = ["src/routes/**/*.{ts,svelte}", "src/lib/**/*.ts"]
 # duplicates, health, etc.) — these are CLI-managed and follow their own conventions.
 ignorePatterns = ["src/lib/components/ui/**/*.{ts,svelte}"]
 
+# Deps consumed only by the excluded ui/ folder (shadcn-svelte ecosystem) —
+# fallow can't see their imports, so without this they'd be false positives.
+ignoreDependencies = ["mode-watcher", "tailwind-variants", "vaul-svelte"]
+
 [duplicates]
 # Hide pair-only clones; focus on widespread copy-paste worth refactoring.
 # Lower to 2 to report every duplicate pair.
 minOccurrences = 3
 
 [health]
-# CRAP is inflated when fallow estimates 0% coverage. Most of these functions are
-# simple mappings/switches; raising the CRAP ceiling keeps them advisory rather
-# than blocking commits while still catching genuinely risky complexity.
+# CRAP is inflated when fallow estimates 0% coverage (no test suite yet).
 maxCrap = 160.0
 
-# Known-safe helpers that are intentionally long mapping tables. Keep visible but
-# don't block commits.
+# Known-safe functions where CRAP is inflated by coverage-blind estimation.
+# Each override caps CRAP (and the cyc/cog ceilings where those also exceed
+# the global 20/15) at the function's CURRENT score, so the finding stays
+# advisory but ANY growth in these functions re-flags. Everything else keeps
+# the global thresholds.
 [[health.thresholdOverrides]]
 files = ["src/lib/server/inference.ts"]
-functions = ["inferPricing", "inferContextWindow"]
-maxCyclomatic = 8
-reason = "Static lookup tables for known model pricing and context windows"
+functions = ["inferModel", "inferMigrationHints"]
+maxCyclomatic = 41
+maxCognitive = 22
+maxCrap = 2000.0
+reason = "Catalog parser/rewriter — branching is data-driven, coverage-blind"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/server/go-docs.ts"]
+functions = ["refreshGoDocsData"]
+maxCyclomatic = 26
+maxCognitive = 40
+maxCrap = 1000.0
+reason = "HTML scraping pipeline with per-page fallback paths"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/server/blend.ts"]
+functions = ["blendBenchmarks"]
+maxCyclomatic = 25
+maxCrap = 1000.0
+reason = "Benchmark blending over capability fields"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/needs.ts"]
+functions = ["needAnswer"]
+maxCognitive = 31
+maxCrap = 800.0
+reason = "Need-type answer router with per-need branches"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/components/ModelTable.svelte"]
+functions = ["compareByKey"]
+maxCrap = 800.0
+reason = "Comparator switch with fit tie-breaking"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/server/llm-stats.ts"]
+functions = ["fetchLlmStatsModels"]
+maxCognitive = 22
+maxCrap = 800.0
+reason = "Multi-source fetch with per-source fallbacks"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/utils/ask-ai.ts"]
+functions = ["blocks"]
+maxCrap = 500.0
+reason = "Prompt builder with per-provider blocks"
+
+
+# Svelte template complexity (fallow 3.x synthetic <template> findings).
+# Data-heavy component templates legitimately branch per row/state; ceilings sit
+# at each template's CURRENT score so any growth re-flags.
+[[health.thresholdOverrides]]
+files = ["src/lib/components/ModelTable.svelte"]
+functions = ["<template>"]
+maxCyclomatic = 50
+maxCognitive = 82
+maxCrap = 2500.0
+reason = "Data-table template: sort/filter/need-ranked conditional rows"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/components/ModelCompare.svelte"]
+functions = ["<template>"]
+maxCyclomatic = 39
+maxCognitive = 71
+maxCrap = 1500.0
+reason = "Comparison grid with per-metric verdict cells"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/components/QuotaCalculator.svelte"]
+functions = ["<template>"]
+maxCyclomatic = 32
+maxCognitive = 42
+maxCrap = 1000.0
+reason = "Quota funnel with per-scenario estimate panels"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/components/ModelDrawer.svelte"]
+functions = ["<template>"]
+maxCyclomatic = 22
+maxCognitive = 45
+maxCrap = 500.0
+reason = "Model detail drawer with pricing/benchmark sections"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/components/Site/SiteHeader.svelte"]
+functions = ["<template>"]
+maxCyclomatic = 15
+maxCognitive = 30
+maxCrap = 250.0
+reason = "Nav with per-link active states and mobile menu"
+
+[[health.thresholdOverrides]]
+files = ["src/routes/about/+page.svelte"]
+functions = ["<template>"]
+maxCyclomatic = 18
+maxCognitive = 30
+maxCrap = 400.0
+reason = "Long-form story page with narrative sections"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/components/debug/ScenarioBreakdown.svelte"]
+functions = ["<template>"]
+maxCyclomatic = 25
+maxCognitive = 20
+maxCrap = 700.0
+reason = "Debug matrix with per-scenario filter rows"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/components/debug/BurnTable.svelte"]
+functions = ["<template>"]
+maxCyclomatic = 14
+maxCognitive = 18
+maxCrap = 200.0
+reason = "Debug burn table with conditional cells"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/components/debug/TagReport.svelte"]
+functions = ["<template>"]
+maxCrap = 200.0
+reason = "Debug tag report rows (CRAP-only trigger)"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/components/debug/PricingMatrix.svelte"]
+functions = ["<template>"]
+maxCognitive = 22
+reason = "Debug pricing matrix cells (cognitive-only trigger)"
+
 
 # Per-issue-type severity: "error" (fail CI), "warn" (report only), "off" (ignore)
 [rules]
+# Vite bundles every import at build time (adapter-auto static output), so
+# runtime packages living in devDependencies is a working convention here —
+# node_modules is never deployed. Keep the rule visible but non-blocking.
+dev-dependencies-in-production = "warn"
+
+[regression.baseline]
+totalIssues = 14
+unusedFiles = 0
+unusedExports = 0
+unusedTypes = 0
+unusedDependencies = 0
+unusedDevDependencies = 0
+unusedOptionalDependencies = 0
+unusedEnumMembers = 0
+unusedClassMembers = 0
+unresolvedImports = 0
+unlistedDependencies = 0
+duplicateExports = 0
+circularDependencies = 0
+typeOnlyDependencies = 0
+testOnlyDependencies = 0
+devDependenciesInProduction = 14

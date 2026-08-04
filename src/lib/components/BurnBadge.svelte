@@ -4,11 +4,9 @@
 
 	interface Props {
 		burnDetails: BurnDetails | null;
-		showScore?: boolean;
-		showRaw?: boolean;
 	}
 
-	let { burnDetails, showScore = true, showRaw = false }: Props = $props();
+	let { burnDetails }: Props = $props();
 
 	let bandLabel = $derived.by(() => {
 		if (!burnDetails?.band) return 'Unknown';
