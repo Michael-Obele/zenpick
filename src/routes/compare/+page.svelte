@@ -158,101 +158,145 @@
 	<LightRays class="rays-quiet" count={5} blur={16} speed={26} length="45%" />
 
 	<div class="relative mx-auto max-w-6xl px-4 pb-24">
-		<!-- Header band: the homepage's light-ray motif at work-surface intensity, over a fading dot grid -->
+		<!-- Decision-surface header: orient the page around choosing the right model for the work. -->
 		<div class="relative -mx-4 -mt-10 mb-6 px-4 pt-10">
-			<div class="relative mb-8">
-				<a
-					href="/"
-					class="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-				>
-					<ArrowLeft class="size-3.5" />
-					Back to all models
-				</a>
-				<div class="flex flex-wrap items-end justify-between gap-4">
-					<div>
-						<h1 class="flex items-center gap-2 text-3xl font-bold tracking-tight text-foreground">
-							<GitCompare class="size-7 text-primary" />
-							Compare Models
-						</h1>
-						<p class="mt-1.5 max-w-xl text-sm text-muted-foreground">
-							Put models head-to-head on benchmarks, pricing, context, and fit. The winner of each
-							row is highlighted, and you can ask an AI assistant with the full context baked in.
-						</p>
-					</div>
-					<div class="flex items-center gap-2">
-						{#if selectedModels.length > 0}
-							{#if llmStatsCompareUrl}
-								<a
-									href={llmStatsCompareUrl}
-									target="_blank"
-									rel="noopener noreferrer"
-									class={buttonVariants({ variant: 'outline', size: 'default' })}
-								>
-									<ExternalLink class="size-4" />
-									Compare on LLM Stats
-								</a>
-								<button
-									type="button"
-									onclick={copyLlmStats}
-									aria-label="Copy LLM Stats compare link"
-									class={buttonVariants({ variant: 'outline', size: 'icon' })}
-								>
-									{#if copied}
-										<Check class="size-4 text-emerald-500" />
-									{:else}
-										<Copy class="size-4" />
-									{/if}
-								</button>
-							{:else}
-								<span
-									class="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground"
-									title="LLM Stats compare needs 2–4 models"
-								>
-									<ExternalLink class="size-3.5" />
-									LLM Stats: add tracked models
-								</span>
-							{/if}
-							<AskAiMenu models={selectedModels} />
-							<button
-								class={buttonVariants({ variant: 'ghost', size: 'default' })}
-								onclick={clearAll}
+			<div class="relative mb-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+				<div>
+					<a
+						href="/"
+						class="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+					>
+						<ArrowLeft class="size-3.5" />
+						Back to all models
+					</a>
+					<p class="mb-2 font-mono text-xs font-medium tracking-[0.18em] text-primary">
+						MODEL DECISION SURFACE
+					</p>
+					<h1 class="flex items-center gap-2 text-3xl font-bold tracking-tight text-foreground">
+						<GitCompare class="size-7 text-primary" />
+						Find the model that fits the work
+					</h1>
+					<p class="mt-2 max-w-xl text-sm text-muted-foreground">
+						Put models head-to-head on benchmarks, pricing, context, and fit. Compare the signals
+						that matter for your task, then ask an AI assistant with the full context baked in.
+					</p>
+				</div>
+				<div class="flex flex-wrap items-center gap-2 lg:max-w-xs lg:justify-end">
+					{#if selectedModels.length > 0}
+						{#if llmStatsCompareUrl}
+							<a
+								href={llmStatsCompareUrl}
+								target="_blank"
+								rel="noopener noreferrer"
+								class={buttonVariants({ variant: 'outline', size: 'default' })}
 							>
-								<X class="size-4" />
-								Clear all
+								<ExternalLink class="size-4" />
+								Compare on LLM Stats
+							</a>
+							<button
+								type="button"
+								onclick={copyLlmStats}
+								aria-label="Copy LLM Stats compare link"
+								class={buttonVariants({ variant: 'outline', size: 'icon' })}
+							>
+								{#if copied}
+									<Check class="size-4 text-emerald-500" />
+								{:else}
+									<Copy class="size-4" />
+								{/if}
 							</button>
+						{:else}
+							<span
+								class="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground"
+								title="LLM Stats compare needs 2–4 models"
+							>
+								<ExternalLink class="size-3.5" />
+								LLM Stats: add tracked models
+							</span>
 						{/if}
-					</div>
+						<AskAiMenu models={selectedModels} />
+						<button
+							class={buttonVariants({ variant: 'ghost', size: 'default' })}
+							onclick={clearAll}
+						>
+							<X class="size-4" />
+							Clear all
+						</button>
+					{/if}
 				</div>
 			</div>
 
 			<!-- Model picker -->
-			<div class="relative mb-6 flex flex-wrap items-center gap-3">
-				<Select.Root type="single" bind:value={pick} onValueChange={handlePick} disabled={atMax}>
-					<Select.Trigger
-						class={buttonVariants({ variant: 'outline', size: 'default' })}
-						disabled={atMax}
+			<div class="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
+				<div class="flex flex-wrap items-end justify-between gap-3">
+					<div>
+						<label for="compare-model-picker" class="text-sm font-semibold text-foreground"
+							>Choose models to compare</label
+						>
+						<p class="mt-1 text-xs text-muted-foreground">
+							Start with the models closest to your actual work.
+						</p>
+					</div>
+					<span class="text-xs text-muted-foreground"
+						>{selectedModels.length}/{MAX_COMPARE} selected</span
 					>
-						<Plus class="size-4" />
-						<span>{atMax ? `Max ${MAX_COMPARE} models` : 'Add model…'}</span>
-					</Select.Trigger>
-					<Select.Content>
-						<Select.Group>
-							{#each available as m (m.id)}
-								<Select.Item value={m.id} label={m.name}>{m.name}</Select.Item>
-							{/each}
-						</Select.Group>
-					</Select.Content>
-				</Select.Root>
-				<span class="text-xs text-muted-foreground">
-					{selectedModels.length}/{MAX_COMPARE} selected
-				</span>
-				{#if selectedModels.length >= 2}
-					<span
-						class="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs text-muted-foreground"
-					>
-						<Info class="size-3" />
-						Tip: use <span class="font-medium text-foreground">Ask AI</span> to dig deeper.
-					</span>
+				</div>
+				<div class="mt-4 flex flex-wrap items-center gap-3">
+					<Select.Root type="single" bind:value={pick} onValueChange={handlePick} disabled={atMax}>
+						<Select.Trigger
+							id="compare-model-picker"
+							class={buttonVariants({ variant: 'default', size: 'default' })}
+							disabled={atMax}
+						>
+							<Plus class="size-4" />
+							<span>{atMax ? `Max ${MAX_COMPARE} models` : 'Add model…'}</span>
+						</Select.Trigger>
+						<Select.Content class="max-h-[min(30vh,80vh)]">
+							<Select.Group>
+								{#each available as m (m.id)}
+									<Select.Item value={m.id} label={m.name}>{m.name}</Select.Item>
+								{/each}
+							</Select.Group>
+						</Select.Content>
+					</Select.Root>
+					{#if selectedModels.length >= 2}
+						<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+							<Info class="size-3" />
+							Tip: use <span class="font-medium text-foreground">Ask AI</span> to dig deeper.
+						</span>
+					{/if}
+				</div>
+
+				{#if selectedModels.length > 0}
+					<div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+						{#each selectedModels as model (model.id)}
+							<div class="rounded-lg border border-border bg-background px-3 py-2.5">
+								<div class="flex items-start justify-between gap-2">
+									<div class="min-w-0">
+										<p class="truncate text-sm font-semibold text-foreground">{model.name}</p>
+										<p class="truncate text-xs text-muted-foreground">{model.provider}</p>
+									</div>
+									<button
+										type="button"
+										class="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+										onclick={() => removeModel(model.id)}
+										aria-label={`Remove ${model.name}`}
+									>
+										<X class="size-3.5" />
+									</button>
+								</div>
+								<div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+									<span>Fit {model.scenarioScores.coding}/100</span>
+									{#if model.benchmarks.coding != null}
+										<span>Benchmark {model.benchmarks.coding.toFixed(1)}</span>
+									{/if}
+									{#if model.burnDetails?.band != null}
+										<span>Burn {model.burnDetails.band}</span>
+									{/if}
+								</div>
+							</div>
+						{/each}
+					</div>
 				{/if}
 			</div>
 		</div>

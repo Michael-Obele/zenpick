@@ -15,7 +15,6 @@
 		ExternalLink,
 		ScrollText,
 		Thermometer,
-		Flame,
 		Sparkles,
 		Wallet,
 		ArrowUpRight,
@@ -105,66 +104,90 @@
 	></div>
 
 	<!-- Document header -->
-	<header class="relative mb-16">
-		{#if mounted}
-			<div in:fly={{ y: 12, duration: 500 }}>
-				<span
-					class="mb-5 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium uppercase tracking-wider text-primary"
-				>
-					<Flame class="size-3" />
-					From one frustrated subscriber
+	<header
+		class="relative mb-16 grid gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)] lg:items-center lg:gap-16"
+	>
+		<div>
+			{#if mounted}
+				<div in:fly={{ y: 12, duration: 500 }}>
+					<p class="mb-5 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+						Why ZenPick exists
+					</p>
+				</div>
+			{/if}
+
+			<h1
+				class="mb-6 text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-6xl"
+			>
+				I switched because AI got too expensive.
+				<span class="block text-muted-foreground">OpenCode Go made it make sense.</span>
+			</h1>
+
+			<p class="max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
+				Like a lot of developers, I watched my AI subscriptions drift upward while the value stayed
+				flat. OpenCode Go flipped the model: $10/month, thirteen open coding models, generous quota
+				windows. But it does not tell you which model fits which task. That is what ZenPick is for.
+			</p>
+
+			<p class="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+				<span class="inline-flex items-center gap-1.5">
+					<Github class="size-4" />
+					Built by
+					<a
+						href="https://github.com/Michael-Obele"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
+					>
+						Michael
+					</a>
 				</span>
-			</div>
-		{/if}
+				<span class="text-muted-foreground/50" aria-hidden="true">·</span>
+				<span>Open source · Free to use</span>
+			</p>
 
-		<h1
-			class="mb-6 text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-6xl"
-		>
-			I switched because AI got too expensive.
-			<span class="block text-muted-foreground/70">OpenCode Go made it make sense.</span>
-		</h1>
-
-		<p class="max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-			Like a lot of developers, I watched my AI subscriptions drift upward while the value stayed
-			flat. OpenCode Go flipped the model: $10/month, thirteen open coding models, generous quota
-			windows. But it does not tell you which model fits which task. That is what ZenPick is for.
-		</p>
-
-		<p class="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-			<span class="inline-flex items-center gap-1.5">
-				<Github class="size-4" />
-				Built by
+			<div class="mt-8 flex flex-wrap items-center gap-3 text-sm">
 				<a
-					href="https://github.com/Michael-Obele"
+					href="/"
+					class="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+				>
+					<ChevronLeft class="size-4" />
+					Back to comparison
+				</a>
+				<a
+					href="https://github.com/Michael-Obele/zenpick"
 					target="_blank"
 					rel="noopener noreferrer"
-					class="font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
+					class="inline-flex items-center gap-1.5 font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
 				>
-					Michael
+					Source on GitHub
+					<ExternalLink class="size-3.5" />
 				</a>
-			</span>
-			<span class="text-muted-foreground/30" aria-hidden="true">·</span>
-			<span>Open source · Free to use</span>
-		</p>
-
-		<div class="mt-8 flex flex-wrap items-center gap-3 text-sm">
-			<a
-				href="/"
-				class="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background px-4 py-2 text-foreground shadow-sm transition-colors hover:border-primary/30 hover:text-primary"
-			>
-				<ChevronLeft class="size-4" />
-				Back to comparison
-			</a>
-			<a
-				href="https://github.com/Michael-Obele/zenpick"
-				target="_blank"
-				rel="noopener noreferrer"
-				class="inline-flex items-center gap-1.5 text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-			>
-				Source on GitHub
-				<ExternalLink class="size-3.5" />
-			</a>
+			</div>
 		</div>
+
+		{#if mounted}
+			<div
+				in:fade={{ duration: 600, delay: 180 }}
+				class="rounded-2xl border border-border bg-card p-3 shadow-sm"
+			>
+				<div class="rounded-xl border border-border/80 bg-muted/40 p-5 sm:p-6">
+					<div class="mb-5 flex items-start justify-between gap-4 border-b border-border pb-4">
+						<div>
+							<p class="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+								ZenPick receipt
+							</p>
+							<p class="mt-1 text-sm text-muted-foreground">A clearer way to spend your quota.</p>
+						</div>
+						<Thermometer class="size-5 text-primary" />
+					</div>
+					<ReceiptBlock />
+					<p class="mt-4 border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground">
+						Compare capability, cost, and burn before the next coding session starts.
+					</p>
+				</div>
+			</div>
+		{/if}
 	</header>
 
 	<!-- 01 ORIGIN STORY -->
