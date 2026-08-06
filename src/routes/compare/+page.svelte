@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import type { Component } from 'svelte';
 	import { useSearchParams } from 'runed/kit';
 	import type { GoModel } from '$lib/types/models';
 	import ModelCompare from '$lib/components/ModelCompare.svelte';
 	import AskAiMenu from '$lib/components/AskAiMenu.svelte';
 	import { compare, MAX_COMPARE } from '$lib/stores/compare.svelte';
 	import { buildLlmStatsCompareUrl } from '$lib/utils/llm-stats-url';
-	import { compareSearchSchema } from '$lib/compare-search';
+	import { compareSearchSchema, COMPARE_SCENARIO_VALUES } from '$lib/compare-search';
+	import { recommendModel, REFERENCE_TOKENS, REFERENCE_CACHED_PCT } from '$lib/recommendation';
 	import {
 		catalogQualityAnchor,
 		catalogValueAnchor,
@@ -15,18 +17,54 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import {
-		Dices,
-		GitCompare,
-		Plus,
-		X,
-		ArrowLeft,
-		Info,
-		ExternalLink,
+		Bot,
+		Brain,
+		Calculator,
+		Check,
+		Code,
 		Copy,
-		Check
+		Crown,
+		Dices,
+		ExternalLink,
+		GitCompare,
+		Info,
+		Layers,
+		Palette,
+		Plus,
+		Sparkles,
+		X,
+		ArrowLeft
 	} from '@lucide/svelte';
 	import { LightRays } from '$lib/components/magic/light-rays';
 	import type { PageProps } from './$types';
+
+	/** Task focus options for the scenario crown — same vocabulary as the funnel. */
+	const SCENARIO_OPTIONS: Array<{ value: string; label: string; icon: Component }> = [
+		{ value: '', label: 'Any task', icon: Sparkles },
+		...COMPARE_SCENARIO_VALUES.map((value) => ({
+			value,
+			label:
+				value === 'coding'
+					? 'Coding'
+					: value === 'agentic'
+						? 'Agentic'
+						: value === 'brainstorming'
+							? 'Brainstorming'
+							: value === 'budget'
+								? 'Budget'
+								: 'Frontend',
+			icon:
+				value === 'coding'
+					? Code
+					: value === 'agentic'
+						? Bot
+						: value === 'brainstorming'
+							? Brain
+							: value === 'budget'
+								? Calculator
+								: Palette
+		}))
+	];
 
 	let { data }: PageProps = $props();
 	// Re-declared via $derived so a re-navigation with a fresh catalog
@@ -70,6 +108,28 @@
 		return map;
 	});
 
+	// ── Scenario crown ────────────────────────────────────────────────────
+	// Optional task focus (`?scenario=coding`): crowns the best model of the
+	// current comparison for that task using the same fit/capacity/quality
+	// blend as the homepage recommendation funnel, evaluated at the funnel's
+	// reference workload. Pure deriveds — changing the dropdown or the model
+	// selection re-crowns automatically.
+	let scenarioValue = $derived(params.scenario);
+
+	let crown = $derived(
+		scenarioValue
+			? recommendModel(selectedModels, {
+					tokens: REFERENCE_TOKENS,
+					cachedPct: REFERENCE_CACHED_PCT,
+					scenario: scenarioValue
+				})
+			: null
+	);
+
+	let scenarioLabel = $derived(
+		SCENARIO_OPTIONS.find((o) => o.value === scenarioValue)?.label ?? 'this task'
+	);
+
 	// ── Mutations: functions, no effects ──────────────────────────────────
 	// Every mutation goes through the store (guards + dismissedDefaults)
 	// and then mirrors the result into the URL — one write, both sides.
@@ -102,6 +162,25 @@
 			randomSuggestedPair(models).map((m) => m.id),
 			true
 		);
+		syncUrl();
+	}
+
+	type ScenarioValue = (typeof COMPARE_SCENARIO_VALUES)[number] | '';
+
+	function handleScenarioChange(value: string | undefined) {
+		if (!value) {
+			params.scenario = '';
+			return;
+		}
+		const allowed = new Set<string>(COMPARE_SCENARIO_VALUES);
+		const next: ScenarioValue = (allowed.has(value) ? value : '') as ScenarioValue;
+		params.scenario = next;
+	}
+
+	/** Swap the comparison to the crowned winner + its runner-up (the best mix). */
+	function applyMix() {
+		if (!crown || crown.top.length < 2) return;
+		compare.selection = [crown.winner.model.id, crown.top[1].model.id];
 		syncUrl();
 	}
 
@@ -299,6 +378,76 @@
 					</div>
 				{/if}
 			</div>
+
+			<!-- Scenario focus: crown the best model for the task at hand -->
+			{#if selectedModels.length > 0}
+				<div class="mt-6 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
+					<div class="flex flex-wrap items-center justify-between gap-3">
+						<div class="flex items-center gap-3">
+							<Sparkles class="size-4 shrink-0 text-primary" />
+							<div>
+								<label for="compare-scenario" class="text-sm font-semibold text-foreground"
+									>Focus on a task</label
+								>
+								<p class="text-xs text-muted-foreground">
+									Crown the best model in this comparison for the work you're doing.
+								</p>
+							</div>
+						</div>
+						<Select.Root type="single" value={scenarioValue} onValueChange={handleScenarioChange}>
+							<Select.Trigger id="compare-scenario" class="w-full sm:w-64">
+								{@const opt =
+									SCENARIO_OPTIONS.find((o) => o.value === scenarioValue) ?? SCENARIO_OPTIONS[0]}
+								{@const OptIcon = opt.icon}
+								<span class="inline-flex items-center gap-2">
+									<OptIcon class="size-4 text-primary" />
+									{opt.label}
+								</span>
+							</Select.Trigger>
+							<Select.Content class="max-h-[min(30vh,80vh)]">
+								<Select.Group>
+									{#each SCENARIO_OPTIONS as option (option.value || 'any')}
+										{@const OptionIcon = option.icon}
+										<Select.Item value={option.value} label={option.label}>
+											<span class="inline-flex items-center gap-2">
+												<OptionIcon class="size-4 text-muted-foreground" />
+												{option.label}
+											</span>
+										</Select.Item>
+									{/each}
+								</Select.Group>
+							</Select.Content>
+						</Select.Root>
+					</div>
+
+					{#if scenarioValue && crown && crown.top.length >= 2}
+						{@const winner = crown.winner.model}
+						{@const runnerUp = crown.top[1].model}
+						<div
+							class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3"
+						>
+							<p class="min-w-0 flex-1 text-sm leading-relaxed text-muted-foreground">
+								<Crown class="mr-1.5 inline size-4 -translate-y-px text-amber-500" />
+								For <span class="font-medium text-foreground">{scenarioLabel}</span>,
+								<span class="font-semibold text-foreground">{winner.name}</span> takes the crown —
+								the best blend of fit, capacity, and quality in this comparison
+								<span class="text-muted-foreground/80"
+									>(blend {crown.winner.score} · fit {winner.scenarioScores[scenarioValue]})</span
+								>.
+							</p>
+							<button
+								type="button"
+								class={buttonVariants({ variant: 'outline', size: 'sm' })}
+								onclick={applyMix}
+								title="Swap the comparison to the crowned winner and its runner-up"
+							>
+								<Layers class="size-3.5" />
+								Best mix: {winner.name} + {runnerUp.name}
+							</button>
+						</div>
+					{/if}
+				</div>
+			{/if}
 		</div>
 
 		<!-- Comparison grid or empty state -->
@@ -325,7 +474,12 @@
 					{/if}
 				</div>
 			{:else}
-				<ModelCompare models={selectedModels} onRemove={removeModel} {anchors} />
+				<ModelCompare
+					models={selectedModels}
+					onRemove={removeModel}
+					{anchors}
+					scenario={scenarioValue}
+				/>
 			{/if}
 		</div>
 	</div>

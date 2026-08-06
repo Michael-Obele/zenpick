@@ -2,10 +2,22 @@
 	import type { GoModel } from '$lib/types/models';
 	import BurnBadge from './BurnBadge.svelte';
 	import CompareRow from './CompareRow.svelte';
-	import { X, Scale, Check, Minus, ExternalLink, Replace, Trophy, Wallet } from '@lucide/svelte';
+	import {
+		X,
+		Scale,
+		Crown,
+		Check,
+		Minus,
+		ExternalLink,
+		Replace,
+		Trophy,
+		Wallet
+	} from '@lucide/svelte';
 	import { llmStatsModelUrl } from '$lib/utils/llm-stats-url';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import { benchmarkToPercent } from '$lib/compare-defaults';
+	import { recommendModel, REFERENCE_TOKENS, REFERENCE_CACHED_PCT } from '$lib/recommendation';
+	import type { RecommendationScenario } from '$lib/recommendation';
 	import { tieRound } from '$lib/utils';
 
 	/** Catalog-wide anchor roles for model columns (from compare smart defaults). */
@@ -21,9 +33,16 @@
 		onRemove?: (id: string) => void;
 		/** Model id → anchor role, used to render a data-derived chip in the column header. */
 		anchors?: Record<string, AnchorRole>;
+		/**
+		 * Optional task focus ("scenario crown"): crowns the best model of the
+		 * comparison for this task using the recommendation funnel's blend of
+		 * fit, capacity, and quality at the reference workload. Empty means
+		 * the plain benchmark verdict.
+		 */
+		scenario?: RecommendationScenario | '';
 	}
 
-	let { models, onRemove, anchors = {} }: Props = $props();
+	let { models, onRemove, anchors = {}, scenario = '' }: Props = $props();
 
 	const cols = $derived(`160px repeat(${models.length}, minmax(190px, 1fr))`);
 
@@ -123,6 +142,35 @@
 			.join(' ');
 	}
 
+	// ─── Scenario crown ───────────────────────────────────────────────────
+	// When a task focus is active, the verdict row crowns the best model of
+	// the comparison using the same blend as the homepage funnel (45% fit,
+	// 30% capacity, 25% quality at the reference workload).
+	let crown = $derived(
+		scenario
+			? recommendModel(models, {
+					tokens: REFERENCE_TOKENS,
+					cachedPct: REFERENCE_CACHED_PCT,
+					scenario
+				})
+			: null
+	);
+
+	let crownWinnerId = $derived(crown?.winner.model.id);
+
+	function scenarioLabelOf(key: RecommendationScenario): string {
+		return scenarioKeys.find(([k]) => k === key)?.[1] ?? key;
+	}
+
+	let scenarioVerdict = $derived.by(() => {
+		if (!scenario || !crown) return '';
+		const winner = crown.winner;
+		const runnerUp = crown.top[1]?.model;
+		const label = scenarioLabelOf(scenario);
+		const base = `${winner.model.name} is crowned best for ${label} — the strongest blend of fit, capacity, and quality among these models (blend ${winner.score}).`;
+		return runnerUp ? `${base} Runner-up: ${runnerUp.name}.` : base;
+	});
+
 	// ─── Scenario fit rows ─────────────────────────────────────────────────
 	const scenarioKeys: [keyof GoModel['scenarioScores'], string][] = [
 		['coding', 'Coding'],
@@ -145,7 +193,12 @@
 			Model
 		</div>
 		{#each models as m, i (m.id)}
-			<div class="relative border-b border-l border-border bg-muted/40 px-3 py-3">
+			<div
+				class="relative border-b border-l border-border bg-muted/40 px-3 py-3 {crownWinnerId ===
+				m.id
+					? 'ring-1 ring-inset ring-amber-500/40'
+					: ''}"
+			>
 				{#if onRemove}
 					<button
 						type="button"
@@ -166,6 +219,21 @@
 						{a.label}
 					</Badge>
 				{/if}
+				{#if scenario}
+					{#if crownWinnerId === m.id}
+						<Badge
+							variant="outline"
+							class="mt-1.5 border-amber-500/40 bg-amber-500/10 text-amber-500"
+						>
+							<Crown class="size-3" />
+							Best for {scenarioLabelOf(scenario)}
+						</Badge>
+					{:else}
+						<span class="mt-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground">
+							Fit <span class="font-semibold text-foreground">{m.scenarioScores[scenario]}</span>
+						</span>
+					{/if}
+				{/if}
 				<div class="mt-2">
 					<BurnBadge burnDetails={m.burnDetails} />
 				</div>
@@ -176,14 +244,19 @@
 		<div
 			class="flex items-center gap-2 border-t border-border bg-primary/5 px-3 py-3 text-sm font-medium text-muted-foreground"
 		>
-			<Scale class="size-4 text-primary" />
-			Verdict
+			{#if scenario}
+				<Crown class="size-4 text-amber-500" />
+				Crown
+			{:else}
+				<Scale class="size-4 text-primary" />
+				Verdict
+			{/if}
 		</div>
 		<div
 			class="border-t border-l border-border bg-primary/5 px-3 py-3 text-sm leading-relaxed text-foreground/80"
 			style="grid-column: 2 / -1;"
 		>
-			{verdict}
+			{scenario ? scenarioVerdict : verdict}
 		</div>
 
 		<!-- Benchmarks -->
@@ -337,9 +410,15 @@
 			<div class="border-t border-l border-border/60 px-3 py-2.5 text-sm">
 				<div class="space-y-1">
 					{#each scenarioKeys as [key, label] (key)}
+						{@const active = key === scenario}
 						<div class="flex items-center justify-between gap-2 text-xs">
-							<span class="text-muted-foreground">{label}</span>
-							<span class="tabular-nums text-foreground/80">{m.scenarioScores[key]}</span>
+							<span class={active ? 'font-semibold text-foreground' : 'text-muted-foreground'}
+								>{label}</span
+							>
+							<span
+								class={active ? 'font-semibold text-primary' : 'tabular-nums text-foreground/80'}
+								>{m.scenarioScores[key]}</span
+							>
 						</div>
 					{/each}
 				</div>
