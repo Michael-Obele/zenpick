@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { ArrowUpRight, Receipt, ExternalLink, Terminal, Database } from '@lucide/svelte';
+	import { ArrowUpRight, ExternalLink, Terminal, Database } from '@lucide/svelte';
 	import { Separator } from '$lib/components/ui/separator';
 	import GithubIcon from '$lib/assets/github.svelte';
+	import logo from '$lib/assets/zenpick-logo.svg';
 
 	const year = new Date().getFullYear();
 
@@ -28,11 +29,7 @@
 					class="group inline-flex items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					aria-label="ZenPick home"
 				>
-					<span
-						class="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/10 transition-all group-hover:bg-primary/15 group-hover:ring-primary/20"
-					>
-						<Receipt class="size-4" />
-					</span>
+					<img src={logo} alt="" class="size-8 rounded-lg" />
 					<span class="font-mono text-sm font-semibold tracking-tight text-foreground">
 						ZenPick
 					</span>
