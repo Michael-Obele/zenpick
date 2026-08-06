@@ -73,7 +73,7 @@
 				data={chartData}
 				x="totalPrice"
 				y="codingScore"
-				height={380}
+				height={580}
 				axis="x"
 				props={{
 					xAxis: {

@@ -19,6 +19,15 @@
 		[modelName: string]: string | number;
 	}
 
+	/**
+	 * LayerChart resolves series keys as property paths (see `@layerstack/utils`
+	 * `get`/`parsePath`), so a key containing dots — e.g. `gpt-5.6-luna`,
+	 * `mimo-v2.5` — is split into nested segments, resolves to undefined, and the
+	 * polygon silently renders empty. Sanitize ids to plain path-safe keys;
+	 * display names are unaffected (they come from the config `label`).
+	 */
+	const seriesKey = (id: string) => id.replace(/[\[\]'"\.]/g, '-');
+
 	const topModels = $derived.by(() => {
 		const scored = models
 			.map((m) => {
@@ -40,7 +49,7 @@
 	const chartConfig = $derived.by(() => {
 		const config: Record<string, { label: string; color: string }> = {};
 		topModels.forEach((m, i) => {
-			config[m.id] = { label: m.name, color: `var(--chart-${(i % 6) + 1})` };
+			config[seriesKey(m.id)] = { label: m.name, color: `var(--chart-${(i % 6) + 1})` };
 		});
 		return config;
 	});
@@ -50,7 +59,7 @@
 			const key = scenario.toLowerCase() as keyof (typeof topModels)[0]['scenarioScores'];
 			const point: RadarDataPoint = { scenario };
 			for (const model of topModels) {
-				point[model.id] = model.scenarioScores[key] ?? 0;
+				point[seriesKey(model.id)] = model.scenarioScores[key] ?? 0;
 			}
 			return point;
 		});
@@ -58,7 +67,7 @@
 
 	const series = $derived(
 		topModels.map((m, i) => ({
-			key: m.id,
+			key: seriesKey(m.id),
 			label: m.name,
 			color: `var(--chart-${(i % 6) + 1})`,
 			props: {

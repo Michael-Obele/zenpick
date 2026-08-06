@@ -11,16 +11,13 @@
 	import PricePerformanceScatter from '$lib/components/About/PricePerformanceScatter.svelte';
 	import { getModels } from '$lib/remote/models.remote';
 	import {
-		ChevronLeft,
-		ExternalLink,
-		ScrollText,
-		Thermometer,
-		Sparkles,
-		Wallet,
-		ArrowUpRight,
 		ArrowRight,
-		Timer,
-		CircleCheck
+		ArrowUpRight,
+		ChevronLeft,
+		CircleCheck,
+		ExternalLink,
+		Thermometer,
+		Timer
 	} from '@lucide/svelte';
 	import Github from '$lib/assets/github.svelte';
 	import { LightRays } from '@/magic/light-rays';
@@ -30,27 +27,6 @@
 	onMount(() => {
 		mounted = true;
 	});
-
-	const steps = [
-		{
-			icon: Wallet,
-			title: 'The bill kept climbing',
-			description:
-				'AI subscriptions I relied on were getting more expensive and harder to justify. The same features were costing twice as much, and I was not using half the models.'
-		},
-		{
-			icon: Sparkles,
-			title: 'OpenCode Go appeared',
-			description:
-				'$10/month. Thirteen open coding models. One API key. It removed the subscription anxiety, but introduced a new question: which model do I actually pick?'
-		},
-		{
-			icon: ScrollText,
-			title: 'ZenPick was the missing page',
-			description:
-				'A single comparison layer for benchmarks, quota burn, and fit scores. Built so the next developer making the same switch does not have to guess.'
-		}
-	];
 
 	const burnTiers = [
 		{
@@ -190,53 +166,13 @@
 		{/if}
 	</header>
 
-	<!-- 01 ORIGIN STORY -->
-	<section class="relative mb-20" aria-labelledby="origin">
-		<div class="mb-8 flex items-baseline gap-3">
-			<span class="font-mono text-xs font-medium uppercase tracking-wider text-primary">01</span>
-			<h2 id="origin" class="text-2xl font-semibold tracking-tight text-foreground">
-				Origin story
-			</h2>
-			<div class="ml-auto hidden h-px flex-1 bg-border sm:block" aria-hidden="true"></div>
-		</div>
-
-		<div class="grid gap-10 lg:grid-cols-[1fr_1.1fr]">
-			<div class="space-y-6">
-				{#each steps as step, i (step.title)}
-					{#if mounted}
-						<div class="group flex gap-4" in:fly={{ y: 16, duration: 450, delay: 100 + i * 120 }}>
-							<div
-								class="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-background shadow-sm transition-colors group-hover:border-primary/30"
-							>
-								<step.icon class="size-4 text-primary" />
-							</div>
-							<div>
-								<h3 class="mb-1 font-semibold text-foreground">{step.title}</h3>
-								<p class="leading-relaxed text-muted-foreground">{step.description}</p>
-							</div>
-						</div>
-					{/if}
-				{/each}
-
-				<Callout variant="amber" label="observation">
-					The cost curve of a coding assistant is steeper than its value curve. Picking a model is
-					not about raw capability; it is about matching the right model to the right task so your
-					quota lasts.
-				</Callout>
-			</div>
-
-			{#if mounted}
-				<div in:fade={{ duration: 600, delay: 200 }}>
-					<ReceiptBlock />
-				</div>
-			{/if}
-		</div>
-	</section>
-
-	<!-- 02 THE PRODUCT -->
+	<!-- 01 THE PRODUCT -->
 	<section class="mb-20" aria-labelledby="product">
 		<div class="mb-6 flex items-baseline gap-3">
-			<span class="font-mono text-xs font-medium uppercase tracking-wider text-primary">02</span>
+			<span
+				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary"
+				aria-hidden="true"
+			></span>
 			<h2 id="product" class="text-2xl font-semibold tracking-tight text-foreground">
 				What ZenPick does
 			</h2>
@@ -258,10 +194,13 @@
 		<Schematic />
 	</section>
 
-	<!-- 03 THE NUMBERS -->
+	<!-- 02 THE NUMBERS -->
 	<section class="mb-20" aria-labelledby="numbers">
 		<div class="mb-6 flex items-baseline gap-3">
-			<span class="font-mono text-xs font-medium uppercase tracking-wider text-primary">03</span>
+			<span
+				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary"
+				aria-hidden="true"
+			></span>
 			<h2 id="numbers" class="text-2xl font-semibold tracking-tight text-foreground">
 				The numbers
 			</h2>
@@ -332,10 +271,13 @@
 		</div>
 	</section>
 
-	<!-- 04 METHODOLOGY -->
+	<!-- 03 METHODOLOGY -->
 	<section class="mb-20" aria-labelledby="methodology">
 		<div class="mb-6 flex items-baseline gap-3">
-			<span class="font-mono text-xs font-medium uppercase tracking-wider text-primary">04</span>
+			<span
+				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary"
+				aria-hidden="true"
+			></span>
 			<h2 id="methodology" class="text-2xl font-semibold tracking-tight text-foreground">
 				Methodology
 			</h2>
@@ -370,10 +312,13 @@
 		</div>
 	</section>
 
-	<!-- 05 DATA & ATTRIBUTION -->
+	<!-- 04 DATA & ATTRIBUTION -->
 	<section class="mb-20" aria-labelledby="attribution">
 		<div class="mb-6 flex items-baseline gap-3">
-			<span class="font-mono text-xs font-medium uppercase tracking-wider text-primary">05</span>
+			<span
+				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary"
+				aria-hidden="true"
+			></span>
 			<h2 id="attribution" class="text-2xl font-semibold tracking-tight text-foreground">
 				Data &amp; attribution
 			</h2>
@@ -439,10 +384,13 @@
 		</div>
 	</section>
 
-	<!-- 06 THERMAL KEY -->
+	<!-- 05 THERMAL KEY -->
 	<section class="mb-16" aria-labelledby="key">
 		<div class="mb-6 flex items-baseline gap-3">
-			<span class="font-mono text-xs font-medium uppercase tracking-wider text-primary">06</span>
+			<span
+				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary"
+				aria-hidden="true"
+			></span>
 			<h2 id="key" class="text-2xl font-semibold tracking-tight text-foreground">Thermal key</h2>
 			<div class="ml-auto hidden h-px flex-1 bg-border sm:block" aria-hidden="true"></div>
 		</div>
@@ -486,7 +434,7 @@
 		</div>
 	</section>
 
-	<!-- 07 TRY IT -->
+	<!-- 06 TRY IT -->
 	<section class="mb-16" aria-labelledby="try-it">
 		<div class="rounded-2xl border border-border bg-card/40 p-6 sm:p-10">
 			<div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
@@ -550,3 +498,22 @@
 		</div>
 	</footer>
 </main>
+
+<style>
+	/*
+	 * Section numbers are derived from document order via CSS counters, so the
+	 * "01"–"05" prefixes never need manual renumbering — add or remove a
+	 * `.section-number` span and the rest reflow automatically.
+	 */
+	main {
+		counter-reset: section;
+	}
+
+	.section-number {
+		counter-increment: section;
+	}
+
+	.section-number::before {
+		content: counter(section, decimal-leading-zero);
+	}
+</style>
