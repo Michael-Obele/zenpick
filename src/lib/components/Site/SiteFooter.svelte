@@ -40,7 +40,7 @@
 				</p>
 				<div class="inline-flex items-center gap-2">
 					<span
-						class="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary"
+						class="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary-strong dark:border-primary-strong/30 dark:bg-primary/20 dark:text-primary-strong"
 					>
 						<Database class="size-3" />
 						Open data
@@ -50,7 +50,7 @@
 
 			<!-- Product -->
 			<div class="space-y-4">
-				<h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
+				<h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
 					Product
 				</h3>
 				<ul class="space-y-2">
@@ -72,12 +72,12 @@
 			<div class="space-y-3 rounded-lg border border-border/60 bg-muted/40 p-4">
 				<div class="space-y-1">
 					<h3
-						class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80"
+						class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
 					>
 						<Database class="size-3.5" />
 						Data & source
 					</h3>
-					<p class="text-xs leading-relaxed text-muted-foreground/80">
+					<p class="text-xs leading-relaxed text-muted-foreground">
 						Benchmarks, pricing, and quota burn are compiled from the public sources below.
 					</p>
 				</div>
@@ -108,7 +108,7 @@
 		<Separator class="my-8 bg-border/60" />
 
 		<div
-			class="flex flex-col items-center justify-between gap-3 text-xs text-muted-foreground/70 sm:flex-row"
+			class="flex flex-col items-center justify-between gap-3 text-xs text-muted-foreground sm:flex-row"
 		>
 			<span>© {year} ZenPick. Built for OpenCode Go users.</span>
 			<a
