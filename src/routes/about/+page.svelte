@@ -12,7 +12,6 @@
 	import { getModels } from '$lib/remote/models.remote';
 	import {
 		ArrowRight,
-		ArrowUpRight,
 		ChevronLeft,
 		CircleCheck,
 		ExternalLink,
@@ -86,7 +85,9 @@
 		<div>
 			{#if mounted}
 				<div in:fly={{ y: 12, duration: 500 }}>
-					<p class="mb-5 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+					<p
+						class="mb-5 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-primary dark:text-primary-strong"
+					>
 						Why ZenPick exists
 					</p>
 				</div>
@@ -125,7 +126,7 @@
 			<div class="mt-8 flex flex-wrap items-center gap-3 text-sm">
 				<a
 					href="/"
-					class="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+					class="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 dark:bg-primary-strong dark:text-background dark:hover:bg-primary-strong/90"
 				>
 					<ChevronLeft class="size-4" />
 					Back to comparison
@@ -150,12 +151,14 @@
 				<div class="rounded-xl border border-border/80 bg-muted/40 p-5 sm:p-6">
 					<div class="mb-5 flex items-start justify-between gap-4 border-b border-border pb-4">
 						<div>
-							<p class="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+							<p
+								class="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-primary dark:text-primary-strong"
+							>
 								ZenPick receipt
 							</p>
 							<p class="mt-1 text-sm text-muted-foreground">A clearer way to spend your quota.</p>
 						</div>
-						<Thermometer class="size-5 text-primary" />
+						<Thermometer class="size-5 text-primary dark:text-primary-strong" />
 					</div>
 					<ReceiptBlock />
 					<p class="mt-4 border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground">
@@ -170,7 +173,7 @@
 	<section class="mb-20" aria-labelledby="product">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
-				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary"
+				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary dark:text-primary-strong"
 				aria-hidden="true"
 			></span>
 			<h2 id="product" class="text-2xl font-semibold tracking-tight text-foreground">
@@ -179,7 +182,7 @@
 			<div class="ml-auto hidden h-px flex-1 bg-border sm:block" aria-hidden="true"></div>
 		</div>
 
-		<div class="space-y-4 text-base leading-relaxed text-foreground/85">
+		<div class="space-y-4 text-base leading-relaxed text-foreground">
 			<p>
 				Three things, on one page. A sortable table of every Go model with live benchmark scores. A
 				quota calculator that turns a token estimate into a number-of-requests per window. A detail
@@ -198,7 +201,7 @@
 	<section class="mb-20" aria-labelledby="numbers">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
-				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary"
+				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary dark:text-primary-strong"
 				aria-hidden="true"
 			></span>
 			<h2 id="numbers" class="text-2xl font-semibold tracking-tight text-foreground">
@@ -243,14 +246,13 @@
 			{/await}
 		</div>
 
-		<div class="mt-3 flex items-center justify-end gap-1.5 text-xs text-muted-foreground/70">
+		<div class="mt-3 flex items-center justify-end gap-1.5 text-xs text-muted-foreground">
 			<span>Live price-vs-performance from upstream data.</span>
 			<a
 				href="/#compare-models"
-				class="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
+				class="text-primary underline-offset-4 hover:underline dark:text-primary-strong"
 			>
 				Interact with it — filter by task
-				<ArrowRight class="size-3" />
 			</a>
 		</div>
 
@@ -263,10 +265,9 @@
 		<div class="mt-8 text-center">
 			<a
 				href="/#compare-models"
-				class="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background px-4 py-2 text-sm text-foreground hover:underline underline-offset-12"
+				class="inline-flex items-center rounded-full border border-border/60 bg-background px-4 py-2 text-sm text-foreground hover:underline underline-offset-12"
 			>
 				See all 13+ models ranked
-				<ArrowRight class="size-4" />
 			</a>
 		</div>
 	</section>
@@ -275,7 +276,7 @@
 	<section class="mb-20" aria-labelledby="methodology">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
-				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary"
+				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary dark:text-primary-strong"
 				aria-hidden="true"
 			></span>
 			<h2 id="methodology" class="text-2xl font-semibold tracking-tight text-foreground">
@@ -284,7 +285,7 @@
 			<div class="ml-auto hidden h-px flex-1 bg-border sm:block" aria-hidden="true"></div>
 		</div>
 
-		<div class="space-y-4 text-base leading-relaxed text-foreground/85">
+		<div class="space-y-4 text-base leading-relaxed text-foreground">
 			<p>
 				Every model gets a 0–100 fit score for five scenarios — <em>Brainstorming</em>,
 				<em>Coding</em>, <em>Agentic</em>, <em>Budget</em>, and
@@ -316,7 +317,7 @@
 	<section class="mb-20" aria-labelledby="attribution">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
-				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary"
+				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary dark:text-primary-strong"
 				aria-hidden="true"
 			></span>
 			<h2 id="attribution" class="text-2xl font-semibold tracking-tight text-foreground">
@@ -325,14 +326,14 @@
 			<div class="ml-auto hidden h-px flex-1 bg-border sm:block" aria-hidden="true"></div>
 		</div>
 
-		<div class="space-y-4 text-base leading-relaxed text-foreground/85">
+		<div class="space-y-4 text-base leading-relaxed text-foreground">
 			<p>
 				Benchmark scores, pricing, and speed data are aggregated by
 				<a
 					href="https://modelgrep.com/"
 					target="_blank"
 					rel="noopener noreferrer"
-					class="inline-flex items-center gap-0.5 text-primary underline-offset-4 hover:underline"
+					class="inline-flex items-center gap-0.5 text-primary underline-offset-4 hover:underline dark:text-primary-strong"
 				>
 					modelgrep.com
 					<ExternalLink class="size-3" />
@@ -342,7 +343,7 @@
 					href="https://llm-stats.com/"
 					target="_blank"
 					rel="noopener noreferrer"
-					class="inline-flex items-center gap-0.5 text-primary underline-offset-4 hover:underline"
+					class="inline-flex items-center gap-0.5 text-primary underline-offset-4 hover:underline dark:text-primary-strong"
 				>
 					llm-stats.com
 					<ExternalLink class="size-3" />
@@ -353,7 +354,7 @@
 					href="https://opencode.ai/docs/go/"
 					target="_blank"
 					rel="noopener noreferrer"
-					class="inline-flex items-center gap-0.5 text-primary underline-offset-4 hover:underline"
+					class="inline-flex items-center gap-0.5 text-primary underline-offset-4 hover:underline dark:text-primary-strong"
 				>
 					OpenCode Go documentation
 					<ExternalLink class="size-3" />
@@ -376,7 +377,7 @@
 		<div class="mt-10 flex justify-center">
 			<a
 				href="/#compare-models"
-				class="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+				class="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 dark:bg-primary-strong dark:text-background dark:hover:bg-primary-strong/90"
 			>
 				Data checks out? Try the comparison
 				<ArrowRight class="size-4" />
@@ -388,7 +389,7 @@
 	<section class="mb-16" aria-labelledby="key">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
-				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary"
+				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary dark:text-primary-strong"
 				aria-hidden="true"
 			></span>
 			<h2 id="key" class="text-2xl font-semibold tracking-tight text-foreground">Thermal key</h2>
@@ -405,14 +406,14 @@
 			{#each burnTiers as tier (tier.name)}
 				{@const color =
 					tier.color === 'cyan'
-						? 'border-cyan-500/20 bg-cyan-500/5 text-cyan-500'
+						? 'border-cyan-500/20 bg-cyan-500/5 text-cyan-900 dark:border-cyan-400/30 dark:bg-cyan-500/10 dark:text-cyan-100'
 						: tier.color === 'emerald'
-							? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-500'
+							? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-100'
 							: tier.color === 'amber'
-								? 'border-amber-500/20 bg-amber-500/5 text-amber-500'
+								? 'border-amber-500/20 bg-amber-500/5 text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-100'
 								: tier.color === 'orange'
-									? 'border-orange-500/20 bg-orange-500/5 text-orange-500'
-									: 'border-red-500/20 bg-red-500/5 text-red-500'}
+									? 'border-orange-500/20 bg-orange-500/5 text-orange-900 dark:border-orange-400/30 dark:bg-orange-500/10 dark:text-orange-100'
+									: 'border-red-500/20 bg-red-500/5 text-red-900 dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-100'}
 				<div class="rounded-lg border p-4 {color}">
 					<div class="mb-2 flex items-center gap-2">
 						<span class="inline-block h-2 w-2 rounded-full bg-current" aria-hidden="true"></span>
@@ -424,12 +425,12 @@
 			{/each}
 		</div>
 
-		<div class="mt-6 flex items-center gap-2 text-xs text-muted-foreground/70">
+		<div class="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
 			<Thermometer class="size-3" />
 			<span>
 				Source function:
-				<code class="font-mono text-foreground/80">computeBurnScore()</code> in
-				<code class="font-mono text-foreground/80">src/lib/server/burn.ts</code>
+				<code class="font-mono text-foreground">computeBurnScore()</code> in
+				<code class="font-mono text-foreground">src/lib/server/burn.ts</code>
 			</span>
 		</div>
 	</section>
@@ -446,26 +447,23 @@
 						Every model burns quota at a different rate — pick the right one and the window lasts;
 						pick wrong and it empties in minutes.
 					</p>
-					<p
-						class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground/70"
-					>
+					<p class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
 						<span class="inline-flex items-center gap-1.5">
-							<CircleCheck class="size-3.5 text-emerald-500" />
+							<CircleCheck class="size-3.5 text-emerald-700 dark:text-emerald-300" />
 							Free, no account
 						</span>
 						<span class="inline-flex items-center gap-1.5">
-							<CircleCheck class="size-3.5 text-emerald-500" />
+							<CircleCheck class="size-3.5 text-emerald-700 dark:text-emerald-300" />
 							Live data from 3 upstream sources
 						</span>
 					</p>
 				</div>
 				<a
 					href="/#compare-models"
-					class="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+					class="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 dark:bg-primary-strong dark:text-background dark:hover:bg-primary-strong/90"
 				>
 					<Timer class="size-4" />
 					Find my model before my next session
-					<ArrowUpRight class="size-4" />
 				</a>
 			</div>
 		</div>
@@ -474,7 +472,7 @@
 	<!-- Footer -->
 	<footer class="border-t border-border pt-8">
 		<div
-			class="flex flex-col items-start gap-3 text-sm text-muted-foreground/70 sm:flex-row sm:items-center sm:justify-between"
+			class="flex flex-col items-start gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
 		>
 			<div class="flex items-center gap-3">
 				<a
