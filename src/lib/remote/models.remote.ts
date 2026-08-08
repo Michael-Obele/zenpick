@@ -10,7 +10,7 @@ import {
 	matchLlmStatsModel,
 	FRONTIER_MAX_AGE_DAYS
 } from '$lib/server/llm-stats';
-import { inferModel } from '$lib/server/inference';
+import { inferModel, inferMigrationHints } from '$lib/server/inference';
 import { blendBenchmarks } from '$lib/server/blend';
 import type {
 	GoModel,
@@ -175,7 +175,8 @@ const CACHE_KEY = `go-models-enriched:${fnv1a(
 		filterFrontierModels,
 		matchLlmStatsModel,
 		inferModel,
-		refreshCache
+		refreshCache,
+		inferMigrationHints
 	]
 		.map((fn) => fn.toString())
 		.join('\n')

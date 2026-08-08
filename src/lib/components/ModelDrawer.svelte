@@ -2,7 +2,7 @@
 	import type { GoModel } from '$lib/types/models';
 	import * as Drawer from '$lib/components/ui/drawer/index.js';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
-	import { ExternalLink, Copy, Check, Info, GitCompare } from '@lucide/svelte';
+	import { ExternalLink, Copy, Check, Info, GitCompare, LockKeyhole } from '@lucide/svelte';
 	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
 	import { compare, MAX_COMPARE } from '$lib/stores/compare.svelte';
 	import BurnBadge from './BurnBadge.svelte';
@@ -212,6 +212,19 @@
 										<div class="text-muted-foreground">{hint.reason}</div>
 									</div>
 								{/each}
+							</div>
+						</section>
+					{:else if !model.openWeight}
+						<section>
+							<h3 class="mb-2 flex items-center gap-1 text-sm font-medium text-muted-foreground">
+								<LockKeyhole class="size-3.5" />
+								Closed-source model
+							</h3>
+							<div
+								class="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground"
+							>
+								This model is closed-source, so it isn't an open-weight alternative to any frontier
+								model — there's no open replacement to compare it against.
 							</div>
 						</section>
 					{/if}

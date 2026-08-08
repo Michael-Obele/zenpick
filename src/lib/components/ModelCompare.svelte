@@ -11,7 +11,8 @@
 		ExternalLink,
 		Replace,
 		Trophy,
-		Wallet
+		Wallet,
+		LockKeyhole
 	} from '@lucide/svelte';
 	import { llmStatsModelUrl } from '$lib/utils/llm-stats-url';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
@@ -501,6 +502,11 @@
 							</li>
 						{/each}
 					</ul>
+				{:else if !m.openWeight}
+					<span class="inline-flex items-start gap-1.5 text-xs text-muted-foreground">
+						<LockKeyhole class="mt-0.5 size-3 shrink-0 text-muted-foreground/60" />
+						<span class="leading-snug">Closed-source — no open alternative to compare</span>
+					</span>
 				{:else}
 					<span class="text-xs text-muted-foreground/40">—</span>
 				{/if}

@@ -37,7 +37,10 @@ export function inferModel(
 	const name = lsModel && lsModel.id === goId ? lsModel.name : goIdToName(goId);
 	// openWeight is data-driven: llm-stats marks closed models (e.g. grok-4.5,
 	// gpt-5.6-luna) as open_weight: false, and the Go API now serves them.
-	const openWeight = lsModel ? lsModel.open_weight : true;
+	// Some providers are open-weight FAMILIES whose API-served variants are
+	// still open alternatives — Qwen (Alibaba) publishes its weights publicly,
+	// so its Go API models count as open for comparison purposes.
+	const openWeight = lsModel ? lsModel.open_weight || isOpenWeightFamily(goId) : true;
 	const pricing = inferPricing(goId, mgModel, docsPricing);
 	// OpenCode's published usage-limit request counts are the ground truth for
 	// how fast a model burns through the Go quota — prefer them over a
@@ -67,14 +70,22 @@ export function inferModel(
 
 	const speed = extractModelgrepSpeed(mgModel);
 	const tags = computeTags(benchmarks, burnDetails, speed, mgModel, lsModel);
-	const migrationHints = inferMigrationHints(lsModel ?? null, benchmarks, frontierCandidates);
+	const migrationHints = inferMigrationHints(
+		lsModel ?? null,
+		openWeight,
+		benchmarks,
+		frontierCandidates
+	);
+	const contextWindow =
+		mgModel?.context_length ?? lsModel?.context_window ?? inferContextWindow(goId);
 	const scenarioScores = computeScenarioScores({
 		goId,
 		pricing,
 		benchmarks,
 		burnDetails,
 		speed,
-		mgModel
+		mgModel,
+		contextWindow
 	});
 
 	return {
@@ -83,7 +94,7 @@ export function inferModel(
 		provider: mgModel?.maker ?? lsModel?.organization?.name ?? inferProvider(goId),
 		description: mgModel?.description ?? lsModel?.description ?? '',
 		openWeight,
-		contextWindow: mgModel?.context_length ?? lsModel?.context_window ?? inferContextWindow(goId),
+		contextWindow,
 		releaseDate: lsModel?.release_date ?? null,
 		pricing,
 		quota: {
@@ -144,13 +155,19 @@ function extractModelgrepSpeed(mgModel: ModelgrepModelData | null): ModelSpeed |
  * Closed-source Go models (e.g. grok-4.5, gpt-5.6-luna) are themselves
  * "replaced" targets, not open alternatives — they get no hints.
  */
-function inferMigrationHints(
+/**
+ * Compute "replaces" hints for one Go model.
+ * Exported so the content-addressed models cache key (models.remote.ts)
+ * covers it — editing the reason text must invalidate cached models.
+ */
+export function inferMigrationHints(
 	lsModel: LlmStatsModel | null,
+	openWeight: boolean,
 	goBenchmarks: ModelBenchmarks,
 	frontierCandidates: FrontierCandidate[]
 ): MigrationHint[] {
 	// Only open-weight Go models can be "open alternatives" to closed models.
-	if (!lsModel || !lsModel.open_weight || frontierCandidates.length === 0) return [];
+	if (!lsModel || !openWeight || frontierCandidates.length === 0) return [];
 
 	const cats: { key: 'coding' | 'reasoning' | 'math'; label: string }[] = [
 		{ key: 'coding', label: 'coding' },
@@ -187,7 +204,7 @@ function inferMigrationHints(
 
 	return [...byModel.values()].map((e) => ({
 		model: e.name,
-		reason: `Comparable on ${e.cats.join(' & ')} (per benchmarks)`
+		reason: `Comparable on ${e.cats.join(' & ')}`
 	}));
 }
 
@@ -208,6 +225,19 @@ const PROVIDER_BY_PREFIX: Record<string, string> = {
 function inferProvider(goId: string): string {
 	const prefix = Object.keys(PROVIDER_BY_PREFIX).find((p) => goId.startsWith(p));
 	return prefix ? PROVIDER_BY_PREFIX[prefix] : 'Unknown';
+}
+
+/**
+ * Providers whose models are OPEN-WEIGHT FAMILIES — they publish their
+ * weights publicly even when the API-served variant is flagged closed by
+ * llm-stats. These still count as "open alternatives" for the Replaces
+ * comparison. Provider-level on purpose: no per-model-ID hardcoding, so
+ * new family members (qwen3.9, qwen4…) resolve automatically.
+ */
+const OPEN_WEIGHT_FAMILIES = ['qwen'];
+
+function isOpenWeightFamily(goId: string): boolean {
+	return OPEN_WEIGHT_FAMILIES.some((prefix) => goId.startsWith(prefix));
 }
 
 function inferContextWindow(goId: string): number {

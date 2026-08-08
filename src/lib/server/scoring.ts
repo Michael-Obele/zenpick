@@ -14,6 +14,8 @@ interface ScenarioInputs {
 	burnDetails: BurnDetails;
 	speed: ModelSpeed | null;
 	mgModel: ModelgrepModelData | null;
+	/** Resolved context window (modelgrep → llm-stats → inference fallback). */
+	contextWindow: number;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────
@@ -25,20 +27,24 @@ function normalize(value: number, max: number): number {
 
 // ─── Two-axis scoring ─────────────────────────────────────────────────
 
-function scoreQualityCoding(
-	benchmarks: ModelBenchmarks,
-	mgModel: ModelgrepModelData | null
-): number {
-	const aaCoding = mgModel?.benchmarks?.artificial_analysis?.coding;
+function scoreQualityCoding(benchmarks: ModelBenchmarks): number {
+	// Quality = BLENDED benchmark scores, not raw modelgrep AA fields.
+	// `benchmarks.coding` already prefers modelgrep AA and falls back to
+	// llm-stats when AA data is missing — so a model that DISPLAYS a real
+	// coding score can never collapse to ~0 here (the M2.5 bug).
 	let score = 0;
 	let weight = 0;
 
-	if (aaCoding != null) {
-		score += normalize(aaCoding, 100) * 0.7;
+	if (benchmarks.coding != null) {
+		score += normalize(benchmarks.coding, 100) * 0.7;
 		weight += 0.7;
 	}
 	if (benchmarks.sweBenchVerified != null) {
-		score += normalize(benchmarks.sweBenchVerified, 60) * 0.2;
+		// sweBenchVerified is stored internally as a 0–1 fraction (displayed
+		// ×100). Scale it back to 0–100 before applying the 60 cap — the old
+		// code normalized a 0–1 value against 60, silently dividing its
+		// contribution by ~100 and zeroing out every model missing AA coding.
+		score += normalize(benchmarks.sweBenchVerified * 100, 60) * 0.2;
 		weight += 0.2;
 	}
 	return weight > 0 ? score / weight : 0;
@@ -69,12 +75,17 @@ function scoreFitCoding(speed: ModelSpeed | null, mgModel: ModelgrepModelData | 
 	return weight > 0 ? score / weight : 0.5;
 }
 
-function scoreQualityReasoning(mgModel: ModelgrepModelData | null): number {
-	const aaIntel = mgModel?.benchmarks?.artificial_analysis?.intelligence;
-	return aaIntel != null ? normalize(aaIntel, 100) : 0;
+function scoreQualityReasoning(benchmarks: ModelBenchmarks): number {
+	// Blended reasoning (modelgrep AA.intelligence primary with outlier
+	// guard, llm-stats fallback) — same value shown in the Reasoning column.
+	return benchmarks.reasoning != null ? normalize(benchmarks.reasoning, 100) : 0;
 }
 
-function scoreFitBrainstorming(ctx: number, mgModel: ModelgrepModelData | null): number {
+function scoreFitBrainstorming(
+	ctx: number,
+	reasoning: number | null,
+	mgModel: ModelgrepModelData | null
+): number {
 	// Pure ability fit for open-ended ideation (cost lives in the Burn column, not here).
 	//   40% context       — long chains of thought need long context
 	//   40% AA.intelligence — raw reasoning quality
@@ -83,9 +94,8 @@ function scoreFitBrainstorming(ctx: number, mgModel: ModelgrepModelData | null):
 	let weight = 0;
 	score += normalize(ctx, 1_000_000) * 0.4;
 	weight += 0.4;
-	const intel = mgModel?.benchmarks?.artificial_analysis?.intelligence;
-	if (intel != null) {
-		score += normalize(intel, 100) * 0.4;
+	if (reasoning != null) {
+		score += normalize(reasoning, 100) * 0.4;
 		weight += 0.4;
 	}
 	if (mgModel?.capabilities?.reasoning != null) {
@@ -96,11 +106,8 @@ function scoreFitBrainstorming(ctx: number, mgModel: ModelgrepModelData | null):
 	return weight > 0 ? score / weight : 0.5;
 }
 
-function scoreQualityAgentic(
-	benchmarks: ModelBenchmarks,
-	mgModel: ModelgrepModelData | null
-): number {
-	return scoreQualityCoding(benchmarks, mgModel);
+function scoreQualityAgentic(benchmarks: ModelBenchmarks): number {
+	return scoreQualityCoding(benchmarks);
 }
 
 function scoreFitAgentic(
@@ -140,29 +147,30 @@ function scoreFitBudget(_mgModel: ModelgrepModelData | null): number {
 	return 1.0;
 }
 
-function scoreQualityFrontend(mgModel: ModelgrepModelData | null): number {
+function scoreQualityFrontend(
+	benchmarks: ModelBenchmarks,
+	mgModel: ModelgrepModelData | null
+): number {
 	// UI/website generation quality — driven by Design Arena Elo, the canonical
 	// human-preference benchmark for UI work (head-to-head votes on generated UIs).
 	// The 1500 ceiling is generous: the current top sits around 1380, so we have
 	// headroom for future models without compressing the rankings.
 	//   70% Design Arena Elo  — direct UI quality signal
-	//   20% AA.intelligence   — smarter models write cleaner, more idiomatic code
-	//   10% AA.coding         — UI work is still code; can't be terrible at it
+	//   20% blended reasoning — smarter models write cleaner, more idiomatic code
+	//   10% blended coding    — UI work is still code; can't be terrible at it
 	const elo = mgModel?.benchmarks?.design_arena?.elo;
-	const intel = mgModel?.benchmarks?.artificial_analysis?.intelligence;
-	const coding = mgModel?.benchmarks?.artificial_analysis?.coding;
 	let score = 0;
 	let weight = 0;
 	if (elo != null) {
 		score += normalize(elo, 1500) * 0.7;
 		weight += 0.7;
 	}
-	if (intel != null) {
-		score += normalize(intel, 100) * 0.2;
+	if (benchmarks.reasoning != null) {
+		score += normalize(benchmarks.reasoning, 100) * 0.2;
 		weight += 0.2;
 	}
-	if (coding != null) {
-		score += normalize(coding, 100) * 0.1;
+	if (benchmarks.coding != null) {
+		score += normalize(benchmarks.coding, 100) * 0.1;
 		weight += 0.1;
 	}
 	// Neutral 0.5 floor when we have no quality signal — see scoreFitCoding.
@@ -200,22 +208,23 @@ function scoreFitFrontend(speed: ModelSpeed | null, mgModel: ModelgrepModelData 
 // ─── Public API ───────────────────────────────────────────────────────
 
 export function computeScenarioScores(inputs: ScenarioInputs): ScenarioScores {
+	const ctx = inputs.contextWindow;
 	return {
 		coding: computeScore(
-			scoreQualityCoding(inputs.benchmarks, inputs.mgModel),
+			scoreQualityCoding(inputs.benchmarks),
 			scoreFitCoding(inputs.speed, inputs.mgModel)
 		),
 		brainstorming: computeScore(
-			scoreQualityReasoning(inputs.mgModel),
-			scoreFitBrainstorming(inputs.mgModel?.context_length ?? 128_000, inputs.mgModel)
+			scoreQualityReasoning(inputs.benchmarks),
+			scoreFitBrainstorming(ctx, inputs.benchmarks.reasoning, inputs.mgModel)
 		),
 		agentic: computeScore(
-			scoreQualityAgentic(inputs.benchmarks, inputs.mgModel),
-			scoreFitAgentic(inputs.mgModel?.context_length ?? 128_000, inputs.speed, inputs.mgModel)
+			scoreQualityAgentic(inputs.benchmarks),
+			scoreFitAgentic(ctx, inputs.speed, inputs.mgModel)
 		),
 		budget: computeScore(scoreQualityBudget(inputs.pricing), scoreFitBudget(inputs.mgModel)),
 		frontend: computeScore(
-			scoreQualityFrontend(inputs.mgModel),
+			scoreQualityFrontend(inputs.benchmarks, inputs.mgModel),
 			scoreFitFrontend(inputs.speed, inputs.mgModel)
 		)
 	};

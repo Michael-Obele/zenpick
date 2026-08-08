@@ -90,10 +90,10 @@ reason = "Data-table template: sort/filter/need-ranked conditional rows"
 [[health.thresholdOverrides]]
 files = ["src/lib/components/ModelCompare.svelte"]
 functions = ["<template>"]
-maxCyclomatic = 39
-maxCognitive = 71
-maxCrap = 1500.0
-reason = "Comparison grid with per-metric verdict cells"
+maxCyclomatic = 46
+maxCognitive = 88
+maxCrap = 2200.0
+reason = "Comparison grid with per-metric verdict cells + closed-source note states"
 
 [[health.thresholdOverrides]]
 files = ["src/lib/components/QuotaCalculator.svelte"]
@@ -108,8 +108,8 @@ files = ["src/lib/components/ModelDrawer.svelte"]
 functions = ["<template>"]
 maxCyclomatic = 22
 maxCognitive = 45
-maxCrap = 500.0
-reason = "Model detail drawer with pricing/benchmark sections"
+maxCrap = 510.0
+reason = "Model detail drawer with pricing/benchmark sections + closed-source note"
 
 [[health.thresholdOverrides]]
 files = ["src/lib/components/Site/SiteHeader.svelte"]
@@ -166,10 +166,10 @@ reason = "Debug route section switcher (11 conditional report panels)"
 [[health.thresholdOverrides]]
 files = ["src/lib/components/debug/CompareLogic.svelte"]
 functions = ["<template>"]
-maxCyclomatic = 20
-maxCognitive = 37
-maxCrap = 430.0
-reason = "Debug comparison matrix: per-category relation chips, tooltips, legend"
+maxCyclomatic = 21
+maxCognitive = 38
+maxCrap = 470.0
+reason = "Debug comparison matrix: relation chips, tooltips, legend, closed-source state"
 
 
 # Per-issue-type severity: "error" (fail CI), "warn" (report only), "off" (ignore)

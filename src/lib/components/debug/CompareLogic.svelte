@@ -219,10 +219,15 @@
 				<span class="font-medium text-foreground">Currently replaces:</span>
 				{selected.migrationHints.map((h) => `${h.model} (${h.reason})`).join(' · ')}
 			</div>
+		{:else if !selected.openWeight}
+			<div class="text-xs text-muted-foreground">
+				<span class="font-medium text-foreground">Closed-source model:</span> no open alternative to compare
+				— it is a replacement target, not an alternative.
+			</div>
 		{:else}
 			<div class="text-xs text-muted-foreground">
 				<span class="font-medium text-foreground">Currently replaces:</span> nothing — no frontier
-				model is within the {MIGRATION_BAND}-point band (or this model is closed-source).
+				model is within the {MIGRATION_BAND}-point band.
 			</div>
 		{/if}
 	</div>
