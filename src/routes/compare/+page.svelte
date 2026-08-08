@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import type { Component } from 'svelte';
 	import { useSearchParams } from 'runed/kit';
 	import type { GoModel } from '$lib/types/models';
 	import ModelCompare from '$lib/components/ModelCompare.svelte';
@@ -17,30 +16,22 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import {
-		Bot,
-		Brain,
-		Calculator,
+		ArrowLeft,
 		Check,
-		Code,
 		Copy,
 		Crown,
 		Dices,
 		ExternalLink,
 		GitCompare,
-		Info,
-		Layers,
-		Palette,
 		Plus,
-		Sparkles,
-		X,
-		ArrowLeft
+		X
 	} from '@lucide/svelte';
 	import { LightRays } from '$lib/components/magic/light-rays';
 	import type { PageProps } from './$types';
 
 	/** Task focus options for the scenario crown — same vocabulary as the funnel. */
-	const SCENARIO_OPTIONS: Array<{ value: string; label: string; icon: Component }> = [
-		{ value: '', label: 'Any task', icon: Sparkles },
+	const SCENARIO_OPTIONS: Array<{ value: string; label: string }> = [
+		{ value: '', label: 'Any task' },
 		...COMPARE_SCENARIO_VALUES.map((value) => ({
 			value,
 			label:
@@ -52,17 +43,7 @@
 							? 'Brainstorming'
 							: value === 'budget'
 								? 'Budget'
-								: 'Frontend',
-			icon:
-				value === 'coding'
-					? Code
-					: value === 'agentic'
-						? Bot
-						: value === 'brainstorming'
-							? Brain
-							: value === 'budget'
-								? Calculator
-								: Palette
+								: 'Frontend'
 		}))
 	];
 
@@ -248,11 +229,13 @@
 						<ArrowLeft class="size-3.5" />
 						Back to all models
 					</a>
-					<p class="mb-2 font-mono text-xs font-medium tracking-[0.18em] text-primary">
+					<p
+						class="mb-2 font-mono text-xs font-medium tracking-[0.18em] text-primary dark:text-primary-strong"
+					>
 						MODEL DECISION SURFACE
 					</p>
 					<h1 class="flex items-center gap-2 text-3xl font-bold tracking-tight text-foreground">
-						<GitCompare class="size-7 text-primary" />
+						<GitCompare class="size-7 text-primary dark:text-primary-strong" />
 						Find the model that fits the work
 					</h1>
 					<p class="mt-2 max-w-xl text-sm text-muted-foreground">
@@ -279,7 +262,7 @@
 								class={buttonVariants({ variant: 'outline', size: 'icon' })}
 							>
 								{#if copied}
-									<Check class="size-4 text-emerald-500" />
+									<Check class="size-4 text-emerald-700 dark:text-emerald-300" />
 								{:else}
 									<Copy class="size-4" />
 								{/if}
@@ -324,7 +307,11 @@
 					<Select.Root type="single" bind:value={pick} onValueChange={handlePick} disabled={atMax}>
 						<Select.Trigger
 							id="compare-model-picker"
-							class={buttonVariants({ variant: 'default', size: 'default' })}
+							class={buttonVariants({
+								variant: 'default',
+								size: 'default',
+								class: 'focus-visible:ring-ring data-placeholder:text-primary-foreground'
+							})}
 							disabled={atMax}
 						>
 							<Plus class="size-4" />
@@ -339,8 +326,7 @@
 						</Select.Content>
 					</Select.Root>
 					{#if selectedModels.length >= 2}
-						<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-							<Info class="size-3" />
+						<span class="text-xs text-muted-foreground">
 							Tip: use <span class="font-medium text-foreground">Ask AI</span> to dig deeper.
 						</span>
 					{/if}
@@ -383,36 +369,23 @@
 			{#if selectedModels.length > 0}
 				<div class="mt-6 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
 					<div class="flex flex-wrap items-center justify-between gap-3">
-						<div class="flex items-center gap-3">
-							<Sparkles class="size-4 shrink-0 text-primary" />
-							<div>
-								<label for="compare-scenario" class="text-sm font-semibold text-foreground"
-									>Focus on a task</label
-								>
-								<p class="text-xs text-muted-foreground">
-									Crown the best model in this comparison for the work you're doing.
-								</p>
-							</div>
+						<div>
+							<label for="compare-scenario" class="text-sm font-semibold text-foreground"
+								>Focus on a task</label
+							>
+							<p class="text-xs text-muted-foreground">
+								Crown the best model in this comparison for the work you're doing.
+							</p>
 						</div>
 						<Select.Root type="single" value={scenarioValue} onValueChange={handleScenarioChange}>
-							<Select.Trigger id="compare-scenario" class="w-full sm:w-64">
-								{@const opt =
-									SCENARIO_OPTIONS.find((o) => o.value === scenarioValue) ?? SCENARIO_OPTIONS[0]}
-								{@const OptIcon = opt.icon}
-								<span class="inline-flex items-center gap-2">
-									<OptIcon class="size-4 text-primary" />
-									{opt.label}
-								</span>
+							<Select.Trigger id="compare-scenario" class="w-full focus-visible:ring-ring sm:w-64">
+								{SCENARIO_OPTIONS.find((o) => o.value === scenarioValue)?.label ?? 'Any task'}
 							</Select.Trigger>
 							<Select.Content class="max-h-[min(30vh,80vh)]">
 								<Select.Group>
 									{#each SCENARIO_OPTIONS as option (option.value || 'any')}
-										{@const OptionIcon = option.icon}
 										<Select.Item value={option.value} label={option.label}>
-											<span class="inline-flex items-center gap-2">
-												<OptionIcon class="size-4 text-muted-foreground" />
-												{option.label}
-											</span>
+											{option.label}
 										</Select.Item>
 									{/each}
 								</Select.Group>
@@ -427,11 +400,13 @@
 							class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3"
 						>
 							<p class="min-w-0 flex-1 text-sm leading-relaxed text-muted-foreground">
-								<Crown class="mr-1.5 inline size-4 -translate-y-px text-amber-500" />
+								<Crown
+									class="mr-1.5 inline size-4 -translate-y-px text-amber-800 dark:text-amber-300"
+								/>
 								For <span class="font-medium text-foreground">{scenarioLabel}</span>,
 								<span class="font-semibold text-foreground">{winner.name}</span> takes the crown —
 								the best blend of fit, capacity, and quality in this comparison
-								<span class="text-muted-foreground/80"
+								<span class="text-muted-foreground"
 									>(blend {crown.winner.score} · fit {winner.scenarioScores[scenarioValue]})</span
 								>.
 							</p>
@@ -441,7 +416,6 @@
 								onclick={applyMix}
 								title="Swap the comparison to the crowned winner and its runner-up"
 							>
-								<Layers class="size-3.5" />
 								Best mix: {winner.name} + {runnerUp.name}
 							</button>
 						</div>
@@ -456,7 +430,7 @@
 				<div
 					class="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border bg-card/40 px-6 py-16 text-center"
 				>
-					<GitCompare class="size-10 text-muted-foreground/40" />
+					<GitCompare class="size-10 text-muted-foreground" />
 					<p class="text-sm font-medium text-foreground">No models selected yet</p>
 					<p class="max-w-sm text-sm text-muted-foreground">
 						Start with a fresh suggested pair — randomized from the top of the catalog each visit —
