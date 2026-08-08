@@ -36,18 +36,25 @@ html {
 	--card-foreground: oklch(0.147 0.004 49.25);
 	--popover: oklch(1 0 0);
 	--popover-foreground: oklch(0.147 0.004 49.25);
-	--primary: oklch(0.511 0.096 186.391);
+	/* Deep teal — 7.6:1 on white so small text/buttons pass WCAG AAA. */
+	--primary: oklch(0.43 0.09 186.391);
 	--primary-foreground: oklch(0.984 0.014 180.72);
+	/* Extra-deep teal for text on primary-tinted chips (9.4:1 on bg-primary/10). */
+	--primary-strong: oklch(0.36 0.09 186.391);
 	--secondary: oklch(0.967 0.001 286.375);
 	--secondary-foreground: oklch(0.21 0.006 285.885);
 	--muted: oklch(0.97 0.001 106.424);
-	--muted-foreground: oklch(0.553 0.013 58.071);
+	/* Darkened from 0.553 → 0.45 L: 7.5:1 on white (WCAG AAA for normal text). */
+	--muted-foreground: oklch(0.45 0.013 58.071);
 	--accent: oklch(0.511 0.096 186.391);
 	--accent-foreground: oklch(0.984 0.014 180.72);
-	--destructive: oklch(0.577 0.245 27.325);
+	/* Darkened from 0.577 → 0.43 L: 7.4:1 on white. */
+	--destructive: oklch(0.43 0.21 27.325);
 	--border: oklch(0.923 0.003 48.717);
-	--input: oklch(0.923 0.003 48.717);
-	--ring: oklch(0.709 0.01 56.259);
+	/* Teal-gray border 4.8:1 on white — meets 1.4.11 (3:1) for input boundaries. */
+	--input: oklch(0.55 0.035 187);
+	/* Focus rings share the deep primary so keyboard focus is clearly visible. */
+	--ring: oklch(0.43 0.09 186.391);
 	--chart-1: oklch(0.833 0.145 321.434);
 	--chart-2: oklch(0.667 0.295 322.15);
 	--chart-3: oklch(0.591 0.293 322.896);
@@ -73,10 +80,13 @@ html {
 	--popover-foreground: oklch(0.985 0.001 106.423);
 	--primary: oklch(0.437 0.078 188.216);
 	--primary-foreground: oklch(0.984 0.014 180.72);
+	/* Bright mint — 10:1 on the dark background, for dark-mode text/icons/links. */
+	--primary-strong: oklch(0.84 0.11 190);
 	--secondary: oklch(0.274 0.006 286.033);
 	--secondary-foreground: oklch(0.985 0 0);
 	--muted: oklch(0.268 0.007 34.298);
-	--muted-foreground: oklch(0.709 0.01 56.259);
+	/* Brightened from 0.709 → 0.74 L: 7.9:1 on the dark card (WCAG AAA). */
+	--muted-foreground: oklch(0.74 0.01 56.259);
 	--accent: oklch(0.437 0.078 188.216);
 	--accent-foreground: oklch(0.984 0.014 180.72);
 	--destructive: oklch(0.704 0.191 22.216);
@@ -126,6 +136,7 @@ html {
 	--color-secondary: var(--secondary);
 	--color-primary-foreground: var(--primary-foreground);
 	--color-primary: var(--primary);
+	--color-primary-strong: var(--primary-strong);
 	--color-popover-foreground: var(--popover-foreground);
 	--color-popover: var(--popover);
 	--color-card-foreground: var(--card-foreground);
