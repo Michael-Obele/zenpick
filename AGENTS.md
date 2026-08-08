@@ -86,6 +86,7 @@ Default to **Remote Functions** (experimental `@sveltejs/kit` features or standa
 ### Styling & UI Design
 
 - **Gradients**: NEVER use gradients; prefer solid colors, clean layouts, and professional minimalist aesthetics.
+- **Icons**: Use Lucide icons sparingly and only where they add real meaning — status, direction, or an action affordance. Never add decorative filler icons, and in particular avoid `Sparkles`/AI-style icons on buttons, headings, and dropdown options. Prefer text-only labels for dropdown options, tips, and captions; a control should communicate its purpose without its icon.
 - **Tailwind v4**: Use semantic tokens from the CSS configuration. Avoid hardcoded HSL/Hex strings in components.
 - **Responsive**: Use standard Tailwind responsive prefixes (e.g., `lg:flex-row`).
 - **Utility**: Use a `cn` utility (clsx + tailwind-merge) for conditional class merging.
