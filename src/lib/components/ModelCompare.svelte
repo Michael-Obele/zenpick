@@ -214,7 +214,10 @@
 				{#if anchors[m.id]}
 					{@const a = ANCHOR_META[anchors[m.id]]}
 					{@const Icon = a.icon}
-					<Badge variant="outline" class="mt-1.5 border-primary/20 bg-primary/10 text-primary">
+					<Badge
+						variant="outline"
+						class="mt-1.5 border-primary/30 bg-primary/10 text-primary-strong dark:border-primary-strong/30 dark:bg-primary/20 dark:text-primary-strong"
+					>
 						<Icon class="size-3" />
 						{a.label}
 					</Badge>
@@ -223,7 +226,7 @@
 					{#if crownWinnerId === m.id}
 						<Badge
 							variant="outline"
-							class="mt-1.5 border-amber-500/40 bg-amber-500/10 text-amber-500"
+							class="mt-1.5 border-amber-500/40 bg-amber-500/10 text-amber-900 dark:border-amber-400/40 dark:bg-amber-500/10 dark:text-amber-100"
 						>
 							<Crown class="size-3" />
 							Best for {scenarioLabelOf(scenario)}
@@ -245,15 +248,15 @@
 			class="flex items-center gap-2 border-t border-border bg-primary/5 px-3 py-3 text-sm font-medium text-muted-foreground"
 		>
 			{#if scenario}
-				<Crown class="size-4 text-amber-500" />
+				<Crown class="size-4 text-amber-800 dark:text-amber-300" />
 				Crown
 			{:else}
-				<Scale class="size-4 text-primary" />
+				<Scale class="size-4 text-primary dark:text-primary-strong" />
 				Verdict
 			{/if}
 		</div>
 		<div
-			class="border-t border-l border-border bg-primary/5 px-3 py-3 text-sm leading-relaxed text-foreground/80"
+			class="border-t border-l border-border bg-primary/5 px-3 py-3 text-sm leading-relaxed text-foreground"
 			style="grid-column: 2 / -1;"
 		>
 			{scenario ? scenarioVerdict : verdict}
@@ -267,8 +270,7 @@
 					<div class="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
 						<div class="h-full rounded-full bg-violet-500" style="width: {pct}%"></div>
 					</div>
-					<span
-						class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground/80'}"
+					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
 						>{value == null ? '—' : value.toFixed(1)}</span
 					>
 				</div>
@@ -277,7 +279,7 @@
 
 		<CompareRow label="Reasoning" {models} getValue={(m) => m.benchmarks.reasoning} hint="0-100">
 			{#snippet format(value, isBest)}
-				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground/80'}"
+				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
 					>{value == null ? '—' : value.toFixed(1)}</span
 				>
 			{/snippet}
@@ -285,7 +287,7 @@
 
 		<CompareRow label="Math" {models} getValue={(m) => m.benchmarks.math} hint="0-100">
 			{#snippet format(value, isBest)}
-				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground/80'}"
+				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
 					>{value == null ? '—' : value.toFixed(1)}</span
 				>
 			{/snippet}
@@ -298,7 +300,7 @@
 			hint="0-100"
 		>
 			{#snippet format(value, isBest)}
-				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground/80'}"
+				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
 					>{value == null ? '—' : value.toFixed(1)}</span
 				>
 			{/snippet}
@@ -314,8 +316,9 @@
 		>
 			{#snippet format(value, isBest)}
 				<span
-					class="tabular-nums {isBest ? 'font-semibold text-emerald-600' : 'text-foreground/80'}"
-					>{fmtPrice(value)}</span
+					class="tabular-nums {isBest
+						? 'font-semibold text-emerald-800 dark:text-emerald-300'
+						: 'text-foreground'}">{fmtPrice(value)}</span
 				>
 			{/snippet}
 		</CompareRow>
@@ -329,8 +332,9 @@
 		>
 			{#snippet format(value, isBest)}
 				<span
-					class="tabular-nums {isBest ? 'font-semibold text-emerald-600' : 'text-foreground/80'}"
-					>{fmtPrice(value)}</span
+					class="tabular-nums {isBest
+						? 'font-semibold text-emerald-800 dark:text-emerald-300'
+						: 'text-foreground'}">{fmtPrice(value)}</span
 				>
 			{/snippet}
 		</CompareRow>
@@ -344,7 +348,7 @@
 			tieDecimals={0}
 		>
 			{#snippet format(value, isBest)}
-				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground/80'}"
+				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
 					>{fmtTokens(value)}</span
 				>
 			{/snippet}
@@ -352,7 +356,7 @@
 
 		<CompareRow label="Req / 5h" {models} getValue={(m) => m.quota.requestsPer5h} tieDecimals={0}>
 			{#snippet format(value, isBest)}
-				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground/80'}"
+				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
 					>{value == null ? '—' : value.toLocaleString()}</span
 				>
 			{/snippet}
@@ -365,7 +369,7 @@
 			tieDecimals={0}
 		>
 			{#snippet format(value, isBest)}
-				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground/80'}"
+				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
 					>{value == null ? '—' : value.toLocaleString()}</span
 				>
 			{/snippet}
@@ -378,7 +382,7 @@
 			tieDecimals={0}
 		>
 			{#snippet format(value, isBest)}
-				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground/80'}"
+				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
 					>{value == null ? '—' : value.toLocaleString()}</span
 				>
 			{/snippet}
@@ -394,8 +398,9 @@
 		>
 			{#snippet format(value, isBest)}
 				<span
-					class="tabular-nums {isBest ? 'font-semibold text-emerald-600' : 'text-foreground/80'}"
-					>{value == null ? '—' : value}</span
+					class="tabular-nums {isBest
+						? 'font-semibold text-emerald-800 dark:text-emerald-300'
+						: 'text-foreground'}">{value == null ? '—' : value}</span
 				>
 			{/snippet}
 		</CompareRow>
@@ -416,8 +421,9 @@
 								>{label}</span
 							>
 							<span
-								class={active ? 'font-semibold text-primary' : 'tabular-nums text-foreground/80'}
-								>{m.scenarioScores[key]}</span
+								class={active
+									? 'font-semibold text-primary dark:text-primary-strong'
+									: 'tabular-nums text-foreground'}>{m.scenarioScores[key]}</span
 							>
 						</div>
 					{/each}
@@ -438,7 +444,9 @@
 					: ''}"
 			>
 				{#if m.openWeight}
-					<span class="inline-flex items-center gap-1 font-medium text-emerald-600">
+					<span
+						class="inline-flex items-center gap-1 font-medium text-emerald-800 dark:text-emerald-300"
+					>
 						<Check class="size-3.5" /> Yes
 					</span>
 				{:else}

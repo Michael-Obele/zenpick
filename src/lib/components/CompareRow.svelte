@@ -74,7 +74,7 @@
 			</Badge>
 		{/if}
 		{#if hint}
-			<span class="text-[10px] font-normal text-muted-foreground/60">{hint}</span>
+			<span class="text-[10px] font-normal text-muted-foreground">{hint}</span>
 		{/if}
 	</div>
 	{#each models as m, i (m.id)}
@@ -84,7 +84,10 @@
 				: ''}"
 		>
 			{#if best === i}
-				<Crown class="absolute right-2 top-2 size-3.5 text-amber-500" aria-hidden="true" />
+				<Crown
+					class="absolute right-2 top-2 size-3.5 text-amber-800 dark:text-amber-300"
+					aria-hidden="true"
+				/>
 			{/if}
 			{@render format?.(values[i], best === i)}
 		</div>
