@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { Hash } from '@lucide/svelte';
-
 	interface Props {
 		figure: string;
 		unit?: string;
@@ -23,12 +21,11 @@
 		{/if}
 	</div>
 
-	<div class="mt-2 flex items-center gap-1.5">
-		<Hash class="size-3 shrink-0 text-muted-foreground/60" />
+	<div class="mt-2">
 		<span class="text-xs uppercase tracking-wider text-muted-foreground">{label}</span>
 	</div>
 
 	{#if footnote}
-		<p class="mt-3 text-xs leading-relaxed text-muted-foreground/70">{footnote}</p>
+		<p class="mt-3 text-xs leading-relaxed text-muted-foreground">{footnote}</p>
 	{/if}
 </div>

@@ -10,15 +10,16 @@
 	let { variant = 'cyan', label, children }: Props = $props();
 
 	const variantClasses = {
-		cyan: 'border-cyan-500/30 bg-cyan-500/5 text-cyan-100',
-		amber: 'border-amber-500/30 bg-amber-500/5 text-amber-100',
-		red: 'border-red-500/30 bg-red-500/5 text-red-100'
+		cyan: 'border-cyan-500/30 bg-cyan-500/5 text-cyan-100 dark:text-cyan-100',
+		amber: 'border-amber-500/30 bg-amber-500/5 text-amber-100 dark:text-amber-100',
+		red: 'border-red-500/30 bg-red-500/5 text-red-100 dark:text-red-100'
 	} as const;
 
 	const labelClasses = {
-		cyan: 'text-cyan-500',
-		amber: 'text-amber-500',
-		red: 'text-red-500'
+		// 900-level on light tints and 200-level on dark tints exceed AAA 7:1.
+		cyan: 'text-cyan-900 dark:text-cyan-200',
+		amber: 'text-amber-900 dark:text-amber-200',
+		red: 'text-red-900 dark:text-red-200'
 	} as const;
 </script>
 

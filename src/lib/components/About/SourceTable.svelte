@@ -41,7 +41,7 @@
 			<Database class="size-3" />
 			data_sources.json
 		</span>
-		<span class="text-cyan-500">3 sources · required attribution</span>
+		<span class="text-cyan-900 dark:text-cyan-200">3 sources · required attribution</span>
 	</div>
 
 	<table class="w-full text-left text-sm">
@@ -60,19 +60,21 @@
 							href={source.href}
 							target="_blank"
 							rel="noopener noreferrer"
-							class="inline-flex items-center gap-1 text-cyan-500 underline-offset-4 hover:underline"
+							class="inline-flex items-center gap-1 text-cyan-800 underline-offset-4 hover:underline dark:text-cyan-300"
 						>
 							{source.provider}
 							<ExternalLink class="size-3" />
 						</a>
 						{#if source.required}
-							<div class="mt-1 text-[10px] uppercase tracking-wider text-amber-500/80">
+							<div
+								class="mt-1 text-[10px] uppercase tracking-wider text-amber-900 dark:text-amber-300"
+							>
 								attribution required
 							</div>
 						{/if}
 					</td>
 					<td class="px-4 py-3 text-xs text-muted-foreground">{source.license}</td>
-					<td class="px-4 py-3 text-xs text-foreground/80">{source.use}</td>
+					<td class="px-4 py-3 text-xs text-foreground">{source.use}</td>
 				</tr>
 			{/each}
 		</tbody>

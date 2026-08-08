@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Database, Sigma, Gauge } from '@lucide/svelte';
+	import { Database, Sigma } from '@lucide/svelte';
 
 	// Three-stage data flow diagram: sources → engine → surface
 	// Drawn as an engineering block diagram with dimension lines and callouts.
@@ -27,11 +27,8 @@
 	<figcaption
 		class="mb-4 flex items-center justify-between border-b border-border pb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground"
 	>
-		<span class="flex items-center gap-1.5">
-			<Gauge class="size-3" />
-			fig.02 — system schematic
-		</span>
-		<span class="text-cyan-500">data flow</span>
+		<span>fig.02 — system schematic</span>
+		<span class="text-cyan-900 dark:text-cyan-200">data flow</span>
 	</figcaption>
 
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_auto_1.4fr_auto_1fr]">
@@ -50,7 +47,7 @@
 
 		<!-- Arrow 1 -->
 		<div
-			class="hidden items-center justify-center self-center text-cyan-500/60 lg:flex"
+			class="hidden items-center justify-center self-center text-cyan-700 dark:text-cyan-300 lg:flex"
 			aria-hidden="true"
 		>
 			<svg width="48" height="12" viewBox="0 0 48 12" fill="none">
@@ -61,13 +58,17 @@
 
 		<!-- ENGINE column -->
 		<div class="space-y-3">
-			<div class="font-mono text-[10px] uppercase tracking-[0.2em] text-cyan-500">engine</div>
+			<div
+				class="font-mono text-[10px] uppercase tracking-[0.2em] text-cyan-900 dark:text-cyan-200"
+			>
+				engine
+			</div>
 			<div class="space-y-2">
 				{#each engineBlocks as b (b.id)}
 					<div
 						class="flex items-center gap-2 rounded-md border border-cyan-500/30 bg-cyan-500/5 px-3 py-2.5"
 					>
-						<b.icon class="size-3.5 shrink-0 text-cyan-500" />
+						<b.icon class="size-3.5 shrink-0 text-cyan-700 dark:text-cyan-300" />
 						<div class="font-mono text-xs">
 							<div class="font-medium text-foreground">{b.label}</div>
 							<div class="mt-0.5 text-[10px] text-muted-foreground">{b.sublabel}</div>
@@ -79,7 +80,7 @@
 
 		<!-- Arrow 2 -->
 		<div
-			class="hidden items-center justify-center self-center text-cyan-500/60 lg:flex"
+			class="hidden items-center justify-center self-center text-cyan-700 dark:text-cyan-300 lg:flex"
 			aria-hidden="true"
 		>
 			<svg width="48" height="12" viewBox="0 0 48 12" fill="none">
@@ -107,16 +108,16 @@
 		class="mt-6 grid grid-cols-3 gap-4 border-t border-border pt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground"
 	>
 		<div class="flex flex-col gap-1">
-			<span class="text-cyan-500">scale</span>
-			<span class="text-foreground/70">324 models upstream</span>
+			<span class="text-cyan-900 dark:text-cyan-200">scale</span>
+			<span class="text-foreground">324 models upstream</span>
 		</div>
 		<div class="flex flex-col gap-1">
-			<span class="text-cyan-500">latency</span>
-			<span class="text-foreground/70">cache hit &lt; 50ms</span>
+			<span class="text-cyan-900 dark:text-cyan-200">latency</span>
+			<span class="text-foreground">cache hit &lt; 50ms</span>
 		</div>
 		<div class="flex flex-col gap-1">
-			<span class="text-cyan-500">refresh</span>
-			<span class="text-foreground/70">6h · stale-while-revalidate</span>
+			<span class="text-cyan-900 dark:text-cyan-200">refresh</span>
+			<span class="text-foreground">6h · stale-while-revalidate</span>
 		</div>
 	</div>
 

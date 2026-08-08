@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Printer, Calendar, ArrowRightLeft, BadgeCheck } from '@lucide/svelte';
+	import { Printer, Calendar, ArrowRightLeft } from '@lucide/svelte';
 
 	const today = new Date().toLocaleDateString('en-US', {
 		month: 'short',
@@ -22,7 +22,7 @@
 	<!-- header -->
 	<div class="border-b-2 border-dashed border-border/60 px-6 pb-5 pt-2 text-center">
 		<div
-			class="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary"
+			class="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary dark:text-primary-strong"
 		>
 			<Printer class="size-5" />
 		</div>
@@ -40,34 +40,34 @@
 
 		<div class="space-y-3">
 			<div class="flex justify-between">
-				<span class="text-foreground/90">Old AI plans</span>
+				<span class="text-foreground">Old AI plans</span>
 				<span class="tabular-nums text-muted-foreground">$20-200/mo</span>
 			</div>
 			<div class="flex justify-between">
-				<span class="text-foreground/90">Rising prices</span>
-				<span class="tabular-nums text-destructive">+ stress</span>
+				<span class="text-foreground">Rising prices</span>
+				<span class="tabular-nums text-destructive dark:text-red-300">+ stress</span>
 			</div>
 			<div class="flex justify-between">
-				<span class="text-foreground/90">Model overlap</span>
+				<span class="text-foreground">Model overlap</span>
 				<span class="tabular-nums text-muted-foreground">confusing</span>
 			</div>
 			<div class="flex justify-between">
-				<span class="text-foreground/90">OpenCode Go</span>
-				<span class="tabular-nums text-emerald-500">$10/mo</span>
+				<span class="text-foreground">OpenCode Go</span>
+				<span class="tabular-nums text-emerald-800 dark:text-emerald-300">$10/mo</span>
 			</div>
 			<div class="flex justify-between font-medium text-foreground">
 				<span class="inline-flex items-center gap-1.5">
-					<ArrowRightLeft class="size-3.5 text-primary" />
+					<ArrowRightLeft class="size-3.5 text-primary dark:text-primary-strong" />
 					Switched to
 				</span>
-				<span class="tabular-nums text-primary">13+ models</span>
+				<span class="tabular-nums text-primary dark:text-primary-strong">13+ models</span>
 			</div>
 		</div>
 
 		<div class="my-5 border-t-2 border-dashed border-border/60"></div>
 
 		<div class="flex items-start justify-between gap-4">
-			<span class="text-foreground/90">Problem left unsolved</span>
+			<span class="text-foreground">Problem left unsolved</span>
 			<span class="max-w-[55%] text-right text-xs leading-snug text-muted-foreground">
 				Which open model fits which task? How fast does each burn the quota?
 			</span>
@@ -78,14 +78,15 @@
 	<div class="border-t-2 border-dashed border-border/60 bg-muted/20 px-6 py-5">
 		<div class="flex items-center justify-between text-foreground">
 			<span class="font-semibold">So I built</span>
-			<span class="text-lg font-bold tracking-tight text-primary">ZenPick</span>
+			<span class="text-lg font-bold tracking-tight text-primary dark:text-primary-strong"
+				>ZenPick</span
+			>
 		</div>
 		<div class="mt-2 text-xs leading-relaxed text-muted-foreground">
 			A comparison layer for OpenCode Go: benchmarks, burn rates, and fit scores in one page.
 		</div>
-		<div class="mt-4 flex items-center justify-center gap-1.5 text-xs font-medium text-primary">
-			<BadgeCheck class="size-3.5" />
-			<span>verified by real usage</span>
+		<div class="mt-4 text-center text-xs font-medium text-primary dark:text-primary-strong">
+			verified by real usage
 		</div>
 	</div>
 
