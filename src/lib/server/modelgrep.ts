@@ -85,10 +85,16 @@ const SIMILARITY_THRESHOLD = 0.7;
  * Returns null if no model meets the threshold.
  * Uses the algorithmically derived display name from goIdToName(),
  * so new Go models resolve automatically — no code changes needed.
+ *
+ * `minSimilarity` can be raised to 1 to require an EXACT normalized name
+ * match — used for frontier candidates, where blending against a
+ * containment-match (0.85) model like "gpt-5.5" for "gpt-5.5-instant"
+ * would silently contaminate the comparison data.
  */
 export function fuzzyMatchModelgrep(
 	goId: string,
-	allModels: ModelgrepModelData[]
+	allModels: ModelgrepModelData[],
+	minSimilarity = SIMILARITY_THRESHOLD
 ): ModelgrepModelData | null {
 	const goName = goIdToName(goId).toLowerCase();
 	let best: ModelgrepModelData | null = null;
@@ -106,7 +112,7 @@ export function fuzzyMatchModelgrep(
 			similarity(goName, idSuffix.toLowerCase())
 		);
 
-		if (sim >= SIMILARITY_THRESHOLD && sim > bestScore) {
+		if (sim >= minSimilarity && sim > bestScore) {
 			best = model;
 			bestScore = sim;
 		}

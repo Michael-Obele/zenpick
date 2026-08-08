@@ -155,6 +155,22 @@ functions = ["<template>"]
 maxCognitive = 22
 reason = "Debug pricing matrix cells (cognitive-only trigger)"
 
+[[health.thresholdOverrides]]
+files = ["src/routes/debug/+page.svelte"]
+functions = ["<template>"]
+maxCyclomatic = 14
+maxCognitive = 14
+maxCrap = 220.0
+reason = "Debug route section switcher (11 conditional report panels)"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/components/debug/CompareLogic.svelte"]
+functions = ["<template>"]
+maxCyclomatic = 20
+maxCognitive = 37
+maxCrap = 430.0
+reason = "Debug comparison matrix: per-category relation chips, tooltips, legend"
+
 
 # Per-issue-type severity: "error" (fail CI), "warn" (report only), "off" (ignore)
 [rules]

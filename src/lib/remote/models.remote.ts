@@ -7,10 +7,18 @@ import { fetchGoDocsData } from '$lib/server/go-docs';
 import {
 	fetchLlmStatsModels,
 	filterFrontierModels,
-	matchLlmStatsModel
+	matchLlmStatsModel,
+	FRONTIER_MAX_AGE_DAYS
 } from '$lib/server/llm-stats';
 import { inferModel } from '$lib/server/inference';
-import type { GoModel, ModelPricing, LlmStatsModel } from '$lib/types/models';
+import { blendBenchmarks } from '$lib/server/blend';
+import type {
+	GoModel,
+	ModelPricing,
+	LlmStatsModel,
+	FrontierCandidate,
+	FrontierSnapshot
+} from '$lib/types/models';
 import { LLM_STATS_API_KEY } from '$env/static/private';
 
 /**
@@ -31,6 +39,29 @@ export const getModels = query(async () => {
 	}
 
 	return await refreshCache();
+});
+
+/**
+ * Fetch the frontier comparison snapshot (closed-source candidates + the
+ * recency cutoff the hint algorithm applies). Built by the SAME refreshCache
+ * that enriches the Go models, so it is always consistent with the
+ * "replaces" hints on the models — never a second, divergent fetch.
+ */
+export const getFrontierCandidates = query(async (): Promise<FrontierSnapshot> => {
+	const cached = cacheGet<FrontierSnapshot>(FRONTIER_CACHE_KEY);
+
+	if (cached && cached.stale) {
+		refreshCache().catch(console.error);
+		return cached.data;
+	}
+
+	if (cached && !cached.stale) {
+		return cached.data;
+	}
+
+	// Nothing cached yet — build everything (this also populates the models).
+	await getModels();
+	return cacheGet<FrontierSnapshot>(FRONTIER_CACHE_KEY)?.data ?? EMPTY_SNAPSHOT;
 });
 
 async function refreshCache(): Promise<GoModel[]> {
@@ -58,6 +89,32 @@ async function refreshCache(): Promise<GoModel[]> {
 
 	const frontierLs = filterFrontierModels(lsModels);
 
+	// Frontier candidates carry BLENDED benchmarks (modelgrep-primary, with
+	// llm-stats fallback) so "replaces" hints compare both sides on the same
+	// granular scale — raw llm-stats top_scores are quantized to tens and
+	// sometimes on a broken scale, which produced false matches.
+	//
+	// modelgrep blending is restricted to EXACT name matches (similarity 1):
+	// a containment match (0.85) like "gpt-5.5-instant" → "gpt-5.5" would
+	// silently mix two different models' benchmark data into the comparison.
+	const frontierCandidates: FrontierCandidate[] = frontierLs.map((fm) => {
+		const mg = fuzzyMatchModelgrep(fm.id, mgResult.all, 1);
+		const { benchmarks } = blendBenchmarks(mg, fm);
+		return {
+			id: fm.id,
+			name: fm.name,
+			organization: fm.organization,
+			releaseDate: fm.release_date,
+			benchmarks
+		};
+	});
+
+	const frontierSnapshot: FrontierSnapshot = {
+		frontier: frontierCandidates,
+		cutoff: Date.now() - FRONTIER_MAX_AGE_DAYS * 24 * 60 * 60 * 1000
+	};
+	cacheSet(FRONTIER_CACHE_KEY, frontierSnapshot, MODELS_TTL);
+
 	console.log(
 		`[refreshCache] goModels=${goModels.length} modelgrepModels=${mgResult.byId.size} docsModels=${Object.keys(docsPricing).length} llmStats=${lsModels.length} frontier=${frontierLs.length}`
 	);
@@ -80,7 +137,7 @@ async function refreshCache(): Promise<GoModel[]> {
 		// Get pre-matched llm-stats model
 		const lsModel = lsMatchCache.get(gm.id) ?? null;
 
-		return inferModel(gm.id, mgModel, docsPricing, lsModel, frontierLs, docsUsageLimits);
+		return inferModel(gm.id, mgModel, docsPricing, lsModel, frontierCandidates, docsUsageLimits);
 	});
 
 	cacheSet(CACHE_KEY, enriched, MODELS_TTL);
@@ -124,6 +181,19 @@ const CACHE_KEY = `go-models-enriched:${fnv1a(
 		.join('\n')
 )}`;
 
+/**
+ * Frontier snapshot key — content-addressed against the same builder
+ * functions so it rebuilds in lockstep with the models cache.
+ */
+const FRONTIER_CACHE_KEY = `frontier-snapshot:${fnv1a(
+	[fetchLlmStatsModels, filterFrontierModels, fuzzyMatchModelgrep, blendBenchmarks]
+		.map((fn) => fn.toString())
+		.join('\n')
+)}`;
+
+const EMPTY_SNAPSHOT: FrontierSnapshot = { frontier: [], cutoff: Date.now() };
+
 if (dev) {
 	console.log(`[models] enriched cache key: ${CACHE_KEY}`);
+	console.log(`[models] frontier cache key: ${FRONTIER_CACHE_KEY}`);
 }

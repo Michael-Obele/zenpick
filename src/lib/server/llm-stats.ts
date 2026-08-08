@@ -85,7 +85,7 @@ const FRONTIER_ORGS = [
  * models released within this window. Models without a release_date are kept
  * (we can't verify their age, and the goal is only to drop known-old ones).
  */
-const FRONTIER_MAX_AGE_DAYS = 200; // ~6 months
+export const FRONTIER_MAX_AGE_DAYS = 200; // ~6 months
 
 /**
  * Closed-source models from major frontier labs — the candidates an open-weight

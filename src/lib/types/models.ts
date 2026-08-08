@@ -163,6 +163,38 @@ export interface MigrationHint {
 	reason: string;
 }
 
+/**
+ * A closed-source frontier model prepared for "replaces" comparison.
+ * Benchmarks are blended with the same modelgrep-primary pipeline used for
+ * Go models, so both sides of the comparison live on the same scale.
+ */
+export interface FrontierCandidate {
+	/** llm-stats model ID (e.g. "claude-opus-5") */
+	id: string;
+	/** Display name (e.g. "Claude Opus 5") */
+	name: string;
+	/** Organization (used to dedupe same-lab candidates) */
+	organization: { id: string; name: string } | null;
+	/** Release date (ISO) — null when llm-stats doesn't publish one */
+	releaseDate: string | null;
+	/** Blended benchmark scores */
+	benchmarks: ModelBenchmarks;
+}
+
+/**
+ * Snapshot of the frontier comparison universe, as seen by the
+ * migration-hint algorithm.
+ */
+export interface FrontierSnapshot {
+	/** Closed-source candidates (already recency-filtered) */
+	frontier: FrontierCandidate[];
+	/**
+	 * Unix ms cutoff — candidates released before this are excluded from
+	 * "replaces" claims (see FRONTIER_MAX_AGE_DAYS in llm-stats.ts).
+	 */
+	cutoff: number;
+}
+
 // modelgrep.com API response types (aggregates OpenRouter + Artificial Analysis)
 
 export interface ModelgrepModelData {

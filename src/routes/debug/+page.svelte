@@ -7,6 +7,8 @@
 	import BurnTable from '$lib/components/debug/BurnTable.svelte';
 	import BenchmarkMatrix from '$lib/components/debug/BenchmarkMatrix.svelte';
 	import MatchingReport from '$lib/components/debug/MatchingReport.svelte';
+	import MigrationReport from '$lib/components/debug/MigrationReport.svelte';
+	import CompareLogic from '$lib/components/debug/CompareLogic.svelte';
 	import TagReport from '$lib/components/debug/TagReport.svelte';
 	import ScenarioBreakdown from '$lib/components/debug/ScenarioBreakdown.svelte';
 	import RawJson from '$lib/components/debug/RawJson.svelte';
@@ -15,6 +17,7 @@
 	let { data }: { data: PageData } = $props();
 
 	let models = $derived(data.models);
+	let frontierSnapshot = $derived(data.frontierSnapshot);
 
 	type Section =
 		| 'overview'
@@ -23,6 +26,8 @@
 		| 'burn'
 		| 'benchmarks'
 		| 'matching'
+		| 'migration'
+		| 'compare'
 		| 'tags'
 		| 'scenarios'
 		| 'raw';
@@ -34,6 +39,8 @@
 		{ id: 'burn', label: 'Burn Details' },
 		{ id: 'benchmarks', label: 'Benchmarks' },
 		{ id: 'matching', label: 'Matching Report' },
+		{ id: 'migration', label: 'Migration Report' },
+		{ id: 'compare', label: 'Compare Logic' },
 		{ id: 'tags', label: 'Tag Report' },
 		{ id: 'scenarios', label: 'Scenario Breakdown' },
 		{ id: 'raw', label: 'Raw JSON' }
@@ -55,7 +62,7 @@
 
 	<!-- Section nav -->
 	<div class="mb-6 flex flex-wrap gap-1.5">
-		{#each sections as s}
+		{#each sections as s (s.id)}
 			<button
 				class="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition-all {activeSection ===
 				s.id
@@ -82,6 +89,14 @@
 			<BenchmarkMatrix {models} />
 		{:else if activeSection === 'matching'}
 			<MatchingReport {models} />
+		{:else if activeSection === 'migration'}
+			<MigrationReport {models} />
+		{:else if activeSection === 'compare'}
+			<CompareLogic
+				{models}
+				frontier={frontierSnapshot.frontier}
+				cutoff={frontierSnapshot.cutoff}
+			/>
 		{:else if activeSection === 'tags'}
 			<TagReport {models} />
 		{:else if activeSection === 'scenarios'}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import type { GoModel } from '$lib/types/models';
 
 	interface Props {
@@ -6,13 +7,6 @@
 	}
 
 	let { models }: Props = $props();
-
-	let expanded = $state<Set<string>>(new Set());
-
-	function toggle(id: string) {
-		if (expanded.has(id)) expanded.delete(id);
-		else expanded.add(id);
-	}
 </script>
 
 <h2 class="mb-4 text-lg font-semibold text-foreground">Raw GoModel JSON</h2>
@@ -21,19 +15,20 @@
 </p>
 <div class="space-y-2">
 	{#each models as m (m.id)}
-		<button
-			class="w-full rounded-lg border border-border p-3 text-left text-sm font-medium text-foreground hover:bg-muted/30"
-			onclick={() => toggle(m.id)}
-		>
-			{m.name}
-		</button>
-		{#if expanded.has(m.id)}
-			<pre
-				class="max-h-96 overflow-auto rounded-lg border border-border bg-muted/30 p-4 text-xs text-muted-foreground">{JSON.stringify(
-					m,
-					null,
-					2
-				)}</pre>
-		{/if}
+		<Collapsible.Root class="rounded-lg border border-border">
+			<Collapsible.Trigger
+				class="w-full p-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/30"
+			>
+				{m.name}
+			</Collapsible.Trigger>
+			<Collapsible.Content class="px-3 pb-3">
+				<pre
+					class="max-h-96 overflow-auto rounded-lg border border-border bg-muted/30 p-4 text-xs text-muted-foreground">{JSON.stringify(
+						m,
+						null,
+						2
+					)}</pre>
+			</Collapsible.Content>
+		</Collapsible.Root>
 	{/each}
 </div>

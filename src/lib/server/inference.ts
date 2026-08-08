@@ -12,7 +12,9 @@ import type {
 	ModelPricing,
 	ModelSpeed,
 	LlmStatsModel,
-	UsageLimits
+	UsageLimits,
+	FrontierCandidate,
+	ModelBenchmarks
 } from '$lib/types/models';
 import { goEndpointType, goEndpointUrl, goIdToName } from './opencode-go';
 import { inferPricing } from './pricing';
@@ -21,7 +23,7 @@ import { inferBurnDetails } from './burn';
 import { computeScenarioScores } from './scoring';
 import { computeTags } from './tags';
 import { blendBenchmarks } from './blend';
-import { normalizeTopScore } from './llm-stats';
+import { MIGRATION_BAND } from '$lib/migration';
 
 /** Enrich a Go model ID with modelgrep data, llm-stats data, and optional docs pricing. */
 export function inferModel(
@@ -29,7 +31,7 @@ export function inferModel(
 	mgModel: ModelgrepModelData | null,
 	docsPricing?: Record<string, ModelPricing>,
 	lsModel?: LlmStatsModel | null,
-	frontierModels: LlmStatsModel[] = [],
+	frontierCandidates: FrontierCandidate[] = [],
 	usageLimits?: Record<string, UsageLimits> | null
 ): GoModel {
 	const name = lsModel && lsModel.id === goId ? lsModel.name : goIdToName(goId);
@@ -65,7 +67,7 @@ export function inferModel(
 
 	const speed = extractModelgrepSpeed(mgModel);
 	const tags = computeTags(benchmarks, burnDetails, speed, mgModel, lsModel);
-	const migrationHints = inferMigrationHints(lsModel ?? null, frontierModels);
+	const migrationHints = inferMigrationHints(lsModel ?? null, benchmarks, frontierCandidates);
 	const scenarioScores = computeScenarioScores({
 		goId,
 		pricing,
@@ -125,23 +127,33 @@ function extractModelgrepSpeed(mgModel: ModelgrepModelData | null): ModelSpeed |
 /**
  * Data-driven "replaces" hints.
  *
- * For each capability category we compare the Go model's llm-stats score
- * (via its matched `llmStatsId`) against every closed-source frontier model,
- * finding the nearest neighbor. A model is only claimed as a "replacement"
- * when the normalized gap is within MIGRATION_BAND — so we never assert a
- * match that isn't backed by the live data. Hints are grouped by the frontier
- * model they replace and the categories they match on.
+ * For each capability category we compare the Go model's BLENDED benchmark
+ * score (modelgrep-primary, outlier-guarded — see blend.ts) against every
+ * closed-source frontier candidate's blended score, finding the nearest
+ * neighbor. A model is only claimed as a "replacement" when the gap is
+ * within MIGRATION_BAND — so we never assert a match that isn't backed by
+ * the live data. Hints are grouped by the frontier model they replace and
+ * the categories they match on.
+ *
+ * Why blended scores and not raw llm-stats top_scores: the raw values are
+ * quantized to tens (60, 70, 80) and sometimes on a broken scale (365.2,
+ * 2.5, 17.0), which produced false "gap 0" claims like a budget flash model
+ * claiming it replaces Claude Opus 5 on reasoning. The blend smooths and
+ * guards those artifacts on BOTH sides, so the comparison is apples-to-apples.
+ *
+ * Closed-source Go models (e.g. grok-4.5, gpt-5.6-luna) are themselves
+ * "replaced" targets, not open alternatives — they get no hints.
  */
-const MIGRATION_BAND = 12; // max normalized (0–100) gap to claim a "replaces"
-
 function inferMigrationHints(
 	lsModel: LlmStatsModel | null,
-	frontierModels: LlmStatsModel[]
+	goBenchmarks: ModelBenchmarks,
+	frontierCandidates: FrontierCandidate[]
 ): MigrationHint[] {
-	if (!lsModel || frontierModels.length === 0) return [];
+	// Only open-weight Go models can be "open alternatives" to closed models.
+	if (!lsModel || !lsModel.open_weight || frontierCandidates.length === 0) return [];
 
-	const cats: { key: string; label: string }[] = [
-		{ key: 'code', label: 'coding' },
+	const cats: { key: 'coding' | 'reasoning' | 'math'; label: string }[] = [
+		{ key: 'coding', label: 'coding' },
 		{ key: 'reasoning', label: 'reasoning' },
 		{ key: 'math', label: 'math' }
 	];
@@ -150,16 +162,16 @@ function inferMigrationHints(
 	const byModel = new Map<string, { name: string; cats: string[]; worstGap: number }>();
 
 	for (const { key, label } of cats) {
-		const ours = normalizeTopScore(lsModel.top_scores?.[key]);
+		const ours = goBenchmarks[key];
 		if (ours == null) continue;
 
 		let best: { name: string; gap: number } | null = null;
-		for (const fm of frontierModels) {
+		for (const fm of frontierCandidates) {
 			// Skip the Go model itself — a closed model served by the Go API
 			// (e.g. grok-4.5) is also a frontier candidate, and comparing it to
 			// itself would claim "replaces grok-4.5".
 			if (fm.id === lsModel.id) continue;
-			const theirs = normalizeTopScore(fm.top_scores?.[key]);
+			const theirs = fm.benchmarks[key];
 			if (theirs == null) continue;
 			const gap = Math.abs(ours - theirs);
 			if (best == null || gap < best.gap) best = { name: fm.name, gap };
@@ -175,7 +187,7 @@ function inferMigrationHints(
 
 	return [...byModel.values()].map((e) => ({
 		model: e.name,
-		reason: `Comparable on ${e.cats.join(' & ')} (per llm-stats)`
+		reason: `Comparable on ${e.cats.join(' & ')} (per benchmarks)`
 	}));
 }
 
