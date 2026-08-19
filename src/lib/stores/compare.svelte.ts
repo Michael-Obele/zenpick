@@ -1,5 +1,5 @@
 /** Maximum number of models that can be compared side-by-side. */
-export const MAX_COMPARE = 4;
+export const MAX_COMPARE = 10;
 
 /**
  * Shared, in-session selection of model IDs the user wants to compare.

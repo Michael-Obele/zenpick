@@ -333,7 +333,7 @@
 				</div>
 
 				{#if selectedModels.length > 0}
-					<div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+					<div class="mt-4 grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
 						{#each selectedModels as model (model.id)}
 							<div class="rounded-lg border border-border bg-background px-3 py-2.5">
 								<div class="flex items-start justify-between gap-2">
