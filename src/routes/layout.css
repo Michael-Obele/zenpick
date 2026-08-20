@@ -143,6 +143,15 @@ html {
 	--color-card: var(--card);
 	--color-foreground: var(--foreground);
 	--color-background: var(--background);
+	/*
+	 * Compare grid — the pinned label column paints over the model columns as
+	 * they scroll underneath it, so it cannot use translucent tints. These are
+	 * bg-muted/40, bg-muted/30 and bg-primary/5 flattened over bg-card, mixed
+	 * from the same tokens so they still follow light/dark for free.
+	 */
+	--color-compare-pin-head: color-mix(in srgb, var(--muted) 40%, var(--card));
+	--color-compare-pin: color-mix(in srgb, var(--muted) 30%, var(--card));
+	--color-compare-pin-verdict: color-mix(in srgb, var(--primary) 5%, var(--card));
 	--radius-sm: calc(var(--radius) * 0.6);
 	--radius-md: calc(var(--radius) * 0.8);
 	--radius-lg: var(--radius);
@@ -165,6 +174,21 @@ html {
 	}
 	html {
 		@apply font-sans;
+	}
+}
+
+/*
+ * Compare grid: the label column pins to the left edge of its scroll
+ * container, so the row labels stay readable while ten model columns scroll
+ * past. The 1px right shadow lands exactly on the neighbouring cell's left
+ * border — one hairline at any scroll offset, instead of two side by side.
+ */
+@layer utilities {
+	.compare-pin {
+		position: sticky;
+		left: 0;
+		z-index: 10;
+		box-shadow: 1px 0 0 0 var(--border);
 	}
 }
 

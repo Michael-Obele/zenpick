@@ -61,7 +61,7 @@
 
 <div class="contents">
 	<div
-		class="flex items-center gap-1.5 border-t border-border/60 bg-muted/30 px-3 py-2.5 text-sm font-medium text-muted-foreground"
+		class="sticky left-0 z-10 flex items-center gap-1.5 border-t border-border/60 bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground"
 	>
 		{label}
 		{#if isTie}

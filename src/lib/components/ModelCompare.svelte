@@ -210,11 +210,14 @@
 	let openYes = $derived(models.map((m) => m.openWeight));
 </script>
 
+<!-- The scroll container doubles as the pinned column's viewport: every
+     label cell below carries `compare-pin`, so the leftmost column holds
+     still at the left edge while the model columns scroll under it. -->
 <div class="overflow-x-auto rounded-xl border border-border bg-card">
 	<div class="grid" style="grid-template-columns: {cols}">
 		<!-- Header row -->
 		<div
-			class="border-b border-border bg-muted/40 px-3 py-3 text-sm font-semibold text-muted-foreground"
+			class="sticky left-0 z-10 border-b border-border bg-muted px-3 py-3 text-sm font-semibold text-muted-foreground"
 		>
 			Model
 		</div>
@@ -300,7 +303,7 @@
 
 		<!-- Verdict -->
 		<div
-			class="flex items-center gap-2 border-t border-border bg-primary/5 px-3 py-3 text-sm font-medium text-muted-foreground"
+			class="sticky left-0 z-10 flex items-center gap-2 border-t border-border bg-muted px-3 py-3 text-sm font-medium text-muted-foreground"
 		>
 			{#if scenario}
 				<Crown class="size-4 text-amber-800 dark:text-amber-300" />
@@ -462,7 +465,7 @@
 
 		<!-- Scenario fit -->
 		<div
-			class="border-t border-border/60 bg-muted/30 px-3 py-2.5 text-sm font-medium text-muted-foreground"
+			class="sticky left-0 z-10 border-t border-border/60 bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground"
 		>
 			Scenario fit
 		</div>
@@ -488,7 +491,7 @@
 
 		<!-- Open weights -->
 		<div
-			class="border-t border-border/60 bg-muted/30 px-3 py-2.5 text-sm font-medium text-muted-foreground"
+			class="sticky left-0 z-10 border-t border-border/60 bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground"
 		>
 			Open weights
 		</div>
@@ -514,7 +517,7 @@
 
 		<!-- Tags -->
 		<div
-			class="border-t border-border/60 bg-muted/30 px-3 py-2.5 text-sm font-medium text-muted-foreground"
+			class="sticky left-0 z-10 border-t border-border/60 bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground"
 		>
 			Tags
 		</div>
@@ -537,7 +540,7 @@
 
 		<!-- Migration hints -->
 		<div
-			class="border-t border-border/60 bg-muted/30 px-3 py-2.5 text-sm font-medium text-muted-foreground"
+			class="sticky left-0 z-10 border-t border-border/60 bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground"
 			title="Open-weight alternatives to these closed-source models"
 		>
 			Replaces
@@ -569,7 +572,7 @@
 
 		<!-- Links -->
 		<div
-			class="border-t border-border/60 bg-muted/30 px-3 py-2.5 text-sm font-medium text-muted-foreground"
+			class="sticky left-0 z-10 border-t border-border/60 bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground"
 		>
 			Sources
 		</div>
