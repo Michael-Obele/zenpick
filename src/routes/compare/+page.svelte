@@ -316,12 +316,6 @@
 </svelte:head>
 
 <div class="relative">
-	<!-- Ambient backdrop: teal signal glow at the top, quiet warm glow at the page foot -->
-	<!-- <div aria-hidden="true" class="pointer-events-none absolute inset-0">
-		<div class="bg-hero-glow absolute inset-x-0 top-0 h-80"></div>
-		<div class="bg-glow-warm absolute inset-x-0 bottom-0 h-72"></div>
-	</div> -->
-
 	<LightRays class="rays-quiet" count={5} blur={16} speed={26} length="45%" />
 
 	<div class="relative mx-auto max-w-6xl px-4 pb-24">
