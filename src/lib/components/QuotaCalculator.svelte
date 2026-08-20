@@ -270,7 +270,7 @@
 		<div class="space-y-2">
 			<Label for="recommend-scenario" class="text-sm text-muted-foreground">Task scenario</Label>
 			<Select.Root type="single" value={scenarioValue} onValueChange={handleScenarioChange}>
-				<Select.Trigger class="w-full" id="recommend-scenario">
+				<Select.Trigger class="w-auto min-w-40" id="recommend-scenario">
 					{SCENARIO_OPTIONS.find((o) => o.value === scenarioValue)?.label ?? 'Any task'}
 				</Select.Trigger>
 				<Select.Content>
