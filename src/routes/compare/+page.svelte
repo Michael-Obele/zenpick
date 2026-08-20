@@ -16,6 +16,9 @@
 		catalogValueAnchor,
 		randomSuggestedPair
 	} from '$lib/compare-defaults';
+	import { tick } from 'svelte';
+	import * as Command from '$lib/components/ui/command/index.js';
+	import * as Popover from '$lib/components/ui/popover/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 	import {
@@ -24,6 +27,7 @@
 		Check,
 		ChevronLeft,
 		ChevronRight,
+		ChevronsUpDown,
 		Copy,
 		Crown,
 		Dices,
@@ -269,6 +273,26 @@
 
 	// Combobox state (ephemeral UI, event-driven — not URL state)
 	let pick = $state<string | undefined>(undefined);
+	let comboboxOpen = $state(false);
+	let triggerRef = $state<HTMLButtonElement>(null!);
+
+	/** Models grouped by provider for the combobox. */
+	let groupedAvailable = $derived.by(() => {
+		const groups = new Map<string, GoModel[]>();
+		for (const m of available) {
+			const list = groups.get(m.provider) ?? [];
+			list.push(m);
+			groups.set(m.provider, list);
+		}
+		return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+	});
+
+	function closeAndFocusTrigger() {
+		comboboxOpen = false;
+		tick().then(() => {
+			triggerRef.focus();
+		});
+	}
 
 	let copied = $state(false);
 	async function copyLlmStats() {
@@ -391,27 +415,55 @@
 					>
 				</div>
 				<div class="mt-4 flex flex-wrap items-center gap-3">
-					<Select.Root type="single" bind:value={pick} onValueChange={handlePick} disabled={atMax}>
-						<Select.Trigger
-							id="compare-model-picker"
-							class={buttonVariants({
-								variant: 'default',
-								size: 'default',
-								class: 'focus-visible:ring-ring data-placeholder:text-primary-foreground'
-							})}
-							disabled={atMax}
-						>
-							<Plus class="size-4" />
-							<span>{atMax ? `Max ${MAX_COMPARE} models` : 'Add model…'}</span>
-						</Select.Trigger>
-						<Select.Content class="max-h-[min(30vh,80vh)]">
-							<Select.Group>
-								{#each available as m (m.id)}
-									<Select.Item value={m.id} label={m.name}>{m.name}</Select.Item>
-								{/each}
-							</Select.Group>
-						</Select.Content>
-					</Select.Root>
+					<Popover.Root bind:open={comboboxOpen}>
+						<Popover.Trigger bind:ref={triggerRef}>
+							{#snippet child({ props })}
+								<button
+									{...props}
+									id="compare-model-picker"
+									class={buttonVariants({
+										variant: 'default',
+										size: 'default',
+										class: 'w-55 justify-between gap-2 focus-visible:ring-ring'
+									})}
+									role="combobox"
+									aria-expanded={comboboxOpen}
+									aria-label="Add a model to compare"
+									disabled={atMax}
+								>
+									<Plus class="size-4 shrink-0 transition-all {comboboxOpen ? 'rotate-45' : ''}" />
+									<span class="truncate">{atMax ? `Max ${MAX_COMPARE} models` : 'Add model…'}</span>
+									<div>
+										<!-- Just an empty space to center the text -->
+									</div>
+									<!-- <ChevronsUpDown class="size-4 shrink-0 opacity-50" /> -->
+								</button>
+							{/snippet}
+						</Popover.Trigger>
+						<Popover.Content class="w-70 p-0">
+							<Command.Root>
+								<Command.Input placeholder="Search models…" />
+								<Command.List>
+									<Command.Empty>No model found.</Command.Empty>
+									{#each groupedAvailable as [provider, providerModels] (provider)}
+										<Command.Group heading={provider}>
+											{#each providerModels as m (m.id)}
+												<Command.Item
+													value={m.name}
+													onSelect={() => {
+														handlePick(m.id);
+														closeAndFocusTrigger();
+													}}
+												>
+													<span class="truncate">{m.name}</span>
+												</Command.Item>
+											{/each}
+										</Command.Group>
+									{/each}
+								</Command.List>
+							</Command.Root>
+						</Popover.Content>
+					</Popover.Root>
 					{#if selectedModels.length >= 2}
 						<span class="text-xs text-muted-foreground">
 							Tip: use <span class="font-medium text-foreground">Ask AI</span> to dig deeper.
