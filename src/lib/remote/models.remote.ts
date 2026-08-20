@@ -75,7 +75,7 @@ async function refreshCache(): Promise<GoModel[]> {
 		fetchGoDocsData().catch((e: unknown) => {
 			const msg = e instanceof Error ? e.message : String(e);
 			console.error('[refreshCache] go-docs failed:', msg);
-			return { pricing: {}, usageLimits: {} };
+			return { pricing: {}, usageLimits: {}, officialModelIds: new Set() };
 		}),
 		fetchLlmStatsModels(LLM_STATS_API_KEY).catch((e: unknown) => {
 			const msg = e instanceof Error ? e.message : String(e);
@@ -115,21 +115,28 @@ async function refreshCache(): Promise<GoModel[]> {
 	};
 	cacheSet(FRONTIER_CACHE_KEY, frontierSnapshot, MODELS_TTL);
 
+	// Docs page is the source of truth — the API leaks deprecated models that
+	// the docs no longer endorse. Fall back to the full API list only when the
+	// docs fetch fails entirely (empty set).
+	const docsOfficialIds = docsData.officialModelIds;
+	const officialModels =
+		docsOfficialIds.size > 0 ? goModels.filter((gm) => docsOfficialIds.has(gm.id)) : goModels;
+
 	console.log(
-		`[refreshCache] goModels=${goModels.length} modelgrepModels=${mgResult.byId.size} docsModels=${Object.keys(docsPricing).length} llmStats=${lsModels.length} frontier=${frontierLs.length}`
+		`[refreshCache] goModels=${goModels.length} official=${officialModels.length} modelgrepModels=${mgResult.byId.size} docsModels=${Object.keys(docsPricing).length} llmStats=${lsModels.length} frontier=${frontierLs.length}`
 	);
 
 	// Pre-match each Go model to its llm-stats counterpart against the FULL
 	// catalog — company-agnostic, so a Go model from any lab (e.g. hy3 under
 	// tencent, grok-4.5 under xai) resolves as long as llm-stats tracks it.
 	const lsMatchCache = new Map<string, LlmStatsModel | null>();
-	for (const gm of goModels) {
+	for (const gm of officialModels) {
 		if (!lsMatchCache.has(gm.id)) {
 			lsMatchCache.set(gm.id, matchLlmStatsModel(gm.id, lsModels));
 		}
 	}
 
-	const filtered = goModels.filter((gm) => gm.id !== 'hy3-preview');
+	const filtered = officialModels.filter((gm) => gm.id !== 'hy3-preview');
 	const enriched = filtered.map((gm) => {
 		// Fuzzy-match against modelgrep data (no hardcoded ID mapping)
 		const mgModel = fuzzyMatchModelgrep(gm.id, mgResult.all);

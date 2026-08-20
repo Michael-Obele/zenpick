@@ -91,6 +91,12 @@ function parsePrice(s: string): number | null {
 export interface GoDocsData {
 	pricing: Record<string, ModelPricing>;
 	usageLimits: Record<string, UsageLimits>;
+	/**
+	 * Official model IDs scraped from the docs usage-limits table.
+	 * Used as the source of truth to filter out deprecated/unlisted models
+	 * that the API still returns but the docs no longer endorse.
+	 */
+	officialModelIds: Set<string>;
 }
 
 /**
@@ -146,12 +152,12 @@ async function refreshGoDocsData(): Promise<GoDocsData> {
 		const res = await fetch(GO_DOCS_URL);
 		if (!res.ok) {
 			console.error(`[go-docs] returned ${res.status}: ${res.statusText}`);
-			return { pricing: {}, usageLimits: {} };
+			return { pricing: {}, usageLimits: {}, officialModelIds: new Set() };
 		}
 		text = await res.text();
 	} catch (e) {
 		console.error('[go-docs] fetch failed:', e);
-		return { pricing: {}, usageLimits: {} };
+		return { pricing: {}, usageLimits: {}, officialModelIds: new Set() };
 	}
 
 	const root = parse(text);
@@ -161,6 +167,7 @@ async function refreshGoDocsData(): Promise<GoDocsData> {
 
 	const pricing: Record<string, ModelPricing> = {};
 	const usageLimits: Record<string, UsageLimits> = {};
+	const officialModelIds = new Set<string>();
 
 	for (const table of root.querySelectorAll('table')) {
 		const headers = table
@@ -210,6 +217,7 @@ async function refreshGoDocsData(): Promise<GoDocsData> {
 					};
 				}
 			} else if (isUsageTable) {
+				officialModelIds.add(goId);
 				const per5h = parseCount(cells[1]);
 				const perWeek = parseCount(cells[2]);
 				const perMonth = parseCount(cells[3]);
@@ -237,6 +245,10 @@ async function refreshGoDocsData(): Promise<GoDocsData> {
 		console.warn('[go-docs] no usage-limit rows parsed — page format may have changed');
 	}
 
-	cacheSet(CACHE_KEY, { pricing, usageLimits }, GO_DOCS_PRICING_TTL);
-	return { pricing, usageLimits };
+	console.log(
+		`[go-docs] official model list: ${officialModelIds.size} models: ${[...officialModelIds].join(', ')}`
+	);
+
+	cacheSet(CACHE_KEY, { pricing, usageLimits, officialModelIds }, GO_DOCS_PRICING_TTL);
+	return { pricing, usageLimits, officialModelIds };
 }
