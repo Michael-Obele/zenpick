@@ -56,6 +56,50 @@ class CompareState {
 		this.selection = this.selection.filter((x) => x !== id);
 	};
 
+	/**
+	 * Move a model to an absolute slot in the comparison order.
+	 *
+	 * Order is meaningful: the compare grid renders one column per entry in
+	 * this array, so re-slotting a model is how you park it next to the one
+	 * you actually want to read it against. Out-of-range indices are clamped.
+	 * Returns the model's new index, or `-1` when nothing moved — callers use
+	 * that to skip the URL write and the screen-reader announcement.
+	 */
+	moveTo = (id: string, index: number): number => {
+		const from = this.selection.indexOf(id);
+		if (from === -1) return -1;
+		const to = Math.max(0, Math.min(index, this.selection.length - 1));
+		if (to === from) return -1;
+		const next = [...this.selection];
+		next.splice(from, 1);
+		next.splice(to, 0, id);
+		this.selection = next;
+		return to;
+	};
+
+	/**
+	 * Nudge a model one slot earlier (`-1`) or later (`+1`). Clamped at both
+	 * ends rather than wrapping, so the arrow controls stay predictable.
+	 */
+	move = (id: string, delta: number): number => {
+		const from = this.selection.indexOf(id);
+		if (from === -1) return -1;
+		const to = from + delta;
+		if (to < 0 || to >= this.selection.length) return -1;
+		return this.moveTo(id, to);
+	};
+
+	/**
+	 * Move a model into the slot currently held by another model — the drop
+	 * semantics for drag-and-drop, so callers never do index math.
+	 */
+	moveToward = (id: string, targetId: string): number => {
+		if (id === targetId) return -1;
+		const to = this.selection.indexOf(targetId);
+		if (to === -1) return -1;
+		return this.moveTo(id, to);
+	};
+
 	/** Clear the entire selection — and keep it clear for this session. */
 	clear = (): void => {
 		this.selection = [];

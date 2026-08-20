@@ -4,6 +4,8 @@
 	import CompareRow from './CompareRow.svelte';
 	import {
 		X,
+		ChevronLeft,
+		ChevronRight,
 		Scale,
 		Crown,
 		Check,
@@ -16,6 +18,7 @@
 	} from '@lucide/svelte';
 	import { llmStatsModelUrl } from '$lib/utils/llm-stats-url';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
+	import { Button } from '$lib/components/ui/button/index.js';
 	import { benchmarkToPercent } from '$lib/compare-defaults';
 	import { recommendModel, REFERENCE_TOKENS, REFERENCE_CACHED_PCT } from '$lib/recommendation';
 	import type { RecommendationScenario } from '$lib/recommendation';
@@ -32,6 +35,12 @@
 	interface Props {
 		models: GoModel[];
 		onRemove?: (id: string) => void;
+		/**
+		 * Nudge a column one slot earlier (`-1`) or later (`+1`). Column order is
+		 * meaningful — it is the comparison order — so the header carries the same
+		 * reorder controls as the picker above it. Omit to render a fixed order.
+		 */
+		onMove?: (id: string, delta: number) => void;
 		/** Model id → anchor role, used to render a data-derived chip in the column header. */
 		anchors?: Record<string, AnchorRole>;
 		/**
@@ -43,7 +52,23 @@
 		scenario?: RecommendationScenario | '';
 	}
 
-	let { models, onRemove, anchors = {}, scenario = '' }: Props = $props();
+	let { models, onRemove, onMove, anchors = {}, scenario = '' }: Props = $props();
+
+	/**
+	 * Header controls ride the design system's ghost icon button (`icon-xs` is
+	 * 24px, clearing the minimum target size in WCAG SC 2.5.8). The one
+	 * deliberate override: these cells are `bg-muted/40`, so ghost's default
+	 * `hover:bg-muted` barely reads — hover to `bg-background` instead.
+	 */
+	const headerBtn = 'text-muted-foreground hover:bg-background dark:hover:bg-background';
+
+	/**
+	 * End-of-row arrows are `aria-disabled`, not natively `disabled`: a button
+	 * that disables itself under the user's own press drops focus to `<body>`,
+	 * stranding keyboard users mid-reorder. The caller clamps, so a press at the
+	 * boundary is a no-op either way.
+	 */
+	const headerMoveBtn = `${headerBtn} aria-disabled:pointer-events-none aria-disabled:opacity-40`;
 
 	const cols = $derived(`160px repeat(${models.length}, minmax(190px, 1fr))`);
 
@@ -195,22 +220,51 @@
 		</div>
 		{#each models as m, i (m.id)}
 			<div
-				class="relative border-b border-l border-border bg-muted/40 px-3 py-3 {crownWinnerId ===
-				m.id
-					? 'ring-1 ring-inset ring-amber-500/40'
-					: ''}"
+				class={[
+					'border-b border-l border-border bg-muted/40 px-3 py-3',
+					crownWinnerId === m.id && 'ring-1 ring-inset ring-amber-500/40'
+				]}
 			>
-				{#if onRemove}
-					<button
-						type="button"
-						onclick={() => onRemove(m.id)}
-						class="absolute right-2 top-2 rounded-md p-1 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-						aria-label={`Remove ${m.name} from comparison`}
-					>
-						<X class="size-3.5" />
-					</button>
+				{#if onMove || onRemove}
+					<div class="-mt-1 mb-0.5 flex items-center justify-end gap-0.5">
+						{#if onMove}
+							<Button
+								variant="ghost"
+								size="icon-xs"
+								class={headerMoveBtn}
+								onclick={() => onMove(m.id, -1)}
+								aria-disabled={i === 0}
+								aria-label={`Move ${m.name} one column left`}
+								title="Move left"
+							>
+								<ChevronLeft class="size-3.5" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon-xs"
+								class={headerMoveBtn}
+								onclick={() => onMove(m.id, 1)}
+								aria-disabled={i === models.length - 1}
+								aria-label={`Move ${m.name} one column right`}
+								title="Move right"
+							>
+								<ChevronRight class="size-3.5" />
+							</Button>
+						{/if}
+						{#if onRemove}
+							<Button
+								variant="ghost"
+								size="icon-xs"
+								class={headerBtn}
+								onclick={() => onRemove(m.id)}
+								aria-label={`Remove ${m.name} from comparison`}
+							>
+								<X class="size-3.5" />
+							</Button>
+						{/if}
+					</div>
 				{/if}
-				<div class="pr-5 text-sm font-semibold text-foreground">{m.name}</div>
+				<div class="text-sm font-semibold text-foreground">{m.name}</div>
 				<div class="text-xs text-muted-foreground">{m.provider}</div>
 				{#if anchors[m.id]}
 					{@const a = ANCHOR_META[anchors[m.id]]}

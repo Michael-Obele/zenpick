@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { flip } from 'svelte/animate';
+	import { cubicOut } from 'svelte/easing';
+	import { prefersReducedMotion } from 'svelte/motion';
 	import { useSearchParams } from 'runed/kit';
 	import type { GoModel } from '$lib/types/models';
 	import ModelCompare from '$lib/components/ModelCompare.svelte';
@@ -14,15 +17,19 @@
 		randomSuggestedPair
 	} from '$lib/compare-defaults';
 	import * as Select from '$lib/components/ui/select/index.js';
-	import { buttonVariants } from '$lib/components/ui/button/index.js';
+	import { Button, buttonVariants } from '$lib/components/ui/button/index.js';
 	import {
 		ArrowLeft,
+		ArrowLeftRight,
 		Check,
+		ChevronLeft,
+		ChevronRight,
 		Copy,
 		Crown,
 		Dices,
 		ExternalLink,
 		GitCompare,
+		GripVertical,
 		Plus,
 		X
 	} from '@lucide/svelte';
@@ -132,6 +139,82 @@
 		syncUrl();
 	}
 
+	// ── Order ─────────────────────────────────────────────────────────────
+	// Column order IS the selection order (`?models=a,b,c` is positional), so
+	// reordering the list is the whole feature: park a model next to the one
+	// you want to read it against and the grid follows. Every path — the
+	// arrows here, the arrows in the grid header, and drag-and-drop — funnels
+	// through `applyMove` so pointer and keyboard can never drift apart.
+
+	/** Politely announced result of the last move (WCAG SC 2.5.7 / 4.1.3). */
+	let orderStatus = $state('');
+
+	/** Nothing to order with a single column — hide the controls entirely. */
+	let reorderable = $derived(selectedModels.length > 1);
+
+	/** Skip the reorder animation when the OS asks for less motion. */
+	let flipMs = $derived(prefersReducedMotion.current ? 0 : 220);
+
+	/**
+	 * Arrows at either end use `aria-disabled`, not the native `disabled`
+	 * attribute: a button that disables itself under the user's own press drops
+	 * focus to `<body>`, stranding keyboard users mid-reorder. Staying focusable
+	 * is safe because `compare.move` clamps and reports `-1`, so a press at the
+	 * boundary is already a silent no-op.
+	 */
+	const moveBtn =
+		'cursor-pointer text-muted-foreground aria-disabled:pointer-events-none aria-disabled:opacity-40';
+
+	function applyMove(id: string, to: number) {
+		if (to === -1) return; // clamped at an end, or unknown id — nothing moved
+		syncUrl();
+		const name = models.find((m) => m.id === id)?.name ?? 'Model';
+		orderStatus = `${name} moved to position ${to + 1} of ${compare.selection.length}.`;
+	}
+
+	/** Nudge one slot earlier (-1) or later (+1). */
+	function moveModel(id: string, delta: number) {
+		applyMove(id, compare.move(id, delta));
+	}
+
+	// Native drag-and-drop is the accelerator, never the only way in: the
+	// arrow buttons cover keyboard and single-pointer users, so dragging
+	// stays strictly optional.
+	let dragId = $state<string | null>(null);
+	let dragOverId = $state<string | null>(null);
+
+	function handleDragStart(event: DragEvent, id: string) {
+		dragId = id;
+		if (event.dataTransfer) {
+			event.dataTransfer.effectAllowed = 'move';
+			event.dataTransfer.setData('text/plain', id);
+		}
+	}
+
+	function handleDragOver(event: DragEvent, id: string) {
+		if (!dragId || dragId === id) return;
+		event.preventDefault(); // opt in as a drop target
+		if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+		dragOverId = id;
+	}
+
+	function handleDragLeave(id: string) {
+		if (dragOverId === id) dragOverId = null;
+	}
+
+	function handleDrop(event: DragEvent, targetId: string) {
+		event.preventDefault();
+		const sourceId = dragId ?? event.dataTransfer?.getData('text/plain') ?? '';
+		dragId = null;
+		dragOverId = null;
+		if (sourceId) applyMove(sourceId, compare.moveToward(sourceId, targetId));
+	}
+
+	function handleDragEnd() {
+		dragId = null;
+		dragOverId = null;
+	}
+
 	function clearAll() {
 		compare.clear(); // also sets dismissedDefaults
 		syncUrl(); // params.models = '' → clean URL
@@ -218,6 +301,10 @@
 	<LightRays class="rays-quiet" count={5} blur={16} speed={26} length="45%" />
 
 	<div class="relative mx-auto max-w-6xl px-4 pb-24">
+		<!-- Reorder announcements: sighted users see the columns move, so screen
+		     reader users get the same feedback here. -->
+		<div role="status" aria-live="polite" class="sr-only">{orderStatus}</div>
+
 		<!-- Decision-surface header: orient the page around choosing the right model for the work. -->
 		<div class="relative -mx-4 -mt-10 mb-6 px-4 pt-10">
 			<div class="relative mb-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -333,35 +420,112 @@
 				</div>
 
 				{#if selectedModels.length > 0}
-					<div class="mt-4 grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-						{#each selectedModels as model (model.id)}
-							<div class="rounded-lg border border-border bg-background px-3 py-2.5">
+					<!-- Order strip: the grid below renders one column per card, in this
+					     order — so reordering here is how you park two models side by
+					     side instead of reading across the whole table. -->
+					<div
+						class="mt-5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-border pt-4"
+					>
+						<p class="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+							<ArrowLeftRight class="size-3.5 text-primary dark:text-primary-strong" />
+							Column order
+						</p>
+						<p class="text-xs text-muted-foreground">
+							{reorderable
+								? 'Drag a card, or use the arrows, to sit two models next to each other.'
+								: 'Add a second model to start ordering columns.'}
+						</p>
+					</div>
+					<ul class="mt-3 grid list-none gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+						{#each selectedModels as model, i (model.id)}
+							<li
+								class={[
+									'rounded-lg border bg-background px-3 py-2.5 transition-[border-color,box-shadow,opacity]',
+									reorderable && 'cursor-grab active:cursor-grabbing',
+									dragOverId === model.id && dragId !== model.id
+										? 'border-primary ring-2 ring-primary/25'
+										: 'border-border',
+									dragId === model.id && 'opacity-40'
+								]}
+								draggable={reorderable}
+								ondragstart={(e) => handleDragStart(e, model.id)}
+								ondragover={(e) => handleDragOver(e, model.id)}
+								ondragleave={() => handleDragLeave(model.id)}
+								ondrop={(e) => handleDrop(e, model.id)}
+								ondragend={handleDragEnd}
+								animate:flip={{ duration: flipMs, easing: cubicOut }}
+							>
 								<div class="flex items-start justify-between gap-2">
-									<div class="min-w-0">
-										<p class="truncate text-sm font-semibold text-foreground">{model.name}</p>
-										<p class="truncate text-xs text-muted-foreground">{model.provider}</p>
+									<div class="flex min-w-0 items-start gap-1.5">
+										<GripVertical
+											aria-hidden="true"
+											class={[
+												'mt-0.5 size-3.5 shrink-0 text-muted-foreground/60',
+												!reorderable && 'invisible'
+											]}
+										/>
+										<div class="min-w-0">
+											<p class="truncate text-sm font-semibold text-foreground">
+												<span class="font-mono text-xs font-normal text-muted-foreground"
+													>{i + 1}.</span
+												>
+												{model.name}
+											</p>
+											<p class="truncate text-xs text-muted-foreground">{model.provider}</p>
+										</div>
 									</div>
-									<button
-										type="button"
-										class="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+									<Button
+										variant="ghost"
+										size="icon-xs"
+										class="-mr-1 cursor-pointer text-muted-foreground"
 										onclick={() => removeModel(model.id)}
 										aria-label={`Remove ${model.name}`}
 									>
 										<X class="size-3.5" />
-									</button>
+									</Button>
 								</div>
-								<div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-									<span>Fit {model.scenarioScores.coding}/100</span>
-									{#if model.benchmarks.coding != null}
-										<span>Benchmark {model.benchmarks.coding.toFixed(1)}</span>
-									{/if}
-									{#if model.burnDetails?.band != null}
-										<span>Burn {model.burnDetails.band}</span>
+								<div class="mt-2 flex items-end justify-between gap-2">
+									<div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+										<span>Fit {model.scenarioScores.coding}/100</span>
+										{#if model.benchmarks.coding != null}
+											<span>Benchmark {model.benchmarks.coding.toFixed(1)}</span>
+										{/if}
+										{#if model.burnDetails?.band != null}
+											<span>Burn {model.burnDetails.band}</span>
+										{/if}
+									</div>
+									{#if reorderable}
+										<!-- Single-pointer + keyboard path to reordering (WCAG SC 2.5.7),
+										     so dragging never becomes the only way in. -->
+										<div class="-mr-1 -mb-1 flex shrink-0 items-center gap-0.5">
+											<Button
+												variant="ghost"
+												size="icon-xs"
+												class={moveBtn}
+												onclick={() => moveModel(model.id, -1)}
+												aria-disabled={i === 0}
+												aria-label={`Move ${model.name} earlier`}
+												title="Move earlier"
+											>
+												<ChevronLeft class="size-3.5" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon-xs"
+												class={moveBtn}
+												onclick={() => moveModel(model.id, 1)}
+												aria-disabled={i === selectedModels.length - 1}
+												aria-label={`Move ${model.name} later`}
+												title="Move later"
+											>
+												<ChevronRight class="size-3.5" />
+											</Button>
+										</div>
 									{/if}
 								</div>
-							</div>
+							</li>
 						{/each}
-					</div>
+					</ul>
 				{/if}
 			</div>
 
@@ -451,6 +615,7 @@
 				<ModelCompare
 					models={selectedModels}
 					onRemove={removeModel}
+					onMove={reorderable ? moveModel : undefined}
 					{anchors}
 					scenario={scenarioValue}
 				/>
