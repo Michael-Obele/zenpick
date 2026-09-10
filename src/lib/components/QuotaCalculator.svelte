@@ -325,7 +325,7 @@
 					{/if}
 				</div>
 
-				<div class="grid grid-cols-3 gap-2">
+				<div class="flex sm:flex-row justify-start flex-col flex-wrap gap-2">
 					<div class="rounded-lg border border-border bg-background/60 p-2.5 text-center">
 						<div class="mb-1 flex items-center justify-center gap-1 text-xs text-muted-foreground">
 							<Clock class="size-3" /> 5 Hours
@@ -405,29 +405,33 @@
 						Compare another model
 					</Label>
 					<Popover.Root bind:open={modelComboboxOpen}>
-						<Popover.Trigger class="w-fit">
-							<button
-								type="button"
-								role="combobox"
-								aria-expanded={modelComboboxOpen}
-								aria-controls="model-combobox-list"
-								aria-labelledby="recommend-model-label"
-								class="flex h-9 w-fit items-center justify-between gap-2 rounded-4xl border border-input bg-input/30 px-3 py-1 text-sm transition-colors hover:bg-input/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none select-none dark:bg-input/30 dark:hover:bg-input/50"
-							>
-								<span class="truncate">
-									{#if explicitModelId}
-										{models.find((m) => m.id === explicitModelId)?.name ?? '— Pick a model —'}
-									{:else if selectedModel}
-										{selectedModel.name} <span class="text-muted-foreground">(recommended)</span>
-									{:else}
-										— Pick a model —
-									{/if}
-								</span>
-								<ChevronsUpDown class="size-4 shrink-0 text-muted-foreground opacity-70" />
-							</button>
+						<Popover.Trigger>
+							{#snippet child({ props })}
+								<button
+									{...props}
+									type="button"
+									role="combobox"
+									aria-expanded={modelComboboxOpen}
+									aria-controls="model-combobox-list"
+									aria-labelledby="recommend-model-label"
+									class="flex h-9 w-fit max-w-full items-center justify-between gap-2 rounded-4xl border border-input bg-input/30 px-3 py-1 text-sm transition-colors hover:bg-input/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none select-none dark:bg-input/30 dark:hover:bg-input/50"
+								>
+									<span class="min-w-0 truncate">
+										{#if explicitModelId}
+											{models.find((m) => m.id === explicitModelId)?.name ?? '— Pick a model —'}
+										{:else if selectedModel}
+											{selectedModel.name}
+											<span class="text-muted-foreground max-sm:hidden">(recommended)</span>
+										{:else}
+											— Pick a model —
+										{/if}
+									</span>
+									<ChevronsUpDown class="size-4 shrink-0 text-muted-foreground opacity-70" />
+								</button>
+							{/snippet}
 						</Popover.Trigger>
 						<Popover.Content
-							class="w-(--bits-popover-trigger-width) p-0"
+							class="w-(--bits-popover-trigger-width) min-w-60 p-0"
 							sideOffset={4}
 							align="start"
 						>
