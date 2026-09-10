@@ -94,7 +94,7 @@
 			<span class="hidden h-6 w-px bg-border sm:block" aria-hidden="true"></span>
 
 			<!-- Weight by: task scenarios -->
-			<div class="flex items-center gap-1.5">
+			<div class="flex flex-wrap items-center gap-1.5">
 				<span class="mr-1 text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
 					Weight by
 				</span>
@@ -103,6 +103,7 @@
 					bind:value={scenario}
 					variant="outline"
 					size="sm"
+					class="flex flex-wrap gap-1.5"
 					spacing={2}
 					aria-label="Weight ranking by task"
 				>
