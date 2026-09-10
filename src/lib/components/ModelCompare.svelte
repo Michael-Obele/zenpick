@@ -2,6 +2,7 @@
 	import type { GoModel } from '$lib/types/models';
 	import BurnBadge from './BurnBadge.svelte';
 	import CompareRow from './CompareRow.svelte';
+	import CapabilityBadges from './CapabilityBadges.svelte';
 	import {
 		X,
 		ChevronLeft,
@@ -319,6 +320,35 @@
 		>
 			{scenario ? scenarioVerdict : verdict}
 		</div>
+
+		<!-- Capabilities — leads the comparison the same way it leads the
+		     drawer: you pick a model by what it can do, then by what it costs.
+		     Both rows share one snippet, so the label/cell geometry can only
+		     be defined once. -->
+		{#snippet capabilityRow(label: string, hint: string, kind: 'input' | 'features')}
+			<div
+				class="sticky left-0 z-10 border-t border-border/60 bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground"
+				title={hint}
+			>
+				{label}
+			</div>
+			{#each models as m (m.id)}
+				<div class="border-t border-l border-border/60 px-3 py-2.5">
+					{#if m.capabilities}
+						<CapabilityBadges capabilities={m.capabilities} {kind} />
+					{:else}
+						<span class="text-xs text-muted-foreground/40">—</span>
+					{/if}
+				</div>
+			{/each}
+		{/snippet}
+
+		{@render capabilityRow('Accepts', 'Media types this model accepts as input', 'input')}
+		{@render capabilityRow(
+			'Supports',
+			'Tool calling, structured output and reasoning support',
+			'features'
+		)}
 
 		<!-- Benchmarks -->
 		<CompareRow label="Coding" {models} getValue={(m) => m.benchmarks.coding} hint="0-100">

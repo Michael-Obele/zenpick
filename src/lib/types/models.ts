@@ -44,8 +44,8 @@ export interface GoModel {
 	/** Speed metrics from modelgrep */
 	speed: ModelSpeed | null;
 
-	/** Capability flags from modelgrep (null when unmatched) */
-	capabilities: { vision: boolean; reasoning: boolean } | null;
+	/** What the model accepts and produces, plus feature flags (null when no source matched) */
+	capabilities: ModelCapabilities | null;
 
 	/** Migration hints: closed-source models this replaces */
 	migrationHints: MigrationHint[];
@@ -124,6 +124,43 @@ export interface ModelTag {
 	icon: string;
 	/** How this tag was derived */
 	source: 'ranking' | 'context' | 'pricing' | 'computed';
+}
+
+/**
+ * Modality vocabulary, taken verbatim from the modelgrep `modality` field —
+ * which is the same set OpenRouter publishes as `input_modalities`. Kept as a
+ * string union (not a boolean bag) so unknown future tokens are simply dropped
+ * instead of silently mis-typing the data.
+ */
+export type InputModality = 'text' | 'image' | 'audio' | 'video' | 'file';
+export type OutputModality = 'text' | 'image' | 'audio';
+
+/**
+ * Everything we know about what a model can *do*, resolved from modelgrep's
+ * `modality` + `capabilities` fields, with llm-stats `modalities` as the
+ * fallback when a model has no modelgrep counterpart.
+ *
+ * `vision` / `reasoning` are retained as booleans because the ranking and
+ * scoring layers filter on them; `input` / `output` are the richer, displayable
+ * form of the same underlying facts.
+ */
+export interface ModelCapabilities {
+	/** Accepted input modalities, canonical order, unknown tokens dropped. */
+	input: InputModality[];
+	/** Produced output modalities, canonical order. */
+	output: OutputModality[];
+	/**
+	 * Accepts images as input. Retained as a boolean because the ranking,
+	 * scoring and filter layers test it directly; it is derived from `input`
+	 * so the two can never disagree.
+	 */
+	vision: boolean;
+	/** Supports tool / function calling. */
+	tools: boolean;
+	/** Supports structured (schema-constrained) output. */
+	structured: boolean;
+	/** Exposes reasoning / extended thinking. */
+	reasoning: boolean;
 }
 
 export interface ModelBenchmarks {
@@ -223,7 +260,31 @@ export interface ModelgrepModelData {
 		reasoning: boolean;
 		structured: boolean;
 		vision: boolean;
+		/** Accepts audio input (present since modelgrep added modality flags). */
+		audio_in?: boolean;
+		/** Emits images. */
+		image_out?: boolean;
 	};
+	/**
+	 * Input/output modality lists — same vocabulary OpenRouter publishes as
+	 * `input_modalities` (`text | image | audio | video | file`).
+	 */
+	modality?: {
+		input: string[];
+		output: string[];
+	} | null;
+	/**
+	 * Open-weight evidence. The KEY IS ALWAYS PRESENT (even for closed models,
+	 * where every field is null), so never test for the object's existence —
+	 * test whether `license` / `params_b` / `hf_downloads` actually carry a
+	 * value. Used to corroborate llm-stats' `open_weight`, which mislabels
+	 * some variants.
+	 */
+	open_weights?: {
+		params_b: number | null;
+		license: string | null;
+		hf_downloads: number | null;
+	} | null;
 	benchmarks: {
 		artificial_analysis: {
 			intelligence: number | null;

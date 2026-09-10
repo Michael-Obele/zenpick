@@ -12,8 +12,10 @@
 	} from '@lucide/svelte';
 	import { rankNeed, type NeedSpec } from '$lib/needs';
 	import { scenarioLabel } from '$lib/scenarios';
+	import { capabilitySearchTerms } from '$lib/capabilities';
 	import BurnBadge from './BurnBadge.svelte';
 	import FallbackBadge from './FallbackBadge.svelte';
+	import CapabilityBadges from './CapabilityBadges.svelte';
 
 	interface Props {
 		models: GoModel[];
@@ -43,18 +45,31 @@
 		onExitNeed = () => {}
 	}: Props = $props();
 
+	/**
+	 * Searchable text for a model: its identity, its tags, and the capability
+	 * vocabulary from capabilities.ts. Including the latter means "video" or
+	 * "pdf" finds the models that actually accept them — previously those words
+	 * only matched a model whose name or tag happened to contain them.
+	 */
+	function searchHaystack(m: GoModel): string {
+		return [
+			m.name,
+			m.provider,
+			...m.tags.map((t) => t.label),
+			...capabilitySearchTerms(m.capabilities)
+		]
+			.join(' ')
+			.toLowerCase();
+	}
+
+	/** One predicate, so the plain table and the ranked list filter identically. */
+	function matchesFilter(m: GoModel, q: string): boolean {
+		return !q || searchHaystack(m).includes(q);
+	}
+
 	let filteredModels = $derived.by(() => {
-		let result = models;
-		if (filter) {
-			const q = filter.toLowerCase();
-			result = result.filter(
-				(m) =>
-					m.name.toLowerCase().includes(q) ||
-					m.provider.toLowerCase().includes(q) ||
-					m.tags.some((t) => t.label.toLowerCase().includes(q))
-			);
-		}
-		return result;
+		const q = filter.trim().toLowerCase();
+		return q ? models.filter((m) => matchesFilter(m, q)) : models;
 	});
 
 	type SortKey = 'name' | 'coding' | 'price' | 'quota' | 'fit' | 'burn' | 'score';
@@ -106,16 +121,9 @@
 				fit: null
 			}));
 		}
-		const q = filter.toLowerCase();
+		const q = filter.trim().toLowerCase();
 		return needEntries
-			.filter((e) => {
-				if (!q) return true;
-				return (
-					e.model.name.toLowerCase().includes(q) ||
-					e.model.provider.toLowerCase().includes(q) ||
-					e.model.tags.some((t) => t.label.toLowerCase().includes(q))
-				);
-			})
+			.filter((e) => matchesFilter(e.model, q))
 			.map((e) => ({ model: e.model, rank: e.rank, value: e.value, fit: e.fit }));
 	});
 
@@ -386,6 +394,16 @@
 							<span class="text-foreground">{model.name}</span>
 						</div>
 						<div class="text-xs text-muted-foreground">{model.provider}</div>
+						<!-- Non-text modalities only: every Go model accepts text, so that
+						     chip would be a constant. The rest is the signal. No guard
+						     needed — the component renders nothing without data. -->
+						<CapabilityBadges
+							capabilities={model.capabilities}
+							kind="input"
+							variant="compact"
+							omit={['text']}
+							class="mt-1.5"
+						/>
 					</Table.Cell>
 					<Table.Cell class="text-sm tabular-nums">
 						{#if model.pricing.inputPricePerM != null}

@@ -8,6 +8,7 @@
 	import BurnBadge from './BurnBadge.svelte';
 	import BurnGauge from './BurnGauge.svelte';
 	import ModelScatterContext from './ModelScatterContext.svelte';
+	import CapabilitiesPanel from './CapabilitiesPanel.svelte';
 	import { llmStatsModelUrl } from '$lib/utils/llm-stats-url';
 	import { benchmarkToPercent } from '$lib/compare-defaults';
 
@@ -97,6 +98,11 @@
 				{/if}
 
 				<div class="space-y-6 px-4 pb-8">
+					<!-- Capabilities — what the model accepts and what it can do.
+					     Placed first: it is the question the rest of the drawer
+					     (price, quota, benchmarks) only makes sense after. -->
+					<CapabilitiesPanel capabilities={model.capabilities} />
+
 					<!-- Pricing -->
 					<section>
 						<h3 class="mb-2 text-sm font-medium text-muted-foreground">Pricing (per 1M tokens)</h3>

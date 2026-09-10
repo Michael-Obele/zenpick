@@ -23,6 +23,7 @@ import { inferBurnDetails } from './burn';
 import { computeScenarioScores } from './scoring';
 import { computeTags } from './tags';
 import { blendBenchmarks } from './blend';
+import { buildCapabilities } from '$lib/capabilities';
 import { MIGRATION_BAND } from '$lib/migration';
 
 /** Enrich a Go model ID with modelgrep data, llm-stats data, and optional docs pricing. */
@@ -35,12 +36,8 @@ export function inferModel(
 	usageLimits?: Record<string, UsageLimits> | null
 ): GoModel {
 	const name = lsModel && lsModel.id === goId ? lsModel.name : goIdToName(goId);
-	// openWeight is data-driven: llm-stats marks closed models (e.g. grok-4.5,
-	// gpt-5.6-luna) as open_weight: false, and the Go API now serves them.
-	// Some providers are open-weight FAMILIES whose API-served variants are
-	// still open alternatives — Qwen (Alibaba) publishes its weights publicly,
-	// so its Go API models count as open for comparison purposes.
-	const openWeight = lsModel ? lsModel.open_weight || isOpenWeightFamily(goId) : true;
+	// Open-weight is triangulated across sources — see inferOpenWeight().
+	const openWeight = inferOpenWeight(goId, mgModel, lsModel);
 	const pricing = inferPricing(goId, mgModel, docsPricing);
 	// OpenCode's published usage-limit request counts are the ground truth for
 	// how fast a model burns through the Go quota — prefer them over a
@@ -107,12 +104,7 @@ export function inferModel(
 		tags,
 		benchmarks,
 		speed,
-		capabilities: mgModel
-			? {
-					vision: mgModel.capabilities?.vision ?? false,
-					reasoning: mgModel.capabilities?.reasoning ?? false
-				}
-			: null,
+		capabilities: buildCapabilities(mgModel, lsModel),
 		migrationHints,
 		scenarioScores,
 		endpoint: goEndpointType(goId),
@@ -228,11 +220,58 @@ function inferProvider(goId: string): string {
 }
 
 /**
+ * Triangulated open-weight inference — never a single source.
+ *
+ * llm-stats is the primary signal, but it mislabels individual variants.
+ * Verified live (2026-09-10): `deepseek-v4-flash-vision-exp` reports
+ * `open_weight: false` while every sibling DeepSeek model reports `true` —
+ * and modelgrep carries an MIT license, 304.6B params and ~400k HuggingFace
+ * downloads for the very same model. Trusting that lone boolean dropped it
+ * into the drawer's "Closed-source model — no open replacement to compare
+ * it against" branch and suppressed its migration hints.
+ *
+ * So open-weight is a UNION of corroborating evidence. A union can only ever
+ * ADD an open-weight verdict, never remove llm-stats' — which matters because
+ * modelgrep's evidence is incomplete in the other direction too: Llama 3.1 and
+ * Gemma 2 are genuinely open-weight yet carry no license row there (6 of the
+ * 151 overlapping catalog entries disagree, in both directions).
+ */
+function inferOpenWeight(
+	goId: string,
+	mgModel: ModelgrepModelData | null,
+	lsModel: LlmStatsModel | null | undefined
+): boolean {
+	// No llm-stats counterpart → nothing to contradict. The Go API only serves
+	// open alternatives in that case, so an unmatched model counts as open.
+	if (!lsModel) return true;
+	if (lsModel.open_weight) return true;
+	if (hasOpenWeightEvidence(mgModel)) return true;
+	return isOpenWeightFamily(goId);
+}
+
+/**
+ * True when modelgrep carries CONCRETE open-weight evidence.
+ *
+ * The `open_weights` object is present on EVERY catalog entry — closed labs
+ * simply get `{ params_b: null, license: null, hf_downloads: null }` — so the
+ * object's existence proves nothing. Only a populated field does, which is
+ * what distinguishes Anthropic/OpenAI entries from DeepSeek/Qwen ones.
+ */
+function hasOpenWeightEvidence(mgModel: ModelgrepModelData | null): boolean {
+	const ow = mgModel?.open_weights;
+	if (!ow) return false;
+	return Boolean(ow.license || ow.params_b || ow.hf_downloads);
+}
+
+/**
  * Providers whose models are OPEN-WEIGHT FAMILIES — they publish their
  * weights publicly even when the API-served variant is flagged closed by
- * llm-stats. These still count as "open alternatives" for the Replaces
+ * llm-stats. These still count as open alternatives for the Replaces
  * comparison. Provider-level on purpose: no per-model-ID hardcoding, so
  * new family members (qwen3.9, qwen4…) resolve automatically.
+ *
+ * Last resort only: prefer the concrete evidence in hasOpenWeightEvidence(),
+ * which generalizes to every lab instead of naming vendors one at a time.
  */
 const OPEN_WEIGHT_FAMILIES = ['qwen'];
 
