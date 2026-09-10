@@ -63,7 +63,7 @@
 		<!-- One row: Rank by need + Weight by task (AND merge), then status -->
 		<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
 			<!-- Rank by: browse-by-need metrics -->
-			<div class="flex items-center gap-1.5">
+			<div class="flex items-center flex-wrap gap-1.5">
 				<span class="mr-1 text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
 					Rank by
 				</span>
@@ -72,6 +72,7 @@
 					bind:value={need}
 					variant="outline"
 					size="sm"
+					class="flex flex-wrap gap-1.5"
 					spacing={2}
 					aria-label="Rank models by need"
 				>
