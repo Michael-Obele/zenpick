@@ -5,11 +5,14 @@
 		ChevronsUpDown,
 		Clock,
 		Flame,
+		Gauge,
+		Info,
 		Layers,
 		Share,
 		Snowflake,
 		Target,
-		Thermometer
+		Thermometer,
+		TriangleAlert
 	} from '@lucide/svelte';
 	import { useSearchParams } from 'runed/kit';
 	import { burnClasses, burnLabel, burnRateFromPrice } from '$lib/burn';
@@ -84,6 +87,30 @@
 	});
 
 	let hasCachedPricing = $derived(selectedModel?.pricing.cachedReadPerM != null);
+
+	// Context-aware slider ceiling — never offer more tokens than the selected model can handle.
+	// Falls back to 500K when no model is selected or contextWindow is unknown.
+	let effectiveMax = $derived(selectedModel?.contextWindow ?? 500_000);
+	let sliderStep = $derived(effectiveMax > 500_000 ? 5000 : 1000);
+	let usagePct = $derived(effectiveMax > 0 ? Math.round((tokenInput / effectiveMax) * 100) : 0);
+	let isNearLimit = $derived(usagePct >= 85 && usagePct < 100);
+	let isAtLimit = $derived(usagePct >= 100);
+
+	function formatTokens(n: number | null): string {
+		if (n == null) return '—';
+		if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
+		if (n >= 1000) return `${Math.round(n / 1000)}K`;
+		return n.toLocaleString();
+	}
+
+	// Auto-clamp URL state when the selected model's window shrinks below the current value.
+	// Uses $effect so the clamp runs after derived values settle, avoiding write-during-render.
+	$effect(() => {
+		const cap = selectedModel?.contextWindow;
+		if (cap != null && tokenInput > cap) {
+			params.tokens = cap;
+		}
+	});
 
 	function computeCost(
 		pricing: ModelPricing,
@@ -213,15 +240,26 @@
 	</Card.Header>
 
 	<Card.Content class="space-y-5 pt-0">
-		<!-- Token slider -->
+		<!-- Token slider — max tracks selectedModel.contextWindow (never exceeds what the model can offer) -->
 		<div class="space-y-2">
-			<div class="flex items-center justify-between">
+			<div class="flex items-center justify-between gap-2">
 				<Label for="recommend-tokens" class="text-sm text-muted-foreground">
 					Avg. tokens per request
 				</Label>
-				<span class="text-sm font-medium tabular-nums text-foreground">
-					{tokenInput.toLocaleString()}
-				</span>
+				<div class="flex items-center gap-2">
+					<span class="text-sm font-medium tabular-nums text-foreground">
+						{tokenInput.toLocaleString()}
+					</span>
+					{#if selectedModel?.contextWindow}
+						<span
+							class="hidden items-center gap-1 rounded-full border bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground sm:inline-flex"
+							title="{selectedModel.name} context window: {selectedModel.contextWindow.toLocaleString()} tokens"
+						>
+							<Gauge class="size-3" />
+							{formatTokens(selectedModel.contextWindow)} max
+						</span>
+					{/if}
+				</div>
 			</div>
 			<Slider
 				id="recommend-tokens"
@@ -229,13 +267,55 @@
 				value={tokenInput}
 				onValueChange={handleTokensChange}
 				min={1000}
-				max={500000}
-				step={1000}
+				max={effectiveMax}
+				step={sliderStep}
 			/>
 			<div class="flex justify-between text-xs text-muted-foreground/50">
-				<span>Short (~2K)</span>
-				<span>Heavy refactor (~200K)</span>
+				<span>1K</span>
+				<span class="tabular-nums">{formatTokens(effectiveMax)}</span>
 			</div>
+			{#if selectedModel?.contextWindow}
+				<div class="flex items-center justify-between gap-2">
+					<div class="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+						<div
+							class={cn(
+								'h-full rounded-full transition-all',
+								isAtLimit ? 'bg-destructive' : isNearLimit ? 'bg-amber-500' : 'bg-primary'
+							)}
+							style="width: {Math.min(100, usagePct)}%"
+							role="progressbar"
+							aria-valuenow={usagePct}
+							aria-valuemin={0}
+							aria-valuemax={100}
+							aria-label="Context usage"
+						></div>
+					</div>
+					<span
+						class={cn(
+							'shrink-0 text-xs tabular-nums',
+							isAtLimit
+								? 'font-medium text-destructive'
+								: isNearLimit
+									? 'font-medium text-amber-600 dark:text-amber-400'
+									: 'text-muted-foreground/60'
+						)}
+					>
+						{usagePct}% of context
+					</span>
+				</div>
+				{#if isAtLimit}
+					<p class="flex items-center gap-1.5 text-xs text-destructive">
+						<TriangleAlert class="size-3 shrink-0" />
+						At the context limit for {selectedModel.name} — requests this large may be truncated.
+					</p>
+				{:else if isNearLimit}
+					<p class="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+						<Info class="size-3 shrink-0" />
+						Using {usagePct}% of {selectedModel.name}'s {formatTokens(selectedModel.contextWindow)} context
+						window.
+					</p>
+				{/if}
+			{/if}
 		</div>
 
 		<!-- Cached reads slider -->
