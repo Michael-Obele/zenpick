@@ -1,6 +1,6 @@
 /** Fetches Go pricing data from the official OpenCode docs page. */
 
-import { parse } from 'node-html-parser';
+import { parse, type HTMLElement as NodeHtmlElement } from 'node-html-parser';
 import type { ModelPricing, GoModelEntry, UsageLimits } from '$lib/types/models';
 import { cacheGet, cacheSet, GO_DOCS_PRICING_TTL } from '$lib/cache';
 import { goIdToName } from './opencode-go';
@@ -138,7 +138,20 @@ function parseCount(s: string): number | null {
 	const n = parseInt(cleaned, 10);
 	return Number.isNaN(n) ? null : n;
 }
-
+/**
+ * Extract text content from a table cell, preferring <strong> text when present.
+ *
+ * Handles promotional markup like:
+ *   <del>6,500</del><br><strong>26,000</strong>
+ *
+ * Without this, td.text concatenates into "6,50026,000" → 65,002,600.
+ * Preferring <strong> gives the intended current value "26,000".
+ */
+function cellText(td: NodeHtmlElement): string {
+	const strong = td.querySelector('strong, b');
+	if (strong) return strong.text.trim();
+	return td.text.trim();
+}
 /**
  * Fetch Go docs data (pricing + usage limits) from the OpenCode docs page.
  * Parses two tables with node-html-parser:
@@ -197,7 +210,7 @@ async function refreshGoDocsData(): Promise<GoDocsData> {
 			// Skip the first row if it contains headers
 			if (rowIdx === 0 && row.querySelectorAll('th').length > 0) continue;
 
-			const cells = row.querySelectorAll('td').map((td) => td.text.trim());
+			const cells = row.querySelectorAll('td').map((td) => cellText(td));
 			if (cells.length < 4) continue;
 
 			const docsName = cells[0];

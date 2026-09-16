@@ -11,6 +11,7 @@
 	import CapabilitiesPanel from './CapabilitiesPanel.svelte';
 	import { llmStatsModelUrl } from '$lib/utils/llm-stats-url';
 	import { benchmarkToPercent } from '$lib/compare-defaults';
+	import { formatCompact } from '$lib/utils';
 
 	interface Props {
 		models: GoModel[];
@@ -140,19 +141,19 @@
 							<div class="rounded-lg border border-border p-3 text-center">
 								<div class="text-xs text-muted-foreground">5 Hours ($12)</div>
 								<div class="text-lg font-medium tabular-nums text-foreground">
-									{model.quota.requestsPer5h.toLocaleString()}
+									{formatCompact(model.quota.requestsPer5h)}
 								</div>
 							</div>
 							<div class="rounded-lg border border-border p-3 text-center">
 								<div class="text-xs text-muted-foreground">Week ($30)</div>
 								<div class="text-lg font-medium tabular-nums text-foreground">
-									{model.quota.requestsPerWeek.toLocaleString()}
+									{formatCompact(model.quota.requestsPerWeek)}
 								</div>
 							</div>
 							<div class="rounded-lg border border-border p-3 text-center">
 								<div class="text-xs text-muted-foreground">Month ($60)</div>
 								<div class="text-lg font-medium tabular-nums text-foreground">
-									{model.quota.requestsPerMonth.toLocaleString()}
+									{formatCompact(model.quota.requestsPerMonth)}
 								</div>
 							</div>
 						</div>

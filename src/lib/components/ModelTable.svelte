@@ -14,6 +14,7 @@
 	import { scenarioLabel } from '$lib/scenarios';
 	import { capabilitySearchTerms } from '$lib/capabilities';
 	import BurnBadge from './BurnBadge.svelte';
+	import { formatCompact } from '$lib/utils';
 	import FallbackBadge from './FallbackBadge.svelte';
 	import CapabilityBadges from './CapabilityBadges.svelte';
 
@@ -445,7 +446,7 @@
 						{/if}
 					</Table.Cell>
 					<Table.Cell class="text-sm tabular-nums text-muted-foreground/70">
-						{model.quota.requestsPer5h.toLocaleString()}
+						{formatCompact(model.quota.requestsPer5h)}
 					</Table.Cell>
 					<Table.Cell class="text-sm tabular-nums">
 						{#if need && row.value != null}

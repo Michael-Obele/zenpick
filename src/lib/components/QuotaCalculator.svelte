@@ -16,7 +16,7 @@
 	} from '@lucide/svelte';
 	import { useSearchParams } from 'runed/kit';
 	import { burnClasses, burnLabel, burnRateFromPrice } from '$lib/burn';
-	import { recommendModel } from '$lib/recommendation';
+	import { recommendModel, REFERENCE_TOKENS, REFERENCE_CACHED_PCT } from '$lib/recommendation';
 	import {
 		RECOMMENDATION_SCENARIO_VALUES,
 		recommendationSearchSchema
@@ -29,7 +29,7 @@
 	import { Label } from './ui/label';
 	import { Badge } from './ui/badge';
 	import { Button } from './ui/button';
-	import { cn } from '$lib/utils';
+	import { cn, formatCompact } from '$lib/utils';
 	import type { GoModel, ModelPricing } from '$lib/types/models';
 
 	interface Props {
@@ -139,6 +139,35 @@
 	});
 
 	let quotaEstimates = $derived.by(() => {
+		if (!selectedModel) return null;
+
+		// Prefer ground-truth official usage limits (scraped from Go docs),
+		// scaled to the user's workload assumptions.
+		const official = selectedModel.quota;
+		if (official.requestsPer5h > 0 && costPerRequest != null && costPerRequest > 0) {
+			const refCost = computeCost(
+				selectedModel.pricing,
+				REFERENCE_TOKENS * 0.7,
+				REFERENCE_TOKENS * 0.15,
+				hasCachedPricing ? REFERENCE_CACHED_PCT : 0
+			);
+			if (refCost != null && refCost > 0) {
+				const scale = costPerRequest / refCost;
+				return {
+					per5h: Math.round(official.requestsPer5h / scale),
+					perWeek: Math.round(official.requestsPerWeek / scale),
+					perMonth: Math.round(official.requestsPerMonth / scale)
+				};
+			}
+			// Can't scale — use official numbers as-is
+			return {
+				per5h: official.requestsPer5h,
+				perWeek: official.requestsPerWeek,
+				perMonth: official.requestsPerMonth
+			};
+		}
+
+		// Fall back to price-based estimation when no official limits exist
 		if (costPerRequest == null || costPerRequest <= 0) return null;
 		return {
 			per5h: Math.floor(12 / costPerRequest),
@@ -411,21 +440,21 @@
 							<Clock class="size-3" /> 5 Hours
 						</div>
 						<div class="text-lg font-medium tabular-nums text-foreground">
-							{quotaEstimates?.per5h.toLocaleString() ?? '—'}
+							{formatCompact(quotaEstimates?.per5h)}
 						</div>
 						<div class="text-xs text-muted-foreground/60">requests</div>
 					</div>
 					<div class="rounded-lg border border-border bg-background/60 p-2.5 text-center">
 						<div class="mb-1 text-xs text-muted-foreground">Week</div>
 						<div class="text-lg font-medium tabular-nums text-foreground">
-							{quotaEstimates?.perWeek.toLocaleString() ?? '—'}
+							{formatCompact(quotaEstimates?.perWeek)}
 						</div>
 						<div class="text-xs text-muted-foreground/60">requests</div>
 					</div>
 					<div class="rounded-lg border border-border bg-background/60 p-2.5 text-center">
 						<div class="mb-1 text-xs text-muted-foreground">Month</div>
 						<div class="text-lg font-medium tabular-nums text-foreground">
-							{quotaEstimates?.perMonth.toLocaleString() ?? '—'}
+							{formatCompact(quotaEstimates?.perMonth)}
 						</div>
 						<div class="text-xs text-muted-foreground/60">requests</div>
 					</div>

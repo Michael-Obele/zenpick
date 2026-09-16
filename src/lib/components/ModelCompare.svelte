@@ -23,7 +23,7 @@
 	import { benchmarkToPercent } from '$lib/compare-defaults';
 	import { recommendModel, REFERENCE_TOKENS, REFERENCE_CACHED_PCT } from '$lib/recommendation';
 	import type { RecommendationScenario } from '$lib/recommendation';
-	import { tieRound } from '$lib/utils';
+	import { tieRound, formatCompact } from '$lib/utils';
 
 	/** Catalog-wide anchor roles for model columns (from compare smart defaults). */
 	type AnchorRole = 'quality' | 'value';
@@ -445,7 +445,7 @@
 		<CompareRow label="Req / 5h" {models} getValue={(m) => m.quota.requestsPer5h} tieDecimals={0}>
 			{#snippet format(value, isBest)}
 				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-					>{value == null ? '—' : value.toLocaleString()}</span
+					>{value == null ? '—' : formatCompact(value)}</span
 				>
 			{/snippet}
 		</CompareRow>
@@ -458,7 +458,7 @@
 		>
 			{#snippet format(value, isBest)}
 				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-					>{value == null ? '—' : value.toLocaleString()}</span
+					>{value == null ? '—' : formatCompact(value)}</span
 				>
 			{/snippet}
 		</CompareRow>
@@ -471,7 +471,7 @@
 		>
 			{#snippet format(value, isBest)}
 				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-					>{value == null ? '—' : value.toLocaleString()}</span
+					>{value == null ? '—' : formatCompact(value)}</span
 				>
 			{/snippet}
 		</CompareRow>
