@@ -181,6 +181,7 @@ const CACHE_KEY = `go-models-enriched:${fnv1a(
 		fetchLlmStatsModels,
 		filterFrontierModels,
 		matchLlmStatsModel,
+		blendBenchmarks,
 		inferModel,
 		refreshCache,
 		inferMigrationHints

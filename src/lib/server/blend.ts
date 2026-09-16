@@ -21,10 +21,11 @@ import { normalizeTopScore } from './llm-stats';
 /**
  * Blend math scores from GPQA (modelgrep) and llm-stats math composite.
  * Both are 0-1 accuracy scores, making them methodologically comparable.
- * llm-stats values are normalized first (it serves a mixed 0-1 / 0-100 scale).
+ * llm-stats values are normalized first (it serves a mixed 0-1 / 0-100
+ * scale) and dropped when they land outside 0-100 — see lsOutlierSafe.
  */
 function blendMath(gpqa: number | null, lsMath: number | null): number | null {
-	const ls = normalizeTopScore(lsMath);
+	const ls = lsOutlierSafe(lsMath);
 	if (gpqa != null && ls != null) {
 		return Math.round(gpqa * 60 + ls * 0.4);
 	}
@@ -35,21 +36,17 @@ function blendMath(gpqa: number | null, lsMath: number | null): number | null {
 // ─── llm-stats Normalization ───────────────────────────────────────────
 
 /**
- * Convert llm-stats category scores to display scale (0-100).
+ * Normalize an llm-stats category score to the 0–100 display scale,
+ * guarding against broken-scale outliers.
+ *
  * llm-stats serves a mixed scale (some models 0-1, others 0-100), so we
  * auto-detect via normalizeTopScore instead of blindly multiplying by 100.
+ * Some models are on a third, simply broken scale (DeepSeek V4.1 Flash:
+ * math 868.1, reasoning 289.8; Gemini previews: code 813.4) — values above
+ * 100 after normalization are rejected as no data, because a fake score
+ * would otherwise leak into the UI and win comparison rows outright.
  */
-function lsToDisplay(value: number | null | undefined): number | null {
-	const n = normalizeTopScore(value);
-	return n == null ? null : Math.round(n);
-}
-
-/**
- * Guard against extreme llm-stats reasoning outliers.
- * Some models (MiMo-V2-Omni, Grok 4.5, etc.) report reasoning scores > 100,
- * which indicates a different scale — return null in those cases.
- */
-function lsReasoningSafe(value: number | null | undefined): number | null {
+function lsOutlierSafe(value: number | null | undefined): number | null {
 	const n = normalizeTopScore(value);
 	return n == null || n > 100 ? null : Math.round(n);
 }
@@ -81,19 +78,21 @@ export function blendBenchmarks(
 	const aa = mgModel?.benchmarks?.artificial_analysis;
 	const lsScores = lsModel?.top_scores;
 
-	// Coding: modelgrep primary, llm-stats fallback
-	const coding = aa?.coding ?? (lsScores ? lsToDisplay(lsScores.code) : null);
+	// Coding: modelgrep primary, llm-stats fallback (with outlier guard)
+	const lsCode = lsOutlierSafe(lsScores?.code);
+	const coding = aa?.coding ?? lsCode;
 	const codingMg = aa?.coding != null;
-	const codingLs = !codingMg && lsScores?.code != null;
+	const codingLs = !codingMg && lsCode != null;
 
 	// Reasoning: modelgrep primary, llm-stats fallback (with outlier guard)
-	const reasoning = aa?.intelligence ?? (lsScores ? lsReasoningSafe(lsScores.reasoning) : null);
+	const lsReasoning = lsOutlierSafe(lsScores?.reasoning);
+	const reasoning = aa?.intelligence ?? lsReasoning;
 	const reasoningMg = aa?.intelligence != null;
-	const reasoningLs = !reasoningMg && lsScores?.reasoning != null && lsScores.reasoning <= 100;
+	const reasoningLs = !reasoningMg && lsReasoning != null;
 
-	// Math: blended consensus
+	// Math: blended consensus (with outlier guard on the llm-stats side)
 	const gpqa = aa?.gpqa ?? null;
-	const lsMath = lsScores?.math ?? null;
+	const lsMath = lsOutlierSafe(lsScores?.math);
 	const math = blendMath(gpqa, lsMath);
 	const mathMg = gpqa != null;
 	const mathLs = lsMath != null;
