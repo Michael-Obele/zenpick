@@ -36,26 +36,28 @@
 
 	let values = $derived(models.map(getValue));
 
-	/** Single unambiguous winner, or a tie among ≥2 display-equal values. */
+	/**
+	 * All display-equal leaders share the "best" highlight — a tie crowns
+	 * every tied model instead of crowning nobody. `tie` is true when ≥2
+	 * models share the extreme value (drives the "Tie" badge in the label).
+	 */
 	let analysis = $derived(analyzeRow(values, higherIsBetter, tieDecimals));
-	let best = $derived(analysis.bestIndex);
+	let bestSet = $derived(new Set(analysis.bestIndices));
 	let isTie = $derived(analysis.tie);
 
 	function analyzeRow(
 		vals: (number | null)[],
 		higher: boolean,
 		decimals: number
-	): { bestIndex: number; tie: boolean } {
+	): { bestIndices: number[]; tie: boolean } {
 		const nums = vals
 			.map((v, i) => ({ v: v == null ? null : tieRound(v, decimals), i }))
 			.filter((x) => x.v != null) as { v: number; i: number }[];
-		if (nums.length === 0) return { bestIndex: -1, tie: false };
+		if (nums.length === 0) return { bestIndices: [], tie: false };
 		const extreme = higher ? Math.max(...nums.map((x) => x.v)) : Math.min(...nums.map((x) => x.v));
-		const winners = nums.filter((x) => x.v === extreme);
-		// Only highlight a single, unambiguous winner (ties get no highlight).
-		return winners.length === 1
-			? { bestIndex: winners[0].i, tie: false }
-			: { bestIndex: -1, tie: true };
+		const winners = nums.filter((x) => x.v === extreme).map((x) => x.i);
+		// Single winner or tied leaders — every leader highlights as best.
+		return { bestIndices: winners, tie: winners.length > 1 };
 	}
 </script>
 
@@ -78,18 +80,20 @@
 		{/if}
 	</div>
 	{#each models as m, i (m.id)}
+		{@const isBest = bestSet.has(i)}
 		<div
-			class="relative border-t border-l border-border/60 px-3 py-2.5 text-sm {best === i
+			class="relative border-t border-l border-border/60 px-3 py-2.5 text-sm {isBest
 				? 'bg-primary/5 ring-1 ring-inset ring-primary/20'
 				: ''}"
 		>
-			{#if best === i}
+			{#if isBest}
 				<Crown
 					class="absolute right-2 top-2 size-3.5 text-amber-800 dark:text-amber-300"
 					aria-hidden="true"
 				/>
+				<span class="sr-only">{isTie ? 'Tied best' : 'Best'}</span>
 			{/if}
-			{@render format?.(values[i], best === i)}
+			{@render format?.(values[i], isBest)}
 		</div>
 	{/each}
 </div>
