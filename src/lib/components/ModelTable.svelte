@@ -10,7 +10,7 @@
 		GitCompare,
 		Crown
 	} from '@lucide/svelte';
-	import { rankNeed, type NeedSpec } from '$lib/needs';
+	import { rankNeed, scoredEntries, type NeedSpec } from '$lib/needs';
 	import { scenarioLabel } from '$lib/scenarios';
 	import { capabilitySearchTerms } from '$lib/capabilities';
 	import BurnBadge from './BurnBadge.svelte';
@@ -112,7 +112,12 @@
 			: rankNeed(need, models);
 	});
 
-	type DisplayRow = { model: GoModel; rank: number; value: number | null; fit: number | null };
+	type DisplayRow = {
+		model: GoModel;
+		rank: number | null;
+		value: number | null;
+		fit: number | null;
+	};
 	let displayRows = $derived.by((): DisplayRow[] => {
 		if (!needEntries) {
 			return sortedModels.map((model, index) => ({
@@ -128,13 +133,23 @@
 			.map((e) => ({ model: e.model, rank: e.rank, value: e.value, fit: e.fit }));
 	});
 
-	// Bar fills relative to the best value in the current ranking. For
-	// ascending needs (cheapest) the best value sits at the END of the list,
-	// so the bar scale is inverted and the cheapest model gets the fullest bar.
+	/**
+	 * Bar fills relative to the best value in the current ranking. For
+	 * ascending needs (cheapest) the best value sits at the END of the SCORED
+	 * list, so the bar scale is inverted and the cheapest model gets the
+	 * fullest bar.
+	 *
+	 * Measured over the scored rows only: a text search can leave the visible
+	 * window starting mid-leaderboard, and unscored rows trail with null —
+	 * neither should redefine the scale.
+	 */
 	let metricBarMax = $derived.by(() => {
-		if (!need || displayRows.length === 0) return 0;
-		const rows = displayRows;
-		return need.direction === 'asc' ? (rows[rows.length - 1].value ?? 0) : (rows[0].value ?? 0);
+		if (!need) return 0;
+		const scored = displayRows.filter((r) => r.value != null);
+		if (scored.length === 0) return 0;
+		return need.direction === 'asc'
+			? (scored[scored.length - 1].value ?? 0)
+			: (scored[0].value ?? 0);
 	});
 
 	function metricWidth(value: number): number {
@@ -363,32 +378,7 @@
 						</button>
 					</Table.Cell>
 					<Table.Cell class="w-10">
-						{#if need}
-							{#if row.rank === 1}
-								<span
-									class="inline-flex size-6 items-center justify-center rounded-md bg-amber-400/15 text-amber-500"
-									title="#1 {model.name}"
-								>
-									<Crown class="size-3.5" />
-								</span>
-							{:else if row.rank === 2}
-								<span
-									class="inline-flex size-6 items-center justify-center rounded-md bg-slate-400/15 text-sm font-semibold tabular-nums text-slate-400"
-								>
-									2
-								</span>
-							{:else if row.rank === 3}
-								<span
-									class="inline-flex size-6 items-center justify-center rounded-md bg-orange-400/15 text-sm font-semibold tabular-nums text-orange-500"
-								>
-									3
-								</span>
-							{:else}
-								<span class="text-sm tabular-nums text-muted-foreground/50">{row.rank}</span>
-							{/if}
-						{:else}
-							<span class="text-sm tabular-nums text-muted-foreground/60">{row.rank}</span>
-						{/if}
+						{@render rankBadge(row.rank, need, model.name)}
 					</Table.Cell>
 					<Table.Cell class="font-medium">
 						<div class="flex items-center gap-2">
@@ -449,28 +439,7 @@
 						{formatCompact(model.quota.requestsPer5h)}
 					</Table.Cell>
 					<Table.Cell class="text-sm tabular-nums">
-						{#if need && row.value != null}
-							<div class="flex items-center gap-2">
-								<div class="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-									<div
-										class="h-full rounded-full {need.bar}"
-										style="width: {metricWidth(row.value)}%"
-									></div>
-								</div>
-								<span class="text-xs font-semibold tabular-nums {need.accent}">
-									{need.format(row.value)}
-								</span>
-								{#if row.fit != null}
-									<span class="text-xs tabular-nums text-muted-foreground/60">
-										fit {row.fit}
-									</span>
-								{/if}
-							</div>
-						{:else if model.benchmarks.coding}
-							<span class="text-foreground/80">{model.benchmarks.coding.toFixed(1)}</span>
-						{:else}
-							<span class="text-muted-foreground/30">—</span>
-						{/if}
+						{@render metricCell(row, model, need)}
 					</Table.Cell>
 					{#if scenario}
 						{@const score = model.scenarioScores[scenario as keyof GoModel['scenarioScores']] ?? 0}
@@ -512,7 +481,7 @@
 					<Table.Cell colspan={scenario ? 10 : 9} class="py-12 text-center">
 						<div class="flex flex-col items-center gap-2 text-muted-foreground">
 							<SearchX class="size-8 opacity-40" />
-							{#if need && needEntries?.length === 0}
+							{#if need && needEntries && scoredEntries(needEntries).length === 0}
 								<p>No opencode model has {need.metricLabel.toLowerCase()} data yet.</p>
 								<p class="text-xs">Check back after the next benchmark refresh.</p>
 							{:else}
@@ -526,3 +495,71 @@
 		</Table.Body>
 	</Table.Root>
 </div>
+
+<!--
+			Row cells live in snippets so the row body stays a readable list of cells.
+			Both branches depend on whether a need is active, which is a per-row state
+			decision rather than table chrome.
+		-->
+{#snippet rankBadge(rank: number | null, activeNeed: NeedSpec | null, name: string)}
+	{#if !activeNeed}
+		<span class="text-sm tabular-nums text-muted-foreground/60">{rank}</span>
+	{:else if rank == null}
+		<!-- No data for this need's metric: the model is listed but unranked,
+				     so it shows an em dash rather than a rank it was never given. -->
+		<span
+			class="text-sm text-muted-foreground/30"
+			title="No {activeNeed.metricLabel.toLowerCase()} data"
+		>
+			—
+		</span>
+	{:else if rank === 1}
+		<span
+			class="inline-flex size-6 items-center justify-center rounded-md bg-amber-400/15 text-amber-500"
+			title="#1 {name}"
+		>
+			<Crown class="size-3.5" />
+		</span>
+	{:else if rank === 2}
+		<span
+			class="inline-flex size-6 items-center justify-center rounded-md bg-slate-400/15 text-sm font-semibold tabular-nums text-slate-400"
+		>
+			2
+		</span>
+	{:else if rank === 3}
+		<span
+			class="inline-flex size-6 items-center justify-center rounded-md bg-orange-400/15 text-sm font-semibold tabular-nums text-orange-500"
+		>
+			3
+		</span>
+	{:else}
+		<span class="text-sm tabular-nums text-muted-foreground/50">{rank}</span>
+	{/if}
+{/snippet}
+
+{#snippet metricCell(row: DisplayRow, model: GoModel, activeNeed: NeedSpec | null)}
+	{#if activeNeed && row.value != null}
+		<div class="flex items-center gap-2">
+			<div class="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+				<div
+					class="h-full rounded-full {activeNeed.bar}"
+					style="width: {metricWidth(row.value)}%"
+				></div>
+			</div>
+			<span class="text-xs font-semibold tabular-nums {activeNeed.accent}">
+				{activeNeed.format(row.value)}
+			</span>
+			{#if row.fit != null}
+				<span class="text-xs tabular-nums text-muted-foreground/60">fit {row.fit}</span>
+			{/if}
+		</div>
+	{:else if activeNeed}
+		<!-- Active need, no data for it: an em dash rather than falling through
+				     to the Coding index, which would answer a different question. -->
+		<span class="text-xs text-muted-foreground/40" title="No {activeNeed.metricLabel} data">—</span>
+	{:else if model.benchmarks.coding != null}
+		<span class="text-foreground/80">{model.benchmarks.coding.toFixed(1)}</span>
+	{:else}
+		<span class="text-muted-foreground/30">—</span>
+	{/if}
+{/snippet}

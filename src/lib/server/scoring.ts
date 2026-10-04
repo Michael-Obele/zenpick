@@ -20,6 +20,14 @@ interface ScenarioInputs {
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
+/**
+ * Scale ceiling for Design Arena Elo. Deliberately above every observed
+ * rating so the leader isn't pinned at ~1.0 — Elo has no intrinsic maximum,
+ * so the ceiling is only a place to stop normalizing growth. See
+ * scoreQualityFrontend for why it sits where it does.
+ */
+const ELO_CEILING = 1600;
+
 function normalize(value: number, max: number): number {
 	if (max <= 0) return 0;
 	return Math.min(1, Math.max(0, value / max));
@@ -153,8 +161,20 @@ function scoreQualityFrontend(
 ): number {
 	// UI/website generation quality — driven by Design Arena Elo, the canonical
 	// human-preference benchmark for UI work (head-to-head votes on generated UIs).
-	// The 1500 ceiling is generous: the current top sits around 1380, so we have
-	// headroom for future models without compressing the rankings.
+	//
+	// The 1600 ceiling is headroom, not a score. Design Arena Elo is a
+	// Bradley-Terry rating with no fixed maximum — it rises as the field
+	// improves — so any ceiling near the current leader compresses every new
+	// model into the top few percent of the range and flattens the ordering
+	// exactly when the data is most interesting. The leader sat at 1483 when
+	// the previous 1500 ceiling was written (it claimed ~1380); at 1500 the
+	// field's best was already at 99% of scale. 1600 keeps a clear gap.
+	//
+	// Models with no Elo are NOT imputed here — a regression on
+	// intelligence+coding predicts Elo to +/-107 points at 95%, which is wider
+	// than most of the field's spread and inverts 1 in 9 pairs. The reasoning
+	// and coding terms below are a genuine quality signal for UI work, not an
+	// Elo guess; see $lib/scenarios for why the Frontend scenario exists.
 	//   70% Design Arena Elo  — direct UI quality signal
 	//   20% blended reasoning — smarter models write cleaner, more idiomatic code
 	//   10% blended coding    — UI work is still code; can't be terrible at it
@@ -162,7 +182,7 @@ function scoreQualityFrontend(
 	let score = 0;
 	let weight = 0;
 	if (elo != null) {
-		score += normalize(elo, 1500) * 0.7;
+		score += normalize(elo, ELO_CEILING) * 0.7;
 		weight += 0.7;
 	}
 	if (benchmarks.reasoning != null) {

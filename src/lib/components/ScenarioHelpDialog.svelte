@@ -3,6 +3,7 @@
 		Brain,
 		Bot,
 		Calculator,
+		Palette,
 		Info,
 		LayoutGrid,
 		Gauge,
@@ -35,6 +36,12 @@
 			label: 'Budget',
 			icon: Calculator,
 			tagline: 'Cheapest option that still gets the job done.'
+		},
+		{
+			value: 'frontend',
+			label: 'Frontend',
+			icon: Palette,
+			tagline: 'UI and web work — scored even without Design Arena votes.'
 		}
 	];
 
@@ -50,6 +57,10 @@
 		budget: {
 			quality: 'Lower price is better.',
 			fit: 'Constant — price drives the ranking.'
+		},
+		frontend: {
+			quality: 'Design Arena Elo, plus reasoning and coding when Elo is missing.',
+			fit: 'Vision, speed, tool support, and uptime.'
 		}
 	};
 

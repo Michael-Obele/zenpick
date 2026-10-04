@@ -27,19 +27,40 @@ import PiggyBank from '@lucide/svelte/icons/piggy-bank';
 import Github from '$lib/assets/github.svelte';
 import type { GoModel } from '$lib/types/models';
 
-/** One model's position in a need's ranking. */
+/**
+ * One model's position in a need's ranking.
+ *
+ * A ranking covers the WHOLE pool: models the metric can't score are appended
+ * after the leaderboard with `value`/`rank` null rather than dropped, so
+ * selecting a need re-orders the catalog instead of hiding part of it.
+ * Consumers that want the leaderboard proper read only the scored head —
+ * see `scoredEntries`.
+ */
 export interface RankedEntry {
 	model: GoModel;
-	/** Metric value — always present; models without data are excluded. */
-	value: number;
+	/** Metric value — null when the model has no data for this need. */
+	value: number | null;
 	/** Scenario fit score (0-100) when the ranking is fit-weighted, else null. */
 	fit: number | null;
 	/**
 	 * The score the ranking is ordered by: the raw metric in pure mode, or
-	 * `normalized metric × (fit/100)` when a task weights the need.
+	 * `normalized metric × (fit/100)` when a task weights the need. Null for
+	 * unscored models — they sit below every scored model, not among them.
 	 */
-	composite: number;
-	rank: number;
+	composite: number | null;
+	/**
+	 * Competition-style rank shared by tied leaders (1, 1, 1, 4, …). Null for
+	 * unscored models, which are unranked rather than given a misleading number.
+	 */
+	rank: number | null;
+}
+
+/** A scored entry — guaranteed to carry a metric value and a rank. */
+export type ScoredEntry = RankedEntry & { value: number; rank: number };
+
+/** The leaderboard proper: only models the need's metric can actually score. */
+export function scoredEntries(entries: RankedEntry[]): ScoredEntry[] {
+	return entries.filter((e): e is ScoredEntry => e.rank != null && e.value != null);
 }
 
 /** How to phrase the answer sentence for a need. */
@@ -251,8 +272,14 @@ export function findNeed(slug: string): NeedSpec | null {
 }
 
 /**
- * Rank models for a need, best first. Models without metric data are
- * excluded — a leaderboard only lists models that can be scored.
+ * Rank models for a need, best first.
+ *
+ * Ranking is a REORDERING, not a filter: the return value covers the whole
+ * pool. Models the metric cannot score are appended below the leaderboard
+ * with `value`/`rank`/`composite` null, so picking a need never makes models
+ * disappear. `spec.filter` is the one deliberate narrowing (e.g. Vision really
+ * does mean "vision-capable only") — a missing METRIC is a data gap, not a
+ * disqualification, and must not be treated like one.
  *
  * Pass `opts.fitOf` to weight the ranking by a task's fit score — the
  * "Task × Need" blend. The composite is `normalized metric × fit`, so a
@@ -283,7 +310,20 @@ export function rankNeed(
 			fit: blended ? opts.fitOf!(model) : null
 		}))
 		.filter((e): e is { model: GoModel; value: number; fit: number | null } => e.value != null);
-	if (scored.length === 0) return [];
+
+	// Unscored models keep their pool order and trail every scored one, so
+	// the tail stays stable across need switches instead of reshuffling.
+	const unscored = pool.filter((m) => spec.extract(m) == null);
+
+	if (scored.length === 0) {
+		return unscored.map((model) => ({
+			model,
+			value: null,
+			fit: blended ? opts.fitOf!(model) : null,
+			composite: null,
+			rank: null
+		}));
+	}
 
 	const maxValue = Math.max(...scored.map((e) => e.value));
 	const ranked = scored.map((e) => ({
@@ -317,7 +357,7 @@ export function rankNeed(
 	// mode) all receive the same rank; the next group starts after the
 	// tie — 1, 1, 1, 4, 5, …
 	let prevRank = 0;
-	return ranked.map((e, i) => {
+	const leaderboard = ranked.map((e, i) => {
 		const prev = i > 0 ? ranked[i - 1] : null;
 		const tied =
 			prev != null && (blended ? e.composite === prev.composite : e.display === prev.display);
@@ -330,6 +370,17 @@ export function rankNeed(
 			rank: prevRank
 		};
 	});
+
+	return [
+		...leaderboard,
+		...unscored.map((model) => ({
+			model,
+			value: null,
+			fit: blended ? opts.fitOf!(model) : null,
+			composite: null,
+			rank: null
+		}))
+	];
 }
 
 /** Normalize a metric to 0..1; ascending metrics invert so "best" is always 1. */
@@ -340,7 +391,49 @@ function normalized(value: number, max: number, direction: 'asc' | 'desc'): numb
 
 /** The #1 pick for a need (null when no opencode model has data). */
 export function topPick(spec: NeedSpec, models: GoModel[]): RankedEntry | null {
-	return rankNeed(spec, models)[0] ?? null;
+	return scoredEntries(rankNeed(spec, models))[0] ?? null;
+}
+
+/** "A and B", "A, B, and C", or "A, B, C, and 4 more". */
+function joinNames(names: string[]): string {
+	if (names.length === 2) return `${names[0]} and ${names[1]}`;
+	if (names.length === 3) return `${names[0]}, ${names[1]}, and ${names[2]}`;
+	return `${names.slice(0, 3).join(', ')}, and ${names.length - 3} more`;
+}
+
+/**
+ * The sentence for a shared top spot: every model tied at #1 is named, in the
+ * need's own voice (cheapest / largest context / best at the task).
+ */
+function tiedLeadersSentence(
+	spec: NeedSpec,
+	names: string[],
+	topValue: string,
+	weight: string
+): string {
+	const list = joinNames(names);
+	switch (spec.answerStyle) {
+		case 'price':
+			return `${list} are tied as the cheapest opencode models at ${topValue} per million input tokens${weight}.`;
+		case 'context':
+			return `${list} are tied for the largest context window at ${topValue} tokens${weight}.`;
+		default:
+			return `${list} are tied as the best opencode models for ${spec.answerPhrase} — ${topValue} ${spec.metricLabel}${weight}.`;
+	}
+}
+
+/**
+ * Trailing note naming how many listed models the metric couldn't score. The
+ * leaderboard renders all of them, so without this the sentence would read as
+ * if it covered the entire catalog.
+ */
+function unrankedTail(spec: NeedSpec, scored: number, total: number): string {
+	const unranked = total - scored;
+	if (unranked === 0) return '';
+	const metric = spec.metricLabel.toLowerCase();
+	return unranked === 1
+		? ` 1 more model has no ${metric} data and is ranked last.`
+		: ` ${unranked} more models have no ${metric} data and are ranked last.`;
 }
 
 /**
@@ -359,58 +452,58 @@ export function needAnswer(
 	entries: RankedEntry[],
 	opts?: { weightLabel?: string }
 ): string {
-	if (entries.length === 0) {
+	// Only the scored head can be described as a winner — the unscored tail
+	// carries no value to quote.
+	const ranked = scoredEntries(entries);
+	if (ranked.length === 0) {
 		return `No opencode model has ${spec.metricLabel.toLowerCase()} data yet.`;
 	}
 	const w = opts?.weightLabel;
 	const weight = w ? `, weighted by ${w} fit` : '';
-	const top = entries[0];
+	const top = ranked[0];
 	const topValue = spec.format(top.value);
+	const tail = unrankedTail(spec, ranked.length, entries.length);
 
 	// Shared top spot: several models tie for #1 — name them all.
-	const leaders = entries.filter((e) => e.rank === 1);
+	const leaders = ranked.filter((e) => e.rank === 1);
 	if (leaders.length > 1) {
-		const names = leaders.map((e) => e.model.name);
-		const list =
-			names.length === 2
-				? `${names[0]} and ${names[1]}`
-				: names.length === 3
-					? `${names[0]}, ${names[1]}, and ${names[2]}`
-					: `${names.slice(0, 3).join(', ')}, and ${names.length - 3} more`;
-		switch (spec.answerStyle) {
-			case 'price':
-				return `${list} are tied as the cheapest opencode models at ${topValue} per million input tokens${weight}.`;
-			case 'context':
-				return `${list} are tied for the largest context window at ${topValue} tokens${weight}.`;
-			default:
-				return `${list} are tied as the best opencode models for ${spec.answerPhrase} — ${topValue} ${spec.metricLabel}${weight}.`;
-		}
+		return tiedLeadersSentence(
+			spec,
+			leaders.map((e) => e.model.name),
+			topValue,
+			weight
+		);
 	}
 
-	const note = (e: RankedEntry) =>
+	const note = (e: ScoredEntry) =>
 		`(${spec.format(e.value)}${e.fit != null ? `, fit ${e.fit}` : ''})`;
 
 	switch (spec.answerStyle) {
 		case 'price':
-			return w
-				? `${top.model.name} is the cheapest opencode model at ${topValue} per million input tokens, weighted by ${w} fit${top.fit != null ? ` (fit ${top.fit})` : ''}.`
-				: `${top.model.name} is the cheapest opencode model at ${topValue} per million input tokens.`;
+			return (
+				(w
+					? `${top.model.name} is the cheapest opencode model at ${topValue} per million input tokens, weighted by ${w} fit${top.fit != null ? ` (fit ${top.fit})` : ''}.`
+					: `${top.model.name} is the cheapest opencode model at ${topValue} per million input tokens.`) +
+				tail
+			);
 		case 'context':
-			return w
-				? `${top.model.name} leads long-context work weighted by ${w} fit — ${topValue} tokens${top.fit != null ? ` (fit ${top.fit})` : ''}.`
-				: `${top.model.name} has the largest context window at ${topValue} tokens.`;
+			return (
+				(w
+					? `${top.model.name} leads long-context work weighted by ${w} fit — ${topValue} tokens${top.fit != null ? ` (fit ${top.fit})` : ''}.`
+					: `${top.model.name} has the largest context window at ${topValue} tokens.`) + tail
+			);
 		default: {
 			let sentence = w
 				? `${top.model.name} is the best opencode model for ${spec.answerPhrase}, weighted by ${w} fit — ${topValue} ${spec.metricLabel}${top.fit != null ? ` (fit ${top.fit})` : ''}.`
 				: `${top.model.name} is the best opencode model for ${spec.answerPhrase} — ${topValue} ${spec.metricLabel}.`;
-			const second = entries[1];
-			const third = entries[2];
+			const second = ranked[1];
+			const third = ranked[2];
 			if (second && third) {
 				sentence += ` ${second.model.name} ${note(second)} and ${third.model.name} ${note(third)} round out the top three.`;
 			} else if (second) {
 				sentence += ` ${second.model.name} ${note(second)} follows.`;
 			}
-			return sentence;
+			return sentence + tail;
 		}
 	}
 }
