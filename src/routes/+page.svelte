@@ -126,14 +126,14 @@
 	<!-- Main content -->
 	<div class="mx-auto max-w-6xl px-4 pb-16">
 		<!-- Calculator -->
-		<section id="quota-calculator" class="signal-board-enter motion-delay-100 mb-12 scroll-mt-24">
+		<section id="quota-calculator" class="signal-board-enter motion-delay-100 mb-12">
 			{#await modelsPromise then models}
 				<QuotaCalculator {models} />
 			{/await}
 		</section>
 
 		<!-- Model Table -->
-		<section id="compare-models" class="signal-board-enter motion-delay-200 scroll-mt-24">
+		<section id="compare-models" class="signal-board-enter motion-delay-200">
 			{#await modelsPromise}
 				<div class="space-y-3">
 					<div class="h-10 animate-pulse rounded-lg bg-muted"></div>

@@ -24,8 +24,14 @@
 	}
 </script>
 
+<!-- Static, not sticky: the navbar used to pin to the top and force every
+     anchor target below it to carry `scroll-mt`. With long pages the pinned bar
+     ate vertical space and sat above the compare table's own sticky model
+     header. In normal flow it needs no scroll offset, so anchor targets can
+     scroll to the true top of their section. `relative z-40` keeps the sheet
+     and skip affordances layered as before. -->
 <header
-	class="sticky top-0 z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur supports-backdrop-filter:bg-background/60"
+	class="relative z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur supports-backdrop-filter:bg-background/60"
 >
 	<!-- Gradient accent line -->
 	<div

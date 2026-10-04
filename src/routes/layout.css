@@ -190,6 +190,34 @@ html {
 		z-index: 10;
 		box-shadow: 1px 0 0 0 var(--border);
 	}
+
+	/*
+	 * Column sizing for the compare grid. Both the sticky header strip and the
+	 * scrolling body read these, so a media query can narrow the label column on
+	 * phones without the two grids drifting out of alignment.
+	 *
+	 * At the phone default a 160px label column ate 41% of a 390px viewport and
+	 * left barely one model visible; 92px buys back enough width to see the
+	 * next model peeking, which is what signals the table scrolls sideways.
+	 */
+	.compare-grid-cols {
+		--cmp-label: 92px;
+		--cmp-col: 150px;
+	}
+
+	@media (width >= 40rem) {
+		.compare-grid-cols {
+			--cmp-label: 130px;
+			--cmp-col: 180px;
+		}
+	}
+
+	@media (width >= 64rem) {
+		.compare-grid-cols {
+			--cmp-label: 160px;
+			--cmp-col: 190px;
+		}
+	}
 }
 
 /* Decorative utilities */

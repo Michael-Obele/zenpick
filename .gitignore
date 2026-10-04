@@ -26,3 +26,7 @@ vite.config.ts.timestamp-*
 docs/
 .playwright-mcp/
 .github/agents/
+
+# Scratch: browser-automation output and swarm briefs (not shippable)
+.browser-use/
+.swarm/

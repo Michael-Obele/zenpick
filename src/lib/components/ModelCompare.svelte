@@ -71,7 +71,21 @@
 	 */
 	const headerMoveBtn = `${headerBtn} aria-disabled:pointer-events-none aria-disabled:opacity-40`;
 
-	const cols = $derived(`160px repeat(${models.length}, minmax(190px, 1fr))`);
+	/**
+	 * One template drives both grids. The lengths are CSS custom properties so a
+	 * media query can narrow the label column on small screens without forking the
+	 * template — header and body can never drift out of alignment, and the header
+	 * (which lives outside the scroll container) reuses the identical string.
+	 */
+	const cols = $derived(`var(--cmp-label) repeat(${models.length}, minmax(var(--cmp-col), 1fr))`);
+
+	/**
+	 * Sum of the track minimums — the narrowest the grid box may become. Below it
+	 * the tracks overflow a box too small to contain them, which breaks the pinned
+	 * label column (see the card comment at the bottom of this file). Derived from
+	 * the same custom properties as `cols`, so a breakpoint change moves both.
+	 */
+	const boxWidth = $derived(`calc(var(--cmp-label) + ${models.length} * var(--cmp-col))`);
 
 	function fmtPrice(n: number | null): string {
 		return n == null ? '—' : `$${n.toFixed(2)}`;
@@ -209,424 +223,491 @@
 
 	// ─── Open weights helper ───────────────────────────────────────────────
 	let openYes = $derived(models.map((m) => m.openWeight));
+
+	// ─── Horizontal scroll mirroring ───────────────────────────────────────
+	// The model header cannot live inside the horizontal scroll container and
+	// still pin vertically: `overflow-x: auto` computes `overflow-y` to `auto`,
+	// so that element is already a scroll container on both axes, and a
+	// content-height box never scrolls vertically — `sticky top` had no
+	// scrollport and silently did nothing. The header therefore sits in its own
+	// strip above the scroller and mirrors `scrollLeft` by translation instead.
+	let scrollLeft = $state(0);
+	let canScrollRight = $state(false);
+
+	function handleScroll(e: Event & { currentTarget: HTMLElement }) {
+		const el = e.currentTarget;
+		scrollLeft = el.scrollLeft;
+		canScrollRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+	}
 </script>
 
-<!-- The scroll container doubles as the pinned column's viewport: every
-     label cell below carries `compare-pin`, so the leftmost column holds
-     still at the left edge while the model columns scroll under it. -->
-<div class="overflow-x-auto rounded-xl border border-border bg-card">
-	<div class="grid" style="grid-template-columns: {cols}">
-		<!-- Header row -->
+<!-- Card ───────────────────────────────────────────────────────────────────
+     The header strip and the body share one grid template (`cols`), so the two
+     can never drift out of alignment: the strip translates by -scrollLeft and
+     the body's pinned label column counter-translates by +scrollLeft. Both use
+     `overflow-x` scrolling only — the page keeps scrolling vertically, so
+     desktop behaviour is unchanged.
+
+     `boxWidth` is load-bearing rather than cosmetic. A grid item's containing
+     block is its grid AREA, so with the default `width: auto` the box stays at
+     the container width while its tracks overflow far past it: a `sticky left-0`
+     label cell then has an area ending at the container edge and drifts off
+     with the scroll instead of pinning. The box has to be at least as wide as
+     the tracks. `width: 100%` + `min-width: <track sum>` does exactly that and
+     nothing more — `w-max` would NOT do, because the verdict row spans every
+     column, so its long sentence inflates max-content and blew a 2-model
+     desktop table out to ~1878px, desynchronising it from the header track. -->
+<div class="compare-grid-cols relative rounded-xl border border-border bg-card">
+	<!-- Sticky model header. `top-0` because the site navbar is no longer
+	     pinned, so nothing else competes for the top edge; z-30 keeps it under
+	     the navbar's z-40 on the rare overlap. Opaque by necessity: body rows
+	     scroll vertically underneath it. -->
+	<div
+		class="sticky top-0 z-30 overflow-hidden rounded-t-xl border-b border-border bg-compare-pin-head"
+	>
 		<div
-			class="sticky left-0 z-10 border-b border-border bg-muted px-3 py-3 text-sm font-semibold text-muted-foreground"
+			class="grid w-full"
+			style="grid-template-columns: {cols}; width: 100%; min-width: {boxWidth}; transform: translateX({-scrollLeft}px);"
 		>
-			Model
-		</div>
-		{#each models as m, i (m.id)}
+			<!-- Corner cell — counter-translated so "Model" stays put while the
+				     model cells slide beneath it. -->
 			<div
-				class={[
-					'border-b border-l border-border bg-muted/40 px-3 py-3',
-					crownWinnerId === m.id && 'ring-1 ring-inset ring-amber-500/40'
-				]}
+				class="z-10 border-r border-border bg-muted px-2 py-2.5 text-xs font-semibold text-muted-foreground sm:px-3 sm:py-3 sm:text-sm"
+				style="transform: translateX({scrollLeft}px);"
 			>
-				{#if onMove || onRemove}
-					<div class="-mt-1 mb-0.5 flex items-center justify-end gap-0.5">
-						{#if onMove}
-							<Button
-								variant="ghost"
-								size="icon-xs"
-								class={headerMoveBtn}
-								onclick={() => onMove(m.id, -1)}
-								aria-disabled={i === 0}
-								aria-label={`Move ${m.name} one column left`}
-								title="Move left"
-							>
-								<ChevronLeft class="size-3.5" />
-							</Button>
-							<Button
-								variant="ghost"
-								size="icon-xs"
-								class={headerMoveBtn}
-								onclick={() => onMove(m.id, 1)}
-								aria-disabled={i === models.length - 1}
-								aria-label={`Move ${m.name} one column right`}
-								title="Move right"
-							>
-								<ChevronRight class="size-3.5" />
-							</Button>
-						{/if}
-						{#if onRemove}
-							<Button
-								variant="ghost"
-								size="icon-xs"
-								class={headerBtn}
-								onclick={() => onRemove(m.id)}
-								aria-label={`Remove ${m.name} from comparison`}
-							>
-								<X class="size-3.5" />
-							</Button>
-						{/if}
-					</div>
-				{/if}
-				<div class="text-sm font-semibold text-foreground">{m.name}</div>
-				<div class="text-xs text-muted-foreground">{m.provider}</div>
-				{#if anchors[m.id]}
-					{@const a = ANCHOR_META[anchors[m.id]]}
-					{@const Icon = a.icon}
-					<Badge
-						variant="outline"
-						class="mt-1.5 border-primary/30 bg-primary/10 text-primary-strong dark:border-primary-strong/30 dark:bg-primary/20 dark:text-primary-strong"
-					>
-						<Icon class="size-3" />
-						{a.label}
-					</Badge>
-				{/if}
-				{#if scenario}
-					{#if crownWinnerId === m.id}
+				Model
+			</div>
+			{#each models as m, i (m.id)}
+				<div
+					class={[
+						'border-l border-border px-2 py-2.5 sm:px-3 sm:py-3',
+						crownWinnerId === m.id && 'ring-1 ring-inset ring-amber-500/40'
+					]}
+				>
+					{#if onMove || onRemove}
+						<div class="-mt-1 mb-0.5 flex items-center justify-end gap-0.5">
+							{#if onMove}
+								<Button
+									variant="ghost"
+									size="icon-xs"
+									class={headerMoveBtn}
+									onclick={() => onMove(m.id, -1)}
+									aria-disabled={i === 0}
+									aria-label={`Move ${m.name} one column left`}
+									title="Move left"
+								>
+									<ChevronLeft class="size-3.5" />
+								</Button>
+								<Button
+									variant="ghost"
+									size="icon-xs"
+									class={headerMoveBtn}
+									onclick={() => onMove(m.id, 1)}
+									aria-disabled={i === models.length - 1}
+									aria-label={`Move ${m.name} one column right`}
+									title="Move right"
+								>
+									<ChevronRight class="size-3.5" />
+								</Button>
+							{/if}
+							{#if onRemove}
+								<Button
+									variant="ghost"
+									size="icon-xs"
+									class={headerBtn}
+									onclick={() => onRemove(m.id)}
+									aria-label={`Remove ${m.name} from comparison`}
+								>
+									<X class="size-3.5" />
+								</Button>
+							{/if}
+						</div>
+					{/if}
+					<div class="text-sm font-semibold text-foreground">{m.name}</div>
+					<div class="text-xs text-muted-foreground">{m.provider}</div>
+					{#if anchors[m.id]}
+						{@const a = ANCHOR_META[anchors[m.id]]}
+						{@const Icon = a.icon}
 						<Badge
 							variant="outline"
-							class="mt-1.5 border-amber-500/40 bg-amber-500/10 text-amber-900 dark:border-amber-400/40 dark:bg-amber-500/10 dark:text-amber-100"
+							class="mt-1.5 border-primary/30 bg-primary/10 text-primary-strong dark:border-primary-strong/30 dark:bg-primary/20 dark:text-primary-strong"
 						>
-							<Crown class="size-3" />
-							Best for {scenarioLabelOf(scenario)}
+							<Icon class="size-3" />
+							{a.label}
 						</Badge>
-					{:else}
-						<span class="mt-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground">
-							Fit <span class="font-semibold text-foreground">{m.scenarioScores[scenario]}</span>
-						</span>
 					{/if}
-				{/if}
-				<div class="mt-2">
-					<BurnBadge burnDetails={m.burnDetails} />
+					{#if scenario}
+						{#if crownWinnerId === m.id}
+							<Badge
+								variant="outline"
+								class="mt-1.5 border-amber-500/40 bg-amber-500/10 text-amber-900 dark:border-amber-400/40 dark:bg-amber-500/10 dark:text-amber-100"
+							>
+								<Crown class="size-3" />
+								Best for {scenarioLabelOf(scenario)}
+							</Badge>
+						{:else}
+							<span class="mt-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground">
+								Fit <span class="font-semibold text-foreground">{m.scenarioScores[scenario]}</span>
+							</span>
+						{/if}
+					{/if}
+					<div class="mt-2">
+						<BurnBadge burnDetails={m.burnDetails} />
+					</div>
 				</div>
+			{/each}
+		</div>
+	</div>
+
+	<!-- Right-edge affordance: only while there is more table to the right, so a
+	     first-time mobile viewer knows the table scrolls sideways. -->
+	{#if canScrollRight}
+		<div
+			class="pointer-events-none absolute inset-y-0 right-0 z-20 w-6 bg-linear-to-l from-card to-transparent"
+			aria-hidden="true"
+		></div>
+	{/if}
+
+	<!-- Body. Horizontal scroll only — vertical scroll stays with the page so the
+	     sticky header above has a real scrollport to pin against. `snap-proximity`
+	     settles each model column clear of the pinned label column rather than
+	     stopping mid-model. -->
+	<div
+		class="overflow-x-auto overscroll-x-contain rounded-b-xl [scrollbar-width:thin] snap-x snap-proximity"
+		style="scroll-padding-left: var(--cmp-label);"
+		onscroll={handleScroll}
+	>
+		<div
+			class="grid w-full"
+			style="grid-template-columns: {cols}; width: 100%; min-width: {boxWidth};"
+		>
+			<!-- Verdict -->
+			<div
+				class="sticky left-0 z-10 flex items-center gap-2 border-t border-border bg-muted px-2 py-3 text-sm font-medium text-muted-foreground sm:px-3"
+			>
+				{#if scenario}
+					<Crown class="size-4 text-amber-800 dark:text-amber-300" />
+					Crown
+				{:else}
+					<Scale class="size-4 text-primary dark:text-primary-strong" />
+					Verdict
+				{/if}
 			</div>
-		{/each}
+			<div
+				class="border-t border-l border-border bg-primary/5 px-3 py-3 text-sm leading-relaxed text-foreground"
+				style="grid-column: 2 / -1;"
+			>
+				{scenario ? scenarioVerdict : verdict}
+			</div>
 
-		<!-- Verdict -->
-		<div
-			class="sticky left-0 z-10 flex items-center gap-2 border-t border-border bg-muted px-3 py-3 text-sm font-medium text-muted-foreground"
-		>
-			{#if scenario}
-				<Crown class="size-4 text-amber-800 dark:text-amber-300" />
-				Crown
-			{:else}
-				<Scale class="size-4 text-primary dark:text-primary-strong" />
-				Verdict
-			{/if}
-		</div>
-		<div
-			class="border-t border-l border-border bg-primary/5 px-3 py-3 text-sm leading-relaxed text-foreground"
-			style="grid-column: 2 / -1;"
-		>
-			{scenario ? scenarioVerdict : verdict}
-		</div>
-
-		<!-- Capabilities — leads the comparison the same way it leads the
+			<!-- Capabilities — leads the comparison the same way it leads the
 		     drawer: you pick a model by what it can do, then by what it costs.
 		     Both rows share one snippet, so the label/cell geometry can only
 		     be defined once. -->
-		{#snippet capabilityRow(label: string, hint: string, kind: 'input' | 'features')}
-			<div
-				class="sticky left-0 z-10 border-t border-border/60 bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground"
-				title={hint}
+			{#snippet capabilityRow(label: string, hint: string, kind: 'input' | 'features')}
+				<div
+					class="sticky left-0 z-10 border-t border-border/60 bg-muted px-2 py-2.5 text-sm font-medium text-muted-foreground sm:px-3"
+					title={hint}
+				>
+					{label}
+				</div>
+				{#each models as m (m.id)}
+					<div class="border-t border-l border-border/60 px-3 py-2.5">
+						{#if m.capabilities}
+							<CapabilityBadges capabilities={m.capabilities} {kind} />
+						{:else}
+							<span class="text-xs text-muted-foreground/40">—</span>
+						{/if}
+					</div>
+				{/each}
+			{/snippet}
+
+			{@render capabilityRow('Accepts', 'Media types this model accepts as input', 'input')}
+			{@render capabilityRow(
+				'Supports',
+				'Tool calling, structured output and reasoning support',
+				'features'
+			)}
+
+			<!-- Benchmarks -->
+			<CompareRow label="Coding" {models} getValue={(m) => m.benchmarks.coding} hint="0-100">
+				{#snippet format(value, isBest)}
+					{@const pct = value == null ? 0 : Math.min(100, value)}
+					<div class="flex items-center gap-2">
+						<div class="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+							<div class="h-full rounded-full bg-violet-500" style="width: {pct}%"></div>
+						</div>
+						<span
+							class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
+							>{value == null ? '—' : value.toFixed(1)}</span
+						>
+					</div>
+				{/snippet}
+			</CompareRow>
+
+			<CompareRow label="Reasoning" {models} getValue={(m) => m.benchmarks.reasoning} hint="0-100">
+				{#snippet format(value, isBest)}
+					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
+						>{value == null ? '—' : value.toFixed(1)}</span
+					>
+				{/snippet}
+			</CompareRow>
+
+			<CompareRow label="Math" {models} getValue={(m) => m.benchmarks.math} hint="0-100">
+				{#snippet format(value, isBest)}
+					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
+						>{value == null ? '—' : value.toFixed(1)}</span
+					>
+				{/snippet}
+			</CompareRow>
+
+			<CompareRow
+				label="SWE-Bench"
+				{models}
+				getValue={(m) => benchmarkToPercent(m.benchmarks.sweBenchVerified, 'sweBenchVerified')}
+				hint="0-100"
 			>
-				{label}
+				{#snippet format(value, isBest)}
+					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
+						>{value == null ? '—' : value.toFixed(1)}</span
+					>
+				{/snippet}
+			</CompareRow>
+
+			<!-- Pricing -->
+			<CompareRow
+				label="Input $/1M"
+				{models}
+				getValue={(m) => m.pricing.inputPricePerM}
+				higherIsBetter={false}
+				tieDecimals={2}
+			>
+				{#snippet format(value, isBest)}
+					<span
+						class="tabular-nums {isBest
+							? 'font-semibold text-emerald-800 dark:text-emerald-300'
+							: 'text-foreground'}">{fmtPrice(value)}</span
+					>
+				{/snippet}
+			</CompareRow>
+
+			<CompareRow
+				label="Output $/1M"
+				{models}
+				getValue={(m) => m.pricing.outputPricePerM}
+				higherIsBetter={false}
+				tieDecimals={2}
+			>
+				{#snippet format(value, isBest)}
+					<span
+						class="tabular-nums {isBest
+							? 'font-semibold text-emerald-800 dark:text-emerald-300'
+							: 'text-foreground'}">{fmtPrice(value)}</span
+					>
+				{/snippet}
+			</CompareRow>
+
+			<!-- Context & quota -->
+			<CompareRow
+				label="Context"
+				{models}
+				getValue={(m) => m.contextWindow}
+				hint="tokens"
+				tieDecimals={0}
+			>
+				{#snippet format(value, isBest)}
+					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
+						>{fmtTokens(value)}</span
+					>
+				{/snippet}
+			</CompareRow>
+
+			<CompareRow label="Req / 5h" {models} getValue={(m) => m.quota.requestsPer5h} tieDecimals={0}>
+				{#snippet format(value, isBest)}
+					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
+						>{value == null ? '—' : formatCompact(value)}</span
+					>
+				{/snippet}
+			</CompareRow>
+
+			<CompareRow
+				label="Req / week"
+				{models}
+				getValue={(m) => m.quota.requestsPerWeek}
+				tieDecimals={0}
+			>
+				{#snippet format(value, isBest)}
+					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
+						>{value == null ? '—' : formatCompact(value)}</span
+					>
+				{/snippet}
+			</CompareRow>
+
+			<CompareRow
+				label="Req / month"
+				{models}
+				getValue={(m) => m.quota.requestsPerMonth}
+				tieDecimals={0}
+			>
+				{#snippet format(value, isBest)}
+					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
+						>{value == null ? '—' : formatCompact(value)}</span
+					>
+				{/snippet}
+			</CompareRow>
+
+			<CompareRow
+				label="Burn"
+				{models}
+				getValue={(m) => (m.burnDetails.score == null ? null : 100 - m.burnDetails.score)}
+				higherIsBetter={false}
+				hint="lower better"
+				tieDecimals={0}
+			>
+				{#snippet format(value, isBest)}
+					<span
+						class="tabular-nums {isBest
+							? 'font-semibold text-emerald-800 dark:text-emerald-300'
+							: 'text-foreground'}">{value == null ? '—' : value}</span
+					>
+				{/snippet}
+			</CompareRow>
+
+			<!-- Scenario fit -->
+			<div
+				class="sticky left-0 z-10 border-t border-border/60 bg-muted px-2 py-2.5 text-sm font-medium text-muted-foreground sm:px-3"
+			>
+				Scenario fit
 			</div>
-			{#each models as m (m.id)}
+			{#each models as m, i (m.id)}
+				<div class="border-t border-l border-border/60 px-3 py-2.5 text-sm">
+					<div class="space-y-1">
+						{#each scenarioKeys as [key, label] (key)}
+							{@const active = key === scenario}
+							<div class="flex items-center justify-between gap-2 text-xs">
+								<span class={active ? 'font-semibold text-foreground' : 'text-muted-foreground'}
+									>{label}</span
+								>
+								<span
+									class={active
+										? 'font-semibold text-primary dark:text-primary-strong'
+										: 'tabular-nums text-foreground'}>{m.scenarioScores[key]}</span
+								>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/each}
+
+			<!-- Open weights -->
+			<div
+				class="sticky left-0 z-10 border-t border-border/60 bg-muted px-2 py-2.5 text-sm font-medium text-muted-foreground sm:px-3"
+			>
+				Open weights
+			</div>
+			{#each models as m, i (m.id)}
+				<div
+					class="border-t border-l border-border/60 px-3 py-2.5 text-sm {openYes[i]
+						? 'bg-primary/5 ring-1 ring-inset ring-primary/20'
+						: ''}"
+				>
+					{#if m.openWeight}
+						<span
+							class="inline-flex items-center gap-1 font-medium text-emerald-800 dark:text-emerald-300"
+						>
+							<Check class="size-3.5" /> Yes
+						</span>
+					{:else}
+						<span class="inline-flex items-center gap-1 text-muted-foreground">
+							<Minus class="size-3.5" /> No
+						</span>
+					{/if}
+				</div>
+			{/each}
+
+			<!-- Tags -->
+			<div
+				class="sticky left-0 z-10 border-t border-border/60 bg-muted px-2 py-2.5 text-sm font-medium text-muted-foreground sm:px-3"
+			>
+				Tags
+			</div>
+			{#each models as m, i (m.id)}
 				<div class="border-t border-l border-border/60 px-3 py-2.5">
-					{#if m.capabilities}
-						<CapabilityBadges capabilities={m.capabilities} {kind} />
+					<div class="flex flex-wrap gap-1">
+						{#each m.tags as tag (tag.label)}
+							<span
+								class="inline-flex items-center gap-0.5 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
+							>
+								{tag.label}
+							</span>
+						{/each}
+						{#if m.tags.length === 0}
+							<span class="text-xs text-muted-foreground/40">—</span>
+						{/if}
+					</div>
+				</div>
+			{/each}
+
+			<!-- Migration hints -->
+			<div
+				class="sticky left-0 z-10 border-t border-border/60 bg-muted px-2 py-2.5 text-sm font-medium text-muted-foreground sm:px-3"
+				title="Open-weight alternatives to these closed-source models"
+			>
+				Replaces
+			</div>
+			{#each models as m, i (m.id)}
+				<div class="border-t border-l border-border/60 px-3 py-2.5 text-sm">
+					{#if m.migrationHints.length}
+						<ul class="space-y-1.5">
+							{#each m.migrationHints as hint (hint.model)}
+								<li class="flex items-start gap-1.5 text-xs">
+									<Replace class="mt-0.5 size-3 shrink-0 text-muted-foreground/60" />
+									<span class="leading-snug">
+										<span class="font-medium text-foreground">{hint.model}</span>
+										<span class="text-muted-foreground"> — {hint.reason}</span>
+									</span>
+								</li>
+							{/each}
+						</ul>
+					{:else if !m.openWeight}
+						<span class="inline-flex items-start gap-1.5 text-xs text-muted-foreground">
+							<LockKeyhole class="mt-0.5 size-3 shrink-0 text-muted-foreground/60" />
+							<span class="leading-snug">Closed-source — no open alternative to compare</span>
+						</span>
 					{:else}
 						<span class="text-xs text-muted-foreground/40">—</span>
 					{/if}
 				</div>
 			{/each}
-		{/snippet}
 
-		{@render capabilityRow('Accepts', 'Media types this model accepts as input', 'input')}
-		{@render capabilityRow(
-			'Supports',
-			'Tool calling, structured output and reasoning support',
-			'features'
-		)}
-
-		<!-- Benchmarks -->
-		<CompareRow label="Coding" {models} getValue={(m) => m.benchmarks.coding} hint="0-100">
-			{#snippet format(value, isBest)}
-				{@const pct = value == null ? 0 : Math.min(100, value)}
-				<div class="flex items-center gap-2">
-					<div class="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-						<div class="h-full rounded-full bg-violet-500" style="width: {pct}%"></div>
-					</div>
-					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-						>{value == null ? '—' : value.toFixed(1)}</span
-					>
-				</div>
-			{/snippet}
-		</CompareRow>
-
-		<CompareRow label="Reasoning" {models} getValue={(m) => m.benchmarks.reasoning} hint="0-100">
-			{#snippet format(value, isBest)}
-				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-					>{value == null ? '—' : value.toFixed(1)}</span
-				>
-			{/snippet}
-		</CompareRow>
-
-		<CompareRow label="Math" {models} getValue={(m) => m.benchmarks.math} hint="0-100">
-			{#snippet format(value, isBest)}
-				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-					>{value == null ? '—' : value.toFixed(1)}</span
-				>
-			{/snippet}
-		</CompareRow>
-
-		<CompareRow
-			label="SWE-Bench"
-			{models}
-			getValue={(m) => benchmarkToPercent(m.benchmarks.sweBenchVerified, 'sweBenchVerified')}
-			hint="0-100"
-		>
-			{#snippet format(value, isBest)}
-				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-					>{value == null ? '—' : value.toFixed(1)}</span
-				>
-			{/snippet}
-		</CompareRow>
-
-		<!-- Pricing -->
-		<CompareRow
-			label="Input $/1M"
-			{models}
-			getValue={(m) => m.pricing.inputPricePerM}
-			higherIsBetter={false}
-			tieDecimals={2}
-		>
-			{#snippet format(value, isBest)}
-				<span
-					class="tabular-nums {isBest
-						? 'font-semibold text-emerald-800 dark:text-emerald-300'
-						: 'text-foreground'}">{fmtPrice(value)}</span
-				>
-			{/snippet}
-		</CompareRow>
-
-		<CompareRow
-			label="Output $/1M"
-			{models}
-			getValue={(m) => m.pricing.outputPricePerM}
-			higherIsBetter={false}
-			tieDecimals={2}
-		>
-			{#snippet format(value, isBest)}
-				<span
-					class="tabular-nums {isBest
-						? 'font-semibold text-emerald-800 dark:text-emerald-300'
-						: 'text-foreground'}">{fmtPrice(value)}</span
-				>
-			{/snippet}
-		</CompareRow>
-
-		<!-- Context & quota -->
-		<CompareRow
-			label="Context"
-			{models}
-			getValue={(m) => m.contextWindow}
-			hint="tokens"
-			tieDecimals={0}
-		>
-			{#snippet format(value, isBest)}
-				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-					>{fmtTokens(value)}</span
-				>
-			{/snippet}
-		</CompareRow>
-
-		<CompareRow label="Req / 5h" {models} getValue={(m) => m.quota.requestsPer5h} tieDecimals={0}>
-			{#snippet format(value, isBest)}
-				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-					>{value == null ? '—' : formatCompact(value)}</span
-				>
-			{/snippet}
-		</CompareRow>
-
-		<CompareRow
-			label="Req / week"
-			{models}
-			getValue={(m) => m.quota.requestsPerWeek}
-			tieDecimals={0}
-		>
-			{#snippet format(value, isBest)}
-				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-					>{value == null ? '—' : formatCompact(value)}</span
-				>
-			{/snippet}
-		</CompareRow>
-
-		<CompareRow
-			label="Req / month"
-			{models}
-			getValue={(m) => m.quota.requestsPerMonth}
-			tieDecimals={0}
-		>
-			{#snippet format(value, isBest)}
-				<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-					>{value == null ? '—' : formatCompact(value)}</span
-				>
-			{/snippet}
-		</CompareRow>
-
-		<CompareRow
-			label="Burn"
-			{models}
-			getValue={(m) => (m.burnDetails.score == null ? null : 100 - m.burnDetails.score)}
-			higherIsBetter={false}
-			hint="lower better"
-			tieDecimals={0}
-		>
-			{#snippet format(value, isBest)}
-				<span
-					class="tabular-nums {isBest
-						? 'font-semibold text-emerald-800 dark:text-emerald-300'
-						: 'text-foreground'}">{value == null ? '—' : value}</span
-				>
-			{/snippet}
-		</CompareRow>
-
-		<!-- Scenario fit -->
-		<div
-			class="sticky left-0 z-10 border-t border-border/60 bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground"
-		>
-			Scenario fit
-		</div>
-		{#each models as m, i (m.id)}
-			<div class="border-t border-l border-border/60 px-3 py-2.5 text-sm">
-				<div class="space-y-1">
-					{#each scenarioKeys as [key, label] (key)}
-						{@const active = key === scenario}
-						<div class="flex items-center justify-between gap-2 text-xs">
-							<span class={active ? 'font-semibold text-foreground' : 'text-muted-foreground'}
-								>{label}</span
-							>
-							<span
-								class={active
-									? 'font-semibold text-primary dark:text-primary-strong'
-									: 'tabular-nums text-foreground'}>{m.scenarioScores[key]}</span
-							>
-						</div>
-					{/each}
-				</div>
-			</div>
-		{/each}
-
-		<!-- Open weights -->
-		<div
-			class="sticky left-0 z-10 border-t border-border/60 bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground"
-		>
-			Open weights
-		</div>
-		{#each models as m, i (m.id)}
+			<!-- Links -->
 			<div
-				class="border-t border-l border-border/60 px-3 py-2.5 text-sm {openYes[i]
-					? 'bg-primary/5 ring-1 ring-inset ring-primary/20'
-					: ''}"
+				class="sticky left-0 z-10 border-t border-border/60 bg-muted px-2 py-2.5 text-sm font-medium text-muted-foreground sm:px-3"
 			>
-				{#if m.openWeight}
-					<span
-						class="inline-flex items-center gap-1 font-medium text-emerald-800 dark:text-emerald-300"
-					>
-						<Check class="size-3.5" /> Yes
-					</span>
-				{:else}
-					<span class="inline-flex items-center gap-1 text-muted-foreground">
-						<Minus class="size-3.5" /> No
-					</span>
-				{/if}
+				Sources
 			</div>
-		{/each}
-
-		<!-- Tags -->
-		<div
-			class="sticky left-0 z-10 border-t border-border/60 bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground"
-		>
-			Tags
-		</div>
-		{#each models as m, i (m.id)}
-			<div class="border-t border-l border-border/60 px-3 py-2.5">
-				<div class="flex flex-wrap gap-1">
-					{#each m.tags as tag (tag.label)}
-						<span
-							class="inline-flex items-center gap-0.5 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
+			{#each models as m, i (m.id)}
+				<div class="flex flex-wrap gap-2 border-t border-l border-border/60 px-3 py-2.5">
+					{#if m.modelgrepId}
+						<a
+							href={'https://modelgrep.com/models/' + m.modelgrepId}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="inline-flex items-center gap-1 text-xs hover:underline"
 						>
-							{tag.label}
-						</span>
-					{/each}
-					{#if m.tags.length === 0}
-						<span class="text-xs text-muted-foreground/40">—</span>
+							<ExternalLink class="size-3" /> modelgrep
+						</a>
 					{/if}
-				</div>
-			</div>
-		{/each}
-
-		<!-- Migration hints -->
-		<div
-			class="sticky left-0 z-10 border-t border-border/60 bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground"
-			title="Open-weight alternatives to these closed-source models"
-		>
-			Replaces
-		</div>
-		{#each models as m, i (m.id)}
-			<div class="border-t border-l border-border/60 px-3 py-2.5 text-sm">
-				{#if m.migrationHints.length}
-					<ul class="space-y-1.5">
-						{#each m.migrationHints as hint (hint.model)}
-							<li class="flex items-start gap-1.5 text-xs">
-								<Replace class="mt-0.5 size-3 shrink-0 text-muted-foreground/60" />
-								<span class="leading-snug">
-									<span class="font-medium text-foreground">{hint.model}</span>
-									<span class="text-muted-foreground"> — {hint.reason}</span>
-								</span>
-							</li>
-						{/each}
-					</ul>
-				{:else if !m.openWeight}
-					<span class="inline-flex items-start gap-1.5 text-xs text-muted-foreground">
-						<LockKeyhole class="mt-0.5 size-3 shrink-0 text-muted-foreground/60" />
-						<span class="leading-snug">Closed-source — no open alternative to compare</span>
-					</span>
-				{:else}
-					<span class="text-xs text-muted-foreground/40">—</span>
-				{/if}
-			</div>
-		{/each}
-
-		<!-- Links -->
-		<div
-			class="sticky left-0 z-10 border-t border-border/60 bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground"
-		>
-			Sources
-		</div>
-		{#each models as m, i (m.id)}
-			<div class="flex flex-wrap gap-2 border-t border-l border-border/60 px-3 py-2.5">
-				{#if m.modelgrepId}
 					<a
-						href={'https://modelgrep.com/models/' + m.modelgrepId}
+						href={llmStatsModelUrl(m)}
 						target="_blank"
 						rel="noopener noreferrer"
 						class="inline-flex items-center gap-1 text-xs hover:underline"
 					>
-						<ExternalLink class="size-3" /> modelgrep
+						<ExternalLink class="size-3" /> llm-stats
 					</a>
-				{/if}
-				<a
-					href={llmStatsModelUrl(m)}
-					target="_blank"
-					rel="noopener noreferrer"
-					class="inline-flex items-center gap-1 text-xs hover:underline"
-				>
-					<ExternalLink class="size-3" /> llm-stats
-				</a>
-			</div>
-		{/each}
+				</div>
+			{/each}
+		</div>
 	</div>
 </div>
