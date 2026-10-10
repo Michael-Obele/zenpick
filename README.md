@@ -110,6 +110,36 @@ docs/
 
 ---
 
+## AI & LLM consumption
+
+Because the catalog is rendered client-side, LLM crawlers that cannot run JavaScript would see an empty page. ZenPick therefore serves a dynamically generated **[`/llms.txt`](https://zp.svelte-apps.me/llms.txt)** (the [llmstxt.org](https://llmstxt.org) convention): the live model catalog as plain markdown, generated on request from the same server-side cache the app uses.
+
+- Route: `src/routes/llms.txt/+server.ts` (a `+server.ts` route, the same pattern as a `/sitemap.xml`).
+- Content: summary, the full model table (pricing, burn, quota, fit scores, migration hints, per-model llm-stats link), key pages, and data sources.
+- Caching: `Cache-Control: public, max-age=600` on top of the 6h in-memory model cache.
+
+---
+
+## Refreshing model data in production
+
+Model data is cached **in-process** (`src/lib/cache.ts`) with a 6h TTL and stale-while-revalidate: a stale request returns the old data immediately and refreshes in the background. That means new upstream models appear automatically within ~6h + one request — but sometimes you want them _now_.
+
+For that there is a secret-protected endpoint:
+
+```bash
+curl -X POST https://zp.svelte-apps.me/api/revalidate \
+  -H "Authorization: Bearer $REVALIDATE_SECRET"
+# → { "ok": true, "models": 32, "durationMs": 1234, "at": "..." }
+```
+
+`POST /api/revalidate` forces a fresh upstream fetch (bypassing the TTL) and rebuilds both the model cache and the frontier snapshot. Point a Netlify build hook, a scheduled GitHub Action, or a manual `curl` at it.
+
+- **Setup**: set `REVALIDATE_SECRET` (any long random string) in your local `.env` **and** in the Netlify environment. If it is unset the endpoint returns `500`; a wrong/missing token returns `401`.
+- **Effect**: only the instance that handles the request is invalidated (the cache is per-instance memory). On a single warm serverless instance that is the whole app; with multiple instances the rest converge as their own TTLs lapse. Making it global would require a shared cache (Netlify Blobs / KV / Redis).
+- **Client pages**: an already-open tab keeps its current data until reload or navigation. A fresh page load (or `getModels().refresh()`) picks up the rebuilt cache.
+
+---
+
 ## License
 
 MIT
