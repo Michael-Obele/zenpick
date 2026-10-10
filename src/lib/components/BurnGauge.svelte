@@ -21,6 +21,10 @@
 		<BurnGaugeChart value={burnSpeed} {band} />
 	{/key}
 	<div class="mt-1 text-center text-xs text-muted-foreground">
-		~{requestsPerWindow.toLocaleString()} requests per $12 window
+		{#if band === 'free'}
+			Unlimited requests — no quota cost
+		{:else}
+			~{requestsPerWindow.toLocaleString()} requests per $12 window
+		{/if}
 	</div>
 </div>

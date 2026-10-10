@@ -3,6 +3,8 @@
 	import { SCENARIOS, scenarioLabel } from '$lib/scenarios';
 	import { NEEDS } from '$lib/needs';
 	import * as ToggleGroup from '$lib/components/ui/toggle-group';
+	import { Switch } from '$lib/components/ui/switch';
+	import { plan } from '$lib/stores/plan.svelte';
 
 	interface Props {
 		filter: string;
@@ -140,8 +142,31 @@
 			{/if}
 		</div>
 
-		<!-- Search -->
+		<!-- Plan tier + Search -->
 		<div class="flex items-center gap-2">
+			<!-- Quota-limit plan: defaults to the $10 Go plan; Go Plus users flip it
+			     to read their own higher allowances. -->
+			<div class="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5">
+				<Switch
+					checked={plan.tier === 'plus'}
+					onCheckedChange={(v) => plan.set(v ? 'plus' : 'go')}
+					size="sm"
+					aria-label="Show Go Plus quota limits"
+				/>
+				<button
+					type="button"
+					class="text-xs font-medium transition-colors"
+					onclick={() => plan.toggle()}
+					title="Show quota limits for a different OpenCode Go plan"
+				>
+					{#if plan.tier === 'plus'}
+						<span class="text-amber-600 dark:text-amber-400">Go Plus limits</span>
+					{:else}
+						<span class="text-muted-foreground">Go limits</span>
+					{/if}
+				</button>
+			</div>
+
 			{#if !searchOpen}
 				<button
 					class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"

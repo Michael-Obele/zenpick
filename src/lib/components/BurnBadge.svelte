@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { BurnDetails } from '$lib/types/models';
-	import { Flame, Snowflake, Thermometer } from '@lucide/svelte';
+	import { Flame, Snowflake, Thermometer, Infinity as InfinityIcon } from '@lucide/svelte';
 
 	interface Props {
 		burnDetails: BurnDetails | null;
@@ -11,6 +11,8 @@
 	let bandLabel = $derived.by(() => {
 		if (!burnDetails?.band) return 'Unknown';
 		switch (burnDetails.band) {
+			case 'free':
+				return 'Free';
 			case 'excellent':
 				return 'Excellent';
 			case 'good':
@@ -29,6 +31,8 @@
 		switch (burnDetails.band) {
 			// 900-level text on light tints and 100-level text on dark tints
 			// both exceed WCAG AAA 7:1 — the old 500-level text was ~2:1.
+			case 'free':
+				return 'bg-teal-500/10 text-teal-900 border-teal-500/20 dark:bg-teal-500/10 dark:text-teal-100 dark:border-teal-400/30';
 			case 'excellent':
 				return 'bg-cyan-500/10 text-cyan-900 border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-100 dark:border-cyan-400/30';
 			case 'good':
@@ -45,11 +49,15 @@
 
 <span
 	class="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium {bandColor}"
-	title={burnDetails?.requestsPer12 != null
-		? `${burnDetails.requestsPer12.toLocaleString()} requests per $12 window`
-		: 'Pricing data unavailable'}
+	title={burnDetails?.band === 'free'
+		? 'Free model — consumes no Go quota'
+		: burnDetails?.requestsPer12 != null
+			? `${burnDetails.requestsPer12.toLocaleString()} requests per $12 window`
+			: 'Pricing data unavailable'}
 >
-	{#if burnDetails?.band === 'extreme'}
+	{#if burnDetails?.band === 'free'}
+		<InfinityIcon class="size-3" />
+	{:else if burnDetails?.band === 'extreme'}
 		<Flame class="size-3" />
 	{:else if burnDetails?.band === 'excellent' || burnDetails?.band === 'good'}
 		<Snowflake class="size-3" />

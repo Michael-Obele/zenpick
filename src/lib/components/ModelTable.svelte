@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { GoModel } from '$lib/types/models';
+	import type { BurnDetails, GoModel, ModelQuota } from '$lib/types/models';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import {
 		ArrowUp,
@@ -11,10 +11,13 @@
 		Crown
 	} from '@lucide/svelte';
 	import { rankNeed, scoredEntries, type NeedSpec } from '$lib/needs';
+	import { quotaFor, burnFor } from '$lib/plan';
+	import { plan } from '$lib/stores/plan.svelte';
 	import { scenarioLabel } from '$lib/scenarios';
 	import { capabilitySearchTerms } from '$lib/capabilities';
 	import BurnBadge from './BurnBadge.svelte';
 	import { formatCompact } from '$lib/utils';
+	import { isFreePricing } from '$lib/burn';
 	import FallbackBadge from './FallbackBadge.svelte';
 	import CapabilityBadges from './CapabilityBadges.svelte';
 
@@ -117,6 +120,9 @@
 		rank: number | null;
 		value: number | null;
 		fit: number | null;
+		/** Quota + burn resolved for the SELECTED plan tier (see $lib/plan). */
+		quota: ModelQuota;
+		burn: BurnDetails;
 	};
 	let displayRows = $derived.by((): DisplayRow[] => {
 		if (!needEntries) {
@@ -124,13 +130,22 @@
 				model,
 				rank: index + 1,
 				value: null,
-				fit: null
+				fit: null,
+				quota: quotaFor(model, plan.tier),
+				burn: burnFor(model, plan.tier)
 			}));
 		}
 		const q = filter.trim().toLowerCase();
 		return needEntries
 			.filter((e) => matchesFilter(e.model, q))
-			.map((e) => ({ model: e.model, rank: e.rank, value: e.value, fit: e.fit }));
+			.map((e) => ({
+				model: e.model,
+				rank: e.rank,
+				value: e.value,
+				fit: e.fit,
+				quota: quotaFor(e.model, plan.tier),
+				burn: burnFor(e.model, plan.tier)
+			}));
 	});
 
 	/**
@@ -158,6 +173,12 @@
 		return Math.max(0, Math.min(100, ratio * 100));
 	}
 
+	/** Sort key for the quota column — unlimited (free) models rank highest. */
+	function quotaSortKey(model: GoModel): number {
+		const q = quotaFor(model, plan.tier);
+		return q.unlimited ? Number.MAX_SAFE_INTEGER : q.requestsPer5h;
+	}
+
 	function compareModels(
 		a: GoModel,
 		b: GoModel,
@@ -180,19 +201,19 @@
 			case 'price':
 				return (b.pricing.inputPricePerM ?? 0) - (a.pricing.inputPricePerM ?? 0);
 			case 'quota':
-				return a.quota.requestsPer5h - b.quota.requestsPer5h;
+				return quotaSortKey(a) - quotaSortKey(b);
 			case 'fit': {
 				// Strict primary / soft secondary: fit dominates; ties break on burn (cheap first).
 				// Natural order is ascending; sortDir='desc' in the wrapper flips it so best fit is on top.
 				const fitA = scenarioScore(a, scenario);
 				const fitB = scenarioScore(b, scenario);
 				if (fitA !== fitB) return fitA - fitB;
-				return (a.burnDetails.score ?? 0) - (b.burnDetails.score ?? 0);
+				return burnFor(a, plan.tier).score - burnFor(b, plan.tier).score;
 			}
 			case 'burn':
-				return (a.burnDetails.score ?? 0) - (b.burnDetails.score ?? 0);
+				return burnFor(a, plan.tier).score - burnFor(b, plan.tier).score;
 			case 'score':
-				return (a.burnDetails.score ?? 0) - (b.burnDetails.score ?? 0);
+				return burnFor(a, plan.tier).score - burnFor(b, plan.tier).score;
 		}
 	}
 
@@ -397,46 +418,44 @@
 						/>
 					</Table.Cell>
 					<Table.Cell class="text-sm tabular-nums">
-						{#if model.pricing.inputPricePerM != null}
+						{#if isFreePricing(model.pricing)}
+							<div class="font-medium text-teal-600 dark:text-teal-300">Free</div>
+						{:else if model.pricing.inputPricePerM != null}
 							<div class="text-foreground/80">
 								${model.pricing.inputPricePerM.toFixed(2)} /
 								<span class="text-muted-foreground"
 									>${model.pricing.outputPricePerM?.toFixed(2) ?? '—'}</span
 								>
 							</div>
-							<div class="flex items-center gap-1">
-								<FallbackBadge source={model.pricing.source} />
-							</div>
-						{:else}
-							<div class="flex items-center gap-1">
-								<FallbackBadge source={model.pricing.source} />
-							</div>
 						{/if}
+						<div class="flex items-center gap-1">
+							<FallbackBadge source={model.pricing.source} />
+						</div>
 					</Table.Cell>
 					<Table.Cell>
-						<BurnBadge burnDetails={model.burnDetails} />
+						<BurnBadge burnDetails={row.burn} />
 					</Table.Cell>
 					<Table.Cell class="hidden text-sm tabular-nums md:table-cell">
-						{#if model.burnDetails?.band != null}
+						{#if row.burn.band != null}
 							<div class="flex items-center gap-1.5">
 								<div class="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
 									<div
-										class="h-full rounded-full {model.burnDetails.score >= 60
+										class="h-full rounded-full {row.burn.score >= 60
 											? 'bg-emerald-500'
-											: model.burnDetails.score >= 40
+											: row.burn.score >= 40
 												? 'bg-amber-500'
 												: 'bg-red-500'}"
-										style="width: {model.burnDetails.score}%"
+										style="width: {row.burn.score}%"
 									></div>
 								</div>
-								<span class="text-xs text-muted-foreground">{model.burnDetails.score}</span>
+								<span class="text-xs text-muted-foreground">{row.burn.score}</span>
 							</div>
 						{:else}
 							<span class="text-muted-foreground/30">—</span>
 						{/if}
 					</Table.Cell>
 					<Table.Cell class="text-sm tabular-nums text-muted-foreground/70">
-						{formatCompact(model.quota.requestsPer5h)}
+						{row.quota.unlimited ? 'Unlimited' : formatCompact(row.quota.requestsPer5h)}
 					</Table.Cell>
 					<Table.Cell class="text-sm tabular-nums">
 						{@render metricCell(row, model, need)}

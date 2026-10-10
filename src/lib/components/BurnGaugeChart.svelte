@@ -31,6 +31,8 @@
 
 	function bandLabel(b: BurnBand | null): string {
 		switch (b) {
+			case 'free':
+				return 'Free — no quota cost';
 			case 'excellent':
 				return 'Slow burn — lasts longest';
 			case 'good':

@@ -12,10 +12,13 @@
 		Snowflake,
 		Target,
 		Thermometer,
-		TriangleAlert
+		TriangleAlert,
+		Infinity as InfinityIcon
 	} from '@lucide/svelte';
 	import { useSearchParams } from 'runed/kit';
-	import { burnClasses, burnLabel, burnRateFromPrice } from '$lib/burn';
+	import { burnClasses, burnLabel, burnRateFromPrice, isFreePricing } from '$lib/burn';
+	import { quotaFor } from '$lib/plan';
+	import { plan } from '$lib/stores/plan.svelte';
 	import { recommendModel, REFERENCE_TOKENS, REFERENCE_CACHED_PCT } from '$lib/recommendation';
 	import {
 		RECOMMENDATION_SCENARIO_VALUES,
@@ -73,7 +76,8 @@
 		recommendModel(models, {
 			tokens: tokenInput,
 			cachedPct: cachedPctValue,
-			scenario: scenarioValue || undefined
+			scenario: scenarioValue || undefined,
+			plan: plan.tier
 		})
 	);
 
@@ -130,6 +134,12 @@
 		);
 	}
 
+	/** Render a request estimate, showing the free/unlimited sentinel readably. */
+	function fmtRequests(n: number | null | undefined): string {
+		if (n === Infinity) return 'Unlimited';
+		return formatCompact(n);
+	}
+
 	let costPerRequest = $derived.by(() => {
 		if (!selectedModel) return null;
 		const inputTokens = tokenInput * 0.7;
@@ -141,9 +151,14 @@
 	let quotaEstimates = $derived.by(() => {
 		if (!selectedModel) return null;
 
+		// Free / unlimited models have no quota ceiling to estimate.
+		if (quotaFor(selectedModel, plan.tier).unlimited) {
+			return { per5h: Infinity, perWeek: Infinity, perMonth: Infinity };
+		}
+
 		// Prefer ground-truth official usage limits (scraped from Go docs),
 		// scaled to the user's workload assumptions.
-		const official = selectedModel.quota;
+		const official = quotaFor(selectedModel, plan.tier);
 		if (official.requestsPer5h > 0 && costPerRequest != null && costPerRequest > 0) {
 			const refCost = computeCost(
 				selectedModel.pricing,
@@ -178,6 +193,7 @@
 
 	let burnLevel = $derived.by(() => {
 		if (!selectedModel) return null;
+		if (isFreePricing(selectedModel.pricing)) return 'free' as const;
 		return burnRateFromPrice(
 			(selectedModel.pricing.inputPricePerM ?? 0) + (selectedModel.pricing.outputPricePerM ?? 0)
 		);
@@ -423,7 +439,9 @@
 					</div>
 					{#if burnLevel}
 						<Badge variant="outline" class={burnClasses(burnLevel)}>
-							{#if burnLevel === 'slow'}
+							{#if burnLevel === 'free'}
+								<InfinityIcon class="mr-1 size-3" /> {burnLabel(burnLevel)}
+							{:else if burnLevel === 'slow'}
 								<Snowflake class="mr-1 size-3" /> {burnLabel(burnLevel)}
 							{:else if burnLevel === 'fast'}
 								<Flame class="mr-1 size-3" /> {burnLabel(burnLevel)}
@@ -440,21 +458,21 @@
 							<Clock class="size-3" /> 5 Hours
 						</div>
 						<div class="text-lg font-medium tabular-nums text-foreground">
-							{formatCompact(quotaEstimates?.per5h)}
+							{fmtRequests(quotaEstimates?.per5h)}
 						</div>
 						<div class="text-xs text-muted-foreground/60">requests</div>
 					</div>
 					<div class="rounded-lg border border-border bg-background/60 p-2.5 text-center">
 						<div class="mb-1 text-xs text-muted-foreground">Week</div>
 						<div class="text-lg font-medium tabular-nums text-foreground">
-							{formatCompact(quotaEstimates?.perWeek)}
+							{fmtRequests(quotaEstimates?.perWeek)}
 						</div>
 						<div class="text-xs text-muted-foreground/60">requests</div>
 					</div>
 					<div class="rounded-lg border border-border bg-background/60 p-2.5 text-center">
 						<div class="mb-1 text-xs text-muted-foreground">Month</div>
 						<div class="text-lg font-medium tabular-nums text-foreground">
-							{formatCompact(quotaEstimates?.perMonth)}
+							{fmtRequests(quotaEstimates?.perMonth)}
 						</div>
 						<div class="text-xs text-muted-foreground/60">requests</div>
 					</div>

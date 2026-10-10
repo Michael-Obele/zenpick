@@ -1,4 +1,5 @@
-import type { GoModel, ModelPricing, ScenarioScores } from '$lib/types/models';
+import type { GoModel, ModelPricing, PlanTier, ScenarioScores } from '$lib/types/models';
+import { quotaFor } from '$lib/plan';
 
 /**
  * Recommendation funnel ranking
@@ -52,6 +53,8 @@ export interface RecommendationOptions {
 	cachedPct: number;
 	/** Optional task scenario. When omitted, a balanced default fit is used. */
 	scenario?: RecommendationScenario;
+	/** Plan tier whose quota limits drive capacity. Defaults to the $10 Go plan. */
+	plan?: PlanTier;
 }
 
 export interface RecommendationResult {
@@ -170,9 +173,18 @@ function estimateRequestsPer5h(pricing: ModelPricing, tokens: number, cachedPct:
  * Exported for the compare page, which uses it as the catalog-wide
  * "Best value" anchor at the reference workload.
  */
-export function capacityPer5h(model: GoModel, tokens: number, cachedPct: number): number {
+export function capacityPer5h(
+	model: GoModel,
+	tokens: number,
+	cachedPct: number,
+	plan: PlanTier = 'go'
+): number {
+	// Free / unlimited models have no ceiling — treat as infinite capacity so the
+	// recommendation never penalises them (their price-based estimate is 0).
+	const quota = quotaFor(model, plan);
+	if (quota.unlimited) return Infinity;
 	const userEstimate = estimateRequestsPer5h(model.pricing, tokens, cachedPct);
-	const official = model.quota.requestsPer5h;
+	const official = quota.requestsPer5h;
 	if (!(official > 0)) return userEstimate;
 	const refEstimate = estimateRequestsPer5h(model.pricing, REFERENCE_TOKENS, REFERENCE_CACHED_PCT);
 	if (refEstimate <= 0) return official;
@@ -187,6 +199,7 @@ export function capacityPer5h(model: GoModel, tokens: number, cachedPct: number)
  * without silencing every other signal.
  */
 function capacityScore(capacity: number): number {
+	if (capacity === Infinity) return 100;
 	if (!Number.isFinite(capacity) || capacity <= 0) return 0;
 	const logFloor = Math.log10(CAPACITY_ANCHOR_MIN);
 	const logCeil = Math.log10(CAPACITY_ANCHOR_MAX);
@@ -229,12 +242,12 @@ export function recommendModel(
 	options: RecommendationOptions
 ): RecommendationReport | null {
 	if (!Array.isArray(models) || models.length === 0) return null;
-	const { tokens, cachedPct, scenario } = options;
+	const { tokens, cachedPct, scenario, plan = 'go' } = options;
 
 	// Pass 1 — raw signals per model: capacity, fit, benchmark quality.
 	const rows = models.map((model) => ({
 		model,
-		capacity: capacityPer5h(model, tokens, cachedPct),
+		capacity: capacityPer5h(model, tokens, cachedPct, plan),
 		fit: scenarioFit(model, scenario),
 		quality: benchmarkQuality(model)
 	}));
@@ -248,7 +261,7 @@ export function recommendModel(
 		const qualityScore = clamp(quality, 0, 100);
 		const capScore = capacityScore(capacity);
 		const score = fitScore * w.fit + capScore * w.capacity + qualityScore * w.quality;
-		return { model, score, capacity, capacitySource: capacitySourceOf(model) };
+		return { model, score, capacity, capacitySource: capacitySourceOf(model, plan) };
 	});
 
 	// Deterministic order: score desc, then name asc for ties.
@@ -260,14 +273,19 @@ export function recommendModel(
 	const scenarioLabel = scenario ? humanizeScenario(scenario) : 'your workload';
 	const winnerPhrase = scenario ? `Strong ${scenarioLabel} fit` : 'Strong fit for your workload';
 	const top = ranked.slice(0, SHORTLIST_SIZE).map((row, index) => {
+		const unlimited = row.capacity === Infinity;
 		const hasCapacity = row.capacity > 0;
-		const requests = row.capacity.toLocaleString();
+		const requests = unlimited ? 'unlimited' : row.capacity.toLocaleString();
 		const capacityNote = capacitySourceNote(row.capacitySource);
-		const rationale = !hasCapacity
-			? `${winnerPhrase} at your workload. Quota estimate unavailable with current pricing.`
-			: index === 0
-				? `${winnerPhrase} with approximately ${requests} requests per 5-hour window at your workload${capacityNote}.`
-				: `Strong alternative for ${scenarioLabel} with approximately ${requests} requests per 5-hour window.`;
+		const rationale = unlimited
+			? index === 0
+				? `${winnerPhrase} with unlimited requests at the Go tier${capacityNote}.`
+				: `Strong alternative for ${scenarioLabel} with unlimited requests.`
+			: !hasCapacity
+				? `${winnerPhrase} at your workload. Quota estimate unavailable with current pricing.`
+				: index === 0
+					? `${winnerPhrase} with approximately ${requests} requests per 5-hour window at your workload${capacityNote}.`
+					: `Strong alternative for ${scenarioLabel} with approximately ${requests} requests per 5-hour window.`;
 		return {
 			model: row.model,
 			score: Math.round(row.score * 10) / 10,
@@ -279,10 +297,12 @@ export function recommendModel(
 }
 
 /** Where a model's capacity estimate came from. */
-type CapacitySource = 'calibrated' | 'official' | 'estimated';
+type CapacitySource = 'calibrated' | 'official' | 'estimated' | 'unlimited';
 
-function capacitySourceOf(model: GoModel): CapacitySource {
-	if (model.quota.requestsPer5h > 0) {
+function capacitySourceOf(model: GoModel, plan: PlanTier): CapacitySource {
+	const quota = quotaFor(model, plan);
+	if (quota.unlimited) return 'unlimited';
+	if (quota.requestsPer5h > 0) {
 		const ref = estimateRequestsPer5h(model.pricing, REFERENCE_TOKENS, REFERENCE_CACHED_PCT);
 		return ref > 0 ? 'calibrated' : 'official';
 	}
@@ -295,6 +315,8 @@ function capacitySourceNote(source: CapacitySource): string {
 			return ' — OpenCode quota limits scaled to your workload';
 		case 'official':
 			return ' — based on OpenCode’s published quota limits';
+		case 'unlimited':
+			return ' — free model, consumes no Go quota';
 		case 'estimated':
 			return ' — estimated from current pricing and your workload';
 	}
