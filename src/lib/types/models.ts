@@ -22,15 +22,23 @@ export interface GoModel {
 	/** Burn efficiency details */
 	burnDetails: BurnDetails;
 
-	/** Estimated requests per Go quota window */
-	quota: {
-		requestsPer5h: number;
-		requestsPerWeek: number;
-		requestsPerMonth: number;
-	};
+	/** Estimated requests per Go quota window (the default $10 Go plan). */
+	quota: ModelQuota;
 
 	/** Burn rate tier based on pricing */
 	burnRate: BurnRate;
+
+	/**
+	 * Go Plus tier — the same model under the pricier plan (its usage-limit
+	 * table allows more requests than Go's). Null when the docs doesn't publish
+	 * a Plus usage table. The default `quota` / `burnDetails` above are the Go
+	 * tier, so Go Plus users toggle a switch to read their own numbers.
+	 */
+	plus: {
+		quota: ModelQuota;
+		burnDetails: BurnDetails;
+		burnRate: BurnRate;
+	} | null;
 
 	/** Per-scenario fit scores (0-100) */
 	scenarioScores: ScenarioScores;
@@ -72,8 +80,16 @@ export type { BurnRate };
 /** Where model pricing data came from */
 export type PricingSource = 'go-docs' | 'go-api' | 'modelgrep' | 'unknown';
 
-/** Named burn efficiency band */
-export type BurnBand = 'excellent' | 'good' | 'moderate' | 'high' | 'extreme';
+/**
+ * Named burn efficiency band.
+ *
+ * `free` is a distinct band, not a synonym for `excellent`: it marks a model
+ * that consumes NONE of the Go allowance (priced at $0 or with unlimited
+ * usage). Keeping it separate lets the UI say "Free" instead of the misleading
+ * "Unknown" a missing pricing row used to produce, and keeps it out of the
+ * numeric bands which are derived from request counts.
+ */
+export type BurnBand = 'free' | 'excellent' | 'good' | 'moderate' | 'high' | 'extreme';
 
 /** Shared pricing interface */
 export interface ModelPricing {
@@ -83,16 +99,58 @@ export interface ModelPricing {
 	source: PricingSource;
 }
 
+/** Which OpenCode Go plan a quota figure describes. */
+export type PlanTier = 'go' | 'plus';
+
 /**
- * OpenCode Go usage-limit request counts, scraped from the docs/go/
- * "Usage limits" table. These are the ground-truth estimate of how many
- * requests a model allows per Go quota window ($12 / 5h, $30 / week,
- * $60 / month) — far more accurate than deriving requests from price.
+ * Request allowances for one Go plan tier.
+ *
+ * Scraped from the docs/go/ "Estimated requests" tables — the ground-truth
+ * estimate of how many requests a model allows per quota window ($12 / 5h,
+ * $30 / week, $60 / month), far more accurate than deriving requests from
+ * price. The docs publishes one such table per plan (Go and Go Plus).
  */
-export interface UsageLimits {
+export interface ModelQuota {
 	requestsPer5h: number;
 	requestsPerWeek: number;
 	requestsPerMonth: number;
+	/** OpenCode lists the limit as "Unlimited" (free preview models). */
+	unlimited: boolean;
+}
+
+/** Docs-scraped allowances for one plan tier (identical shape to ModelQuota). */
+export type UsageLimits = ModelQuota;
+
+/**
+ * Reconciliation between the Go API model list and the OpenCode docs page,
+ * computed on every docs refresh.
+ *
+ * The catalog is `apiIds ∩ usageTableIds`, so ANY docs↔API mismatch silently
+ * shrinks it — that is exactly how Claude Haiku 5.5 went missing (the docs
+ * "Claude Haiku 5.5" row failed to map to the API id `claude-haiku-5-5`).
+ * This audit names every such discrepancy instead of letting it disappear, so
+ * a novel mismatch (a new lab, a new name format, changed docs markup) shows
+ * up loudly rather than as one fewer model.
+ */
+export interface CatalogAudit {
+	/** Models returned by the Go API. */
+	apiCount: number;
+	/** Docs data rows considered (both the pricing and usage-limits tables). */
+	docsRows: number;
+	/** Docs rows that mapped to a Go model ID. */
+	matchedRows: number;
+	/**
+	 * ALERT — docs rows whose display name mapped to NO Go API ID. Non-empty
+	 * means a model the docs endorse is missing from the catalog (the exact
+	 * Claude Haiku 5.5 failure), or the matcher broke.
+	 */
+	unmatchedDocsRows: { name: string; table: 'pricing' | 'usage' }[];
+	/** ALERT — priced in the docs but absent from the usage-limits table, so the catalog filter drops it. */
+	pricedButUnlisted: string[];
+	/** NOTE — in the catalog but with no scraped price; pricing falls back (or shows unknown). */
+	listedButUnpriced: string[];
+	/** INFO — returned by the API but not endorsed by the docs (usually deprecated on purpose). */
+	apiNotListed: string[];
 }
 
 /** Detailed burn efficiency */
@@ -178,11 +236,22 @@ export interface ModelBenchmarks {
 }
 
 /** Tracks which source each benchmark field was derived from. */
+export interface BenchmarkSourceMeta {
+	source: BenchmarkSource;
+	/**
+	 * The modelgrep field the value came from, when it is not the field's own
+	 * headline metric (e.g. coding fallback `livecodebench`). Lets the UI label
+	 * derived scores instead of passing them off as the primary benchmark.
+	 */
+	field?: string;
+}
+
+/** Tracks which source each benchmark field was derived from. */
 export interface BenchmarkMeta {
-	coding: { source: BenchmarkSource };
-	reasoning: { source: BenchmarkSource };
-	math: { source: BenchmarkSource };
-	sweBenchVerified: { source: BenchmarkSource };
+	coding: BenchmarkSourceMeta;
+	reasoning: BenchmarkSourceMeta;
+	math: BenchmarkSourceMeta;
+	sweBenchVerified: BenchmarkSourceMeta;
 }
 
 /** Possible sources for a benchmark value. */
@@ -291,12 +360,21 @@ export interface ModelgrepModelData {
 			coding: number | null;
 			agentic: number | null;
 			gpqa: number | null;
+			/** 0-100 math composite (present for ~30% of models). */
+			math: number | null;
 			hle: number | null;
 			scicode: number | null;
 			tau2: number | null;
+			/** 0-1 accuracy fields modelgrep exposes for falling back on sparse rows. */
+			aime: number | null;
+			livecodebench: number | null;
+			terminalbench: number | null;
+			mmlu_pro: number | null;
+			ifbench: number | null;
 			intelligence_pct: number | null;
 			coding_pct: number | null;
 			agentic_pct: number | null;
+			math_pct: number | null;
 		} | null;
 		design_arena: {
 			elo: number;

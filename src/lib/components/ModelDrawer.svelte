@@ -10,8 +10,11 @@
 	import ModelScatterContext from './ModelScatterContext.svelte';
 	import CapabilitiesPanel from './CapabilitiesPanel.svelte';
 	import { llmStatsModelUrl } from '$lib/utils/llm-stats-url';
-	import { benchmarkToPercent } from '$lib/compare-defaults';
+	import { benchmarkToPercent, benchmarkSourceNote } from '$lib/compare-defaults';
 	import { formatCompact } from '$lib/utils';
+	import { isFreePricing } from '$lib/burn';
+	import { quotaFor, burnFor } from '$lib/plan';
+	import { plan } from '$lib/stores/plan.svelte';
 
 	interface Props {
 		models: GoModel[];
@@ -42,18 +45,31 @@
 		if (!value || value < 1) return 0;
 		return Math.min(100, Math.round((value / Math.max(60, max)) * 100));
 	}
+
+	/** Price per 1M tokens, or "Free"/"—" for the free/unknown cases. */
+	function priceLabel(value: number | null, free: boolean): string {
+		if (free) return 'Free';
+		return value != null ? `$${value.toFixed(2)}` : '—';
+	}
+
+	/** Request count for a quota window, or "Unlimited" for free models. */
+	function windowLabel(unlimited: boolean, value: number): string {
+		return unlimited ? 'Unlimited' : formatCompact(value);
+	}
 </script>
 
 <Drawer.Root bind:open>
 	<Drawer.Content class="mx-auto max-w-2xl">
 		<ScrollArea class="h-[65vh] rounded-md border">
 			{#if model}
+				{@const quota = quotaFor(model, plan.tier)}
+				{@const burn = burnFor(model, plan.tier)}
 				<Drawer.Header>
 					<div class="flex items-start justify-between gap-3">
 						<div>
 							<Drawer.Title class="flex flex-wrap items-center gap-2 text-xl">
 								{model.name}
-								<BurnBadge burnDetails={model.burnDetails} />
+								<BurnBadge burnDetails={burn} />
 							</Drawer.Title>
 							<Drawer.Description>
 								{model.provider}
@@ -77,11 +93,11 @@
 				</Drawer.Header>
 
 				<div class="px-4 pb-2">
-					{#if model.burnDetails?.band != null}
+					{#if burn.band != null}
 						<BurnGauge
-							score={model.burnDetails.score}
-							band={model.burnDetails.band}
-							requestsPerWindow={model.quota.requestsPer5h}
+							score={burn.score}
+							band={burn.band}
+							requestsPerWindow={quota.requestsPer5h}
 						/>
 					{:else}
 						<div class="rounded-lg border border-border bg-muted/30 p-3 text-sm">
@@ -111,17 +127,13 @@
 							<div class="rounded-lg border border-border p-3">
 								<div class="text-muted-foreground">Input</div>
 								<div class="text-lg tabular-nums text-foreground">
-									{model.pricing.inputPricePerM != null
-										? `$${model.pricing.inputPricePerM.toFixed(2)}`
-										: '—'}
+									{priceLabel(model.pricing.inputPricePerM, isFreePricing(model.pricing))}
 								</div>
 							</div>
 							<div class="rounded-lg border border-border p-3">
 								<div class="text-muted-foreground">Output</div>
 								<div class="text-lg tabular-nums text-foreground">
-									{model.pricing.outputPricePerM != null
-										? `$${model.pricing.outputPricePerM.toFixed(2)}`
-										: '—'}
+									{priceLabel(model.pricing.outputPricePerM, isFreePricing(model.pricing))}
 								</div>
 							</div>
 						</div>
@@ -141,19 +153,19 @@
 							<div class="rounded-lg border border-border p-3 text-center">
 								<div class="text-xs text-muted-foreground">5 Hours ($12)</div>
 								<div class="text-lg font-medium tabular-nums text-foreground">
-									{formatCompact(model.quota.requestsPer5h)}
+									{windowLabel(quota.unlimited, quota.requestsPer5h)}
 								</div>
 							</div>
 							<div class="rounded-lg border border-border p-3 text-center">
 								<div class="text-xs text-muted-foreground">Week ($30)</div>
 								<div class="text-lg font-medium tabular-nums text-foreground">
-									{formatCompact(model.quota.requestsPerWeek)}
+									{windowLabel(quota.unlimited, quota.requestsPerWeek)}
 								</div>
 							</div>
 							<div class="rounded-lg border border-border p-3 text-center">
 								<div class="text-xs text-muted-foreground">Month ($60)</div>
 								<div class="text-lg font-medium tabular-nums text-foreground">
-									{formatCompact(model.quota.requestsPerMonth)}
+									{windowLabel(quota.unlimited, quota.requestsPerMonth)}
 								</div>
 							</div>
 						</div>
@@ -163,11 +175,18 @@
 					<section>
 						<h3 class="mb-2 text-sm font-medium text-muted-foreground">Benchmarks</h3>
 						<div class="space-y-3">
-							{#each [{ label: 'Coding', value: model.benchmarks.coding }, { label: 'Reasoning', value: model.benchmarks.reasoning }, { label: 'Math', value: model.benchmarks.math }, { label: 'SciCode', value: benchmarkToPercent(model.benchmarks.sweBenchVerified, 'sweBenchVerified') }] as bench (bench.label)}
+							{#each [{ label: 'Coding', value: model.benchmarks.coding, note: benchmarkSourceNote(model.benchmarks._meta?.coding) }, { label: 'Reasoning', value: model.benchmarks.reasoning, note: null }, { label: 'Math', value: model.benchmarks.math, note: benchmarkSourceNote(model.benchmarks._meta?.math) }, { label: 'SciCode', value: benchmarkToPercent(model.benchmarks.sweBenchVerified, 'sweBenchVerified'), note: null }] as bench (bench.label)}
 								{#if bench.value !== null}
 									<div>
 										<div class="mb-1 flex justify-between text-sm">
-											<span class="text-muted-foreground">{bench.label}</span>
+											<span class="text-muted-foreground">
+												{bench.label}
+												{#if bench.note}
+													<span class="ml-1 text-[10px] text-muted-foreground/70"
+														>via {bench.note}</span
+													>
+												{/if}
+											</span>
 											<span class="font-medium tabular-nums text-foreground"
 												>{bench.value.toFixed(1)}</span
 											>

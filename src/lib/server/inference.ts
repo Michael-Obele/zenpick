@@ -4,7 +4,7 @@
  * modules to produce an enriched GoModel from modelgrep and llm-stats data.
  */
 
-import { burnRateFromPrice, type BurnRate } from '$lib/burn';
+import { burnRateFromPrice, isFreePricing, type BurnRate } from '$lib/burn';
 import type {
 	GoModel,
 	ModelgrepModelData,
@@ -14,17 +14,77 @@ import type {
 	LlmStatsModel,
 	UsageLimits,
 	FrontierCandidate,
-	ModelBenchmarks
+	ModelBenchmarks,
+	ModelQuota,
+	BurnDetails
 } from '$lib/types/models';
 import { goEndpointType, goEndpointUrl, goIdToName } from './opencode-go';
 import { inferPricing } from './pricing';
 import { estimateQuota, DEFAULT_QUOTA_INPUTS } from './quota';
-import { inferBurnDetails } from './burn';
+import { inferBurnDetails, type BurnScale, DEFAULT_BURN_SCALE } from './burn';
 import { computeScenarioScores } from './scoring';
 import { computeTags } from './tags';
 import { blendBenchmarks } from './blend';
 import { buildCapabilities } from '$lib/capabilities';
 import { MIGRATION_BAND } from '$lib/migration';
+
+/** One plan tier's inputs: the scraped usage (if any) and the score anchors. */
+export interface QuotaTierInput {
+	usage: UsageLimits | null;
+	scale: BurnScale;
+}
+
+/**
+ * Per-plan quota context. `go` is mandatory (the default $10 plan); `plus` is
+ * present only when the docs publishes a Go Plus usage table.
+ */
+export interface QuotaContext {
+	go: QuotaTierInput;
+	plus: QuotaTierInput | null;
+}
+
+export const DEFAULT_QUOTA_CONTEXT: QuotaContext = {
+	go: { usage: null, scale: DEFAULT_BURN_SCALE },
+	plus: null
+};
+
+interface QuotaAndBurn {
+	quota: ModelQuota;
+	burnDetails: BurnDetails;
+	burnRate: BurnRate;
+}
+
+/** Build a model's quota + burn for ONE plan tier (usage wins over estimate). */
+function quotaAndBurn(
+	pricing: ModelPricing,
+	usage: UsageLimits | null,
+	scale: BurnScale
+): QuotaAndBurn {
+	const burnDetails = inferBurnDetails(pricing, usage, scale);
+	const burnRate: BurnRate = isFreePricing(pricing)
+		? 'free'
+		: burnRateFromPrice((pricing.inputPricePerM ?? 0) + (pricing.outputPricePerM ?? 0));
+	const estimated = estimateQuota(
+		pricing,
+		DEFAULT_QUOTA_INPUTS.inputTokens,
+		DEFAULT_QUOTA_INPUTS.outputTokens,
+		DEFAULT_QUOTA_INPUTS.cachedInputTokens
+	);
+	const quota: ModelQuota = usage
+		? {
+				requestsPer5h: usage.requestsPer5h,
+				requestsPerWeek: usage.requestsPerWeek,
+				requestsPerMonth: usage.requestsPerMonth,
+				unlimited: usage.unlimited
+			}
+		: {
+				requestsPer5h: estimated?.requestsPer5h ?? 0,
+				requestsPerWeek: estimated?.requestsPerWeek ?? 0,
+				requestsPerMonth: estimated?.requestsPerMonth ?? 0,
+				unlimited: false
+			};
+	return { quota, burnDetails, burnRate };
+}
 
 /** Enrich a Go model ID with modelgrep data, llm-stats data, and optional docs pricing. */
 export function inferModel(
@@ -33,7 +93,7 @@ export function inferModel(
 	docsPricing?: Record<string, ModelPricing>,
 	lsModel?: LlmStatsModel | null,
 	frontierCandidates: FrontierCandidate[] = [],
-	usageLimits?: Record<string, UsageLimits> | null
+	quota: QuotaContext = DEFAULT_QUOTA_CONTEXT
 ): GoModel {
 	const name = lsModel && lsModel.id === goId ? lsModel.name : goIdToName(goId);
 	// Open-weight is triangulated across sources — see inferOpenWeight().
@@ -43,24 +103,11 @@ export function inferModel(
 	// how fast a model burns through the Go quota — prefer them over a
 	// price-based estimate (which assumes generic token patterns and is
 	// systematically off, e.g. Kimi K3 is ~12× slower-burning than it really is).
-	const usage = usageLimits?.[goId] ?? null;
-	const burnDetails = inferBurnDetails(pricing, usage);
-	const burnRate = burnRateFromPrice(
-		(pricing.inputPricePerM ?? 0) + (pricing.outputPricePerM ?? 0)
-	) as BurnRate;
-
-	const quota = usage
-		? {
-				requestsPer5h: usage.requestsPer5h,
-				requestsPerWeek: usage.requestsPerWeek,
-				requestsPerMonth: usage.requestsPerMonth
-			}
-		: estimateQuota(
-				pricing,
-				DEFAULT_QUOTA_INPUTS.inputTokens,
-				DEFAULT_QUOTA_INPUTS.outputTokens,
-				DEFAULT_QUOTA_INPUTS.cachedInputTokens
-			);
+	// Computed per plan: Go (the default) and Go Plus, whose limits differ.
+	const base = quotaAndBurn(pricing, quota.go.usage, quota.go.scale);
+	const plus = quota.plus ? quotaAndBurn(pricing, quota.plus.usage, quota.plus.scale) : null;
+	const burnDetails = base.burnDetails;
+	const burnRate = base.burnRate;
 
 	const { benchmarks, meta } = blendBenchmarks(mgModel, lsModel ?? null);
 	benchmarks._meta = meta;
@@ -94,13 +141,12 @@ export function inferModel(
 		contextWindow,
 		releaseDate: lsModel?.release_date ?? null,
 		pricing,
-		quota: {
-			requestsPer5h: quota?.requestsPer5h ?? 0,
-			requestsPerWeek: quota?.requestsPerWeek ?? 0,
-			requestsPerMonth: quota?.requestsPerMonth ?? 0
-		},
+		quota: base.quota,
 		burnRate,
 		burnDetails,
+		plus: plus
+			? { quota: plus.quota, burnDetails: plus.burnDetails, burnRate: plus.burnRate }
+			: null,
 		tags,
 		benchmarks,
 		speed,

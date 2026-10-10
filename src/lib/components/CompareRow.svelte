@@ -20,8 +20,11 @@
 		tieDecimals?: number;
 		/** Small helper text under the label. */
 		hint?: string;
-		/** Custom cell renderer. Receives the value and whether this cell is the winner. */
-		format?: Snippet<[number | null, boolean]>;
+		/**
+		 * Custom cell renderer. Receives the value, whether this cell is the
+		 * winner, and the model itself (so a cell can read source metadata).
+		 */
+		format?: Snippet<[number | null, boolean, GoModel]>;
 	}
 
 	let {
@@ -93,7 +96,7 @@
 				/>
 				<span class="sr-only">{isTie ? 'Tied best' : 'Best'}</span>
 			{/if}
-			{@render format?.(values[i], isBest)}
+			{@render format?.(values[i], isBest, m)}
 		</div>
 	{/each}
 </div>

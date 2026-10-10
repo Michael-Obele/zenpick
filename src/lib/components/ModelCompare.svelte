@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { GoModel } from '$lib/types/models';
+	import { quotaFor, burnFor } from '$lib/plan';
+	import { plan } from '$lib/stores/plan.svelte';
 	import BurnBadge from './BurnBadge.svelte';
 	import CompareRow from './CompareRow.svelte';
 	import CapabilityBadges from './CapabilityBadges.svelte';
@@ -20,7 +22,7 @@
 	import { llmStatsModelUrl } from '$lib/utils/llm-stats-url';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { benchmarkToPercent } from '$lib/compare-defaults';
+	import { benchmarkToPercent, benchmarkSourceNote } from '$lib/compare-defaults';
 	import { recommendModel, REFERENCE_TOKENS, REFERENCE_CACHED_PCT } from '$lib/recommendation';
 	import type { RecommendationScenario } from '$lib/recommendation';
 	import { tieRound, formatCompact } from '$lib/utils';
@@ -86,6 +88,21 @@
 	 * the same custom properties as `cols`, so a breakpoint change moves both.
 	 */
 	const boxWidth = $derived(`calc(var(--cmp-label) + ${models.length} * var(--cmp-col))`);
+
+	/** Request count for the selected plan tier; Infinity when that tier is unlimited. */
+	function reqValue(
+		m: GoModel,
+		key: 'requestsPer5h' | 'requestsPerWeek' | 'requestsPerMonth'
+	): number {
+		const q = quotaFor(m, plan.tier);
+		return q.unlimited ? Infinity : q[key];
+	}
+
+	/** Burn speed (higher = burns faster) for the selected plan tier. */
+	function burnValue(m: GoModel): number | null {
+		const score = burnFor(m, plan.tier).score;
+		return score == null ? null : 100 - score;
+	}
 
 	function fmtPrice(n: number | null): string {
 		return n == null ? '—' : `$${n.toFixed(2)}`;
@@ -192,7 +209,8 @@
 			? recommendModel(models, {
 					tokens: REFERENCE_TOKENS,
 					cachedPct: REFERENCE_CACHED_PCT,
-					scenario
+					scenario,
+					plan: plan.tier
 				})
 			: null
 	);
@@ -352,7 +370,7 @@
 						{/if}
 					{/if}
 					<div class="mt-2">
-						<BurnBadge burnDetails={m.burnDetails} />
+						<BurnBadge burnDetails={burnFor(m, plan.tier)} />
 					</div>
 				</div>
 			{/each}
@@ -431,8 +449,9 @@
 
 			<!-- Benchmarks -->
 			<CompareRow label="Coding" {models} getValue={(m) => m.benchmarks.coding} hint="0-100">
-				{#snippet format(value, isBest)}
+				{#snippet format(value, isBest, m)}
 					{@const pct = value == null ? 0 : Math.min(100, value)}
+					{@const note = benchmarkSourceNote(m.benchmarks._meta?.coding)}
 					<div class="flex items-center gap-2">
 						<div class="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
 							<div class="h-full rounded-full bg-violet-500" style="width: {pct}%"></div>
@@ -441,6 +460,11 @@
 							class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
 							>{value == null ? '—' : value.toFixed(1)}</span
 						>
+						{#if note}
+							<span class="text-[10px] text-muted-foreground/70" title="Derived from {note}">
+								via {note}
+							</span>
+						{/if}
 					</div>
 				{/snippet}
 			</CompareRow>
@@ -454,10 +478,19 @@
 			</CompareRow>
 
 			<CompareRow label="Math" {models} getValue={(m) => m.benchmarks.math} hint="0-100">
-				{#snippet format(value, isBest)}
-					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-						>{value == null ? '—' : value.toFixed(1)}</span
-					>
+				{#snippet format(value, isBest, m)}
+					{@const note = benchmarkSourceNote(m.benchmarks._meta?.math)}
+					<span class="inline-flex items-center gap-1.5">
+						<span
+							class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
+							>{value == null ? '—' : value.toFixed(1)}</span
+						>
+						{#if note}
+							<span class="text-[10px] text-muted-foreground/70" title="Derived from {note}">
+								via {note}
+							</span>
+						{/if}
+					</span>
 				{/snippet}
 			</CompareRow>
 
@@ -486,7 +519,7 @@
 					<span
 						class="tabular-nums {isBest
 							? 'font-semibold text-emerald-800 dark:text-emerald-300'
-							: 'text-foreground'}">{fmtPrice(value)}</span
+							: 'text-foreground'}">{value === 0 ? 'Free' : fmtPrice(value)}</span
 					>
 				{/snippet}
 			</CompareRow>
@@ -502,7 +535,7 @@
 					<span
 						class="tabular-nums {isBest
 							? 'font-semibold text-emerald-800 dark:text-emerald-300'
-							: 'text-foreground'}">{fmtPrice(value)}</span
+							: 'text-foreground'}">{value === 0 ? 'Free' : fmtPrice(value)}</span
 					>
 				{/snippet}
 			</CompareRow>
@@ -522,10 +555,15 @@
 				{/snippet}
 			</CompareRow>
 
-			<CompareRow label="Req / 5h" {models} getValue={(m) => m.quota.requestsPer5h} tieDecimals={0}>
+			<CompareRow
+				label="Req / 5h"
+				{models}
+				getValue={(m) => reqValue(m, 'requestsPer5h')}
+				tieDecimals={0}
+			>
 				{#snippet format(value, isBest)}
 					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-						>{value == null ? '—' : formatCompact(value)}</span
+						>{value == null ? '—' : value === Infinity ? 'Unlimited' : formatCompact(value)}</span
 					>
 				{/snippet}
 			</CompareRow>
@@ -533,12 +571,12 @@
 			<CompareRow
 				label="Req / week"
 				{models}
-				getValue={(m) => m.quota.requestsPerWeek}
+				getValue={(m) => reqValue(m, 'requestsPerWeek')}
 				tieDecimals={0}
 			>
 				{#snippet format(value, isBest)}
 					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-						>{value == null ? '—' : formatCompact(value)}</span
+						>{value == null ? '—' : value === Infinity ? 'Unlimited' : formatCompact(value)}</span
 					>
 				{/snippet}
 			</CompareRow>
@@ -546,12 +584,12 @@
 			<CompareRow
 				label="Req / month"
 				{models}
-				getValue={(m) => m.quota.requestsPerMonth}
+				getValue={(m) => reqValue(m, 'requestsPerMonth')}
 				tieDecimals={0}
 			>
 				{#snippet format(value, isBest)}
 					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-						>{value == null ? '—' : formatCompact(value)}</span
+						>{value == null ? '—' : value === Infinity ? 'Unlimited' : formatCompact(value)}</span
 					>
 				{/snippet}
 			</CompareRow>
@@ -559,7 +597,7 @@
 			<CompareRow
 				label="Burn"
 				{models}
-				getValue={(m) => (m.burnDetails.score == null ? null : 100 - m.burnDetails.score)}
+				getValue={(m) => burnValue(m)}
 				higherIsBetter={false}
 				hint="lower better"
 				tieDecimals={0}

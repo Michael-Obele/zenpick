@@ -1,4 +1,4 @@
-import type { GoModel } from '$lib/types/models';
+import type { BenchmarkSourceMeta, GoModel } from '$lib/types/models';
 import { capacityPer5h, REFERENCE_CACHED_PCT, REFERENCE_TOKENS } from '$lib/recommendation';
 
 /**
@@ -37,6 +37,31 @@ const QUALITY_KEYS = ['coding', 'reasoning', 'math', 'sweBenchVerified'] as cons
  */
 export function benchmarkToPercent(value: number | null | undefined, key: string): number | null {
 	return value == null ? null : key === 'sweBenchVerified' && value < 1 ? value * 100 : value;
+}
+
+/**
+ * Human-readable labels for the modelgrep fields a benchmark value may be
+ * derived from when its headline metric is missing (see `server/blend.ts`).
+ */
+const FALLBACK_FIELD_LABELS: Record<string, string> = {
+	livecodebench: 'LiveCodeBench',
+	scicode: 'SciCode',
+	gpqa: 'GPQA',
+	math: 'AA Math',
+	aime: 'AIME',
+	hle: 'HLE'
+};
+
+/**
+ * Short "via X" source note for a benchmark field, or `null` when the value is
+ * the field's own headline metric (or absent). Lets the compare view and drawer
+ * label best-effort fallbacks instead of passing them off as the primary
+ * benchmark — e.g. a Coding score derived from LiveCodeBench reads "via
+ * LiveCodeBench" rather than looking like the real AA coding score.
+ */
+export function benchmarkSourceNote(meta: BenchmarkSourceMeta | undefined): string | null {
+	if (!meta?.field) return null;
+	return FALLBACK_FIELD_LABELS[meta.field] ?? meta.field;
 }
 
 /**
