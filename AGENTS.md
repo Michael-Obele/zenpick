@@ -14,9 +14,9 @@
 
 ### Commit or Push Policy
 
-- **Never auto-commit, auto-push, or auto-merge.** The AI agent must stop after edits, run quality checks, and hand control back to the user.
-- The agent may **stage** changes (`git add`) to show what it changed, but the actual `git commit`, `git push`, PR creation, and any force operations must be done by the user after they review the diff.
-- When changes are complete, the agent should summarize what was changed, why, and which files were touched — then wait. Do not run `git commit` even if the user asked for the change to be "made and committed"; surface the staged state and ask for approval first.
+- **Commit locally only on explicit request; never push or force.** The agent may run `git commit` when the user explicitly asks it to commit. It must still stop after edits, run the quality checks, and hand control back to the user.
+- **Never `git push`, open PRs, or run force/destructive operations** (`push`, `push --force`, `reset --hard`, `branch -D`, etc.). Those remain the user's to run.
+- When changes are complete, the agent should summarize what changed, why, and which files were touched.
 - This applies to all work in this repository, including chore commits, dependency bumps, formatting fixes, and doc updates.
 
 ### Quality Gate
