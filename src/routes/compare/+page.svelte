@@ -11,6 +11,7 @@
 	import { buildLlmStatsCompareUrl } from '$lib/utils/llm-stats-url';
 	import { compareSearchSchema, COMPARE_SCENARIO_VALUES } from '$lib/compare-search';
 	import { recommendModel, REFERENCE_TOKENS, REFERENCE_CACHED_PCT } from '$lib/recommendation';
+	import { plan } from '$lib/stores/plan.svelte';
 	import {
 		catalogQualityAnchor,
 		catalogValueAnchor,
@@ -113,7 +114,8 @@
 			? recommendModel(selectedModels, {
 					tokens: REFERENCE_TOKENS,
 					cachedPct: REFERENCE_CACHED_PCT,
-					scenario: scenarioValue
+					scenario: scenarioValue,
+					plan: plan.tier
 				})
 			: null
 	);

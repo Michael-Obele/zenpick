@@ -29,6 +29,12 @@
 
 	const burnTiers = [
 		{
+			name: 'free',
+			range: 'Unlimited',
+			description: 'Free preview models. No quota cost at all.',
+			color: 'teal'
+		},
+		{
 			name: 'excellent',
 			range: '> 11,000',
 			description: 'Workhorse models. Use these for volume.',
@@ -59,13 +65,26 @@
 			color: 'red'
 		}
 	];
+
+	/** Tailwind classes per burn-tier colour. Literal strings so Tailwind emits them. */
+	const burnTierColor: Record<string, string> = {
+		teal: 'border-teal-500/20 bg-teal-500/5 text-teal-900 dark:border-teal-400/30 dark:bg-teal-500/10 dark:text-teal-100',
+		cyan: 'border-cyan-500/20 bg-cyan-500/5 text-cyan-900 dark:border-cyan-400/30 dark:bg-cyan-500/10 dark:text-cyan-100',
+		emerald:
+			'border-emerald-500/20 bg-emerald-500/5 text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-100',
+		amber:
+			'border-amber-500/20 bg-amber-500/5 text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-100',
+		orange:
+			'border-orange-500/20 bg-orange-500/5 text-orange-900 dark:border-orange-400/30 dark:bg-orange-500/10 dark:text-orange-100',
+		red: 'border-red-500/20 bg-red-500/5 text-red-900 dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-100'
+	};
 </script>
 
 <svelte:head>
 	<title>About — ZenPick</title>
 	<meta
 		name="description"
-		content="Why I switched to OpenCode Go and built ZenPick: a thermal-quota compass that compares 13+ open coding models on benchmarks, pricing, and quota burn."
+		content="Why I built ZenPick: a free tool that lines up every model in your plan so you stop wasting your AI budget on the wrong one. Live benchmarks, price, and quota burn."
 	/>
 </svelte:head>
 
@@ -96,14 +115,15 @@
 			<h1
 				class="mb-6 text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-6xl"
 			>
-				I switched because AI got too expensive.
-				<span class="block text-muted-foreground">OpenCode Go made it make sense.</span>
+				I was not paying too much for AI.
+				<span class="block text-muted-foreground">I was paying for the wrong model.</span>
 			</h1>
 
 			<p class="max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-				Like a lot of developers, I watched my AI subscriptions drift upward while the value stayed
-				flat. OpenCode Go flipped the model: $10/month, thirteen open coding models, generous quota
-				windows. But it does not tell you which model fits which task. That is what ZenPick is for.
+				The price was never the problem. I pay a fixed amount each month and then spend it model by
+				model, often on the wrong one. A cheap model can carry a full day of work; an expensive one
+				empties the same window in an afternoon. ZenPick lines the models up against the task you
+				actually have, so the budget you already pay for goes further.
 			</p>
 
 			<p class="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
@@ -156,13 +176,13 @@
 							>
 								ZenPick receipt
 							</p>
-							<p class="mt-1 text-sm text-muted-foreground">A clearer way to spend your quota.</p>
+							<p class="mt-1 text-sm text-muted-foreground">See the cost before you commit.</p>
 						</div>
 						<Thermometer class="size-5 text-primary dark:text-primary-strong" />
 					</div>
 					<ReceiptBlock />
 					<p class="mt-4 border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground">
-						Compare capability, cost, and burn before the next coding session starts.
+						Check cost and burn before the session starts, not after the quota is gone.
 					</p>
 				</div>
 			</div>
@@ -184,13 +204,14 @@
 
 		<div class="space-y-4 text-base leading-relaxed text-foreground">
 			<p>
-				Three things, on one page. A sortable table of every Go model with live benchmark scores. A
-				quota calculator that turns a token estimate into a number-of-requests per window. A detail
-				drawer that names the closed-source model each Go model replaces, and why.
+				Three things on one page: a sortable table of every model with live benchmark scores, a
+				quota calculator that turns a token estimate into requests per window, and a detail drawer
+				that names the closed-source model each one replaces. Together they answer one question:
+				which model gives you the most for the budget you already have.
 			</p>
 			<p>
-				Everything runs on a stale-while-revalidate cache, so the page is fast on revisit and never
-				asks the upstream APIs for the same data twice within six hours.
+				Everything runs on a stale-while-revalidate cache, so revisits are instant and the page
+				never fetches the same data twice within six hours.
 			</p>
 		</div>
 
@@ -211,7 +232,12 @@
 		</div>
 
 		<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
-			<StatCard figure="10" unit="/mo" label="subscription" footnote="First month $5." />
+			<StatCard
+				figure="10"
+				unit="/mo"
+				label="subscription"
+				footnote="The budget you are already spending."
+			/>
 			<StatCard figure="13" unit="+" label="models tracked" footnote="Across 6 providers." />
 			<StatCard figure="6" unit="h" label="cache TTL" footnote="Stale-while-revalidate." />
 			<StatCard
@@ -219,11 +245,7 @@
 				label="upstream models"
 				footnote="Cross-referenced via modelgrep + LLM Stats."
 			/>
-			<StatCard
-				figure="50%"
-				label="cheaper"
-				footnote="Same features at half the cost of what it replaced."
-			/>
+			<StatCard figure="Free" label="to use" footnote="No account, no paywall, open source." />
 		</div>
 
 		<div class="mt-10">
@@ -287,11 +309,11 @@
 
 		<div class="space-y-4 text-base leading-relaxed text-foreground">
 			<p>
-				Every model gets a 0–100 fit score for five scenarios — <em>Brainstorming</em>,
-				<em>Coding</em>, <em>Agentic</em>, <em>Budget</em>, and
+				Every model gets a 0 to 100 fit score for five scenarios:
+				<em>Brainstorming</em>, <em>Coding</em>, <em>Agentic</em>, <em>Budget</em>, and
 				<em>Frontend</em>. Scores are normalized across the current model population, so the
 				ordering is always meaningful and always non-empty. The table sorts by the active scenario;
-				if no scenario is active, it sorts by raw coding benchmark.
+				with none active, it sorts by raw coding benchmark.
 			</p>
 			<p>
 				Tags, migration hints, and thermal burn rates are inferred. Nothing on the page is
@@ -361,7 +383,7 @@
 				</a>.
 			</p>
 			<p class="text-muted-foreground">
-				Everything ZenPick computes on top — scenario fit scores, burn rate tiers, migration hints —
+				Everything ZenPick computes on top (scenario fit scores, burn rate tiers, migration hints)
 				is derived from those sources, in the schematic above. The data and the attribution are kept
 				close on purpose.
 			</p>
@@ -379,7 +401,7 @@
 				href="/#compare-models"
 				class="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 dark:bg-primary-strong dark:text-background dark:hover:bg-primary-strong/90"
 			>
-				Data checks out? Try the comparison
+				Data checks out? Put it to work
 				<ArrowRight class="size-4" />
 			</a>
 		</div>
@@ -397,23 +419,14 @@
 		</div>
 
 		<p class="mb-6 text-base leading-relaxed text-muted-foreground">
-			Every model in ZenPick carries a thermal burn band. It is derived from OpenCode's published
-			usage-limit request counts — requests per $12 / 5h window, scraped from the Go docs — a direct
-			measure of how fast the model burns through your quota (not an inference from price).
+			Every model gets a thermal burn band, built from OpenCode's published request counts per $12
+			window. It tells you how fast that model drains your quota: a cold band lasts the window, a
+			hot one empties it in an afternoon.
 		</p>
 
-		<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+		<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
 			{#each burnTiers as tier (tier.name)}
-				{@const color =
-					tier.color === 'cyan'
-						? 'border-cyan-500/20 bg-cyan-500/5 text-cyan-900 dark:border-cyan-400/30 dark:bg-cyan-500/10 dark:text-cyan-100'
-						: tier.color === 'emerald'
-							? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-100'
-							: tier.color === 'amber'
-								? 'border-amber-500/20 bg-amber-500/5 text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-100'
-								: tier.color === 'orange'
-									? 'border-orange-500/20 bg-orange-500/5 text-orange-900 dark:border-orange-400/30 dark:bg-orange-500/10 dark:text-orange-100'
-									: 'border-red-500/20 bg-red-500/5 text-red-900 dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-100'}
+				{@const color = burnTierColor[tier.color] ?? burnTierColor.red}
 				<div class="rounded-lg border p-4 {color}">
 					<div class="mb-2 flex items-center gap-2">
 						<span class="inline-block h-2 w-2 rounded-full bg-current" aria-hidden="true"></span>
@@ -444,8 +457,8 @@
 						Your $12 quota window is ticking.
 					</h2>
 					<p class="max-w-xl text-muted-foreground">
-						Every model burns quota at a different rate — pick the right one and the window lasts;
-						pick wrong and it empties in minutes.
+						Every model burns quota at a different rate. Pick the right one and the window lasts.
+						Pick the wrong one and it empties in minutes.
 					</p>
 					<p class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
 						<span class="inline-flex items-center gap-1.5">

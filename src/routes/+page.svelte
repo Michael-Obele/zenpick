@@ -41,10 +41,10 @@
 </script>
 
 <svelte:head>
-	<title>ZenPick — Find the right Go model</title>
+	<title>ZenPick | Spend your AI budget on the right model</title>
 	<meta
 		name="description"
-		content="Compare OpenCode Go models with live benchmarks, pricing, and quota estimates. ZenPick helps you find which model fits your task — and how fast it burns your quota."
+		content="Stop wasting your AI budget on the wrong model. ZenPick lines up every model in your plan with live benchmarks, price, and quota burn, so you pick the one that fits before the money runs out."
 	/>
 </svelte:head>
 
@@ -67,17 +67,17 @@
 				<h1
 					class="signal-board-enter mb-5 text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl"
 				>
-					Choose a model by
+					Spend your AI budget
 					<br class="hidden sm:inline" />
-					<span class="text-primary text-stroke-bg">task and quota</span>
+					<span class="text-primary text-stroke-bg">on the right model</span>
 				</h1>
 
 				<!-- Supporting copy -->
 				<p
 					class="signal-board-enter motion-delay-200 mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-muted-foreground"
 				>
-					Live benchmarks, algorithmic recommendations, and quota burn estimates — so you make
-					<span class="text-foreground/80">economically informed</span> decisions, not guesses.
+					Live benchmarks, quota-burn estimates, and task-fit scores, so you can see
+					<span class="text-foreground/80">which model wastes your money</span> before you spend it.
 				</p>
 
 				<!-- CTAs -->
@@ -88,7 +88,7 @@
 						href="#compare-models"
 						class="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
 					>
-						Compare models
+						Find my model
 						<ArrowRight class="size-4" />
 					</a>
 					<a
@@ -214,9 +214,8 @@
 		<!-- Footer (in-page attribution & tagline) -->
 		<div class="mt-20 text-center text-sm text-muted-foreground/60">
 			<p>
-				Made to help developers make
-				<span class="text-muted-foreground/70">economically informed</span>
-				model choices.
+				Made to stop developers wasting money on the
+				<span class="text-muted-foreground/70">wrong model.</span>
 			</p>
 		</div>
 	</div>
