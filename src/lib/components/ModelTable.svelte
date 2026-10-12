@@ -14,7 +14,7 @@
 	import { quotaFor, burnFor } from '$lib/plan';
 	import { plan } from '$lib/stores/plan.svelte';
 	import { scenarioLabel } from '$lib/scenarios';
-	import { capabilitySearchTerms } from '$lib/capabilities';
+	import { matchesModelSearch } from '$lib/model-search';
 	import BurnBadge from './BurnBadge.svelte';
 	import { formatCompact } from '$lib/utils';
 	import { isFreePricing } from '$lib/burn';
@@ -49,32 +49,9 @@
 		onExitNeed = () => {}
 	}: Props = $props();
 
-	/**
-	 * Searchable text for a model: its identity, its tags, and the capability
-	 * vocabulary from capabilities.ts. Including the latter means "video" or
-	 * "pdf" finds the models that actually accept them — previously those words
-	 * only matched a model whose name or tag happened to contain them.
-	 */
-	function searchHaystack(m: GoModel): string {
-		return [
-			m.name,
-			m.provider,
-			...m.tags.map((t) => t.label),
-			...capabilitySearchTerms(m.capabilities)
-		]
-			.join(' ')
-			.toLowerCase();
-	}
-
-	/** One predicate, so the plain table and the ranked list filter identically. */
-	function matchesFilter(m: GoModel, q: string): boolean {
-		return !q || searchHaystack(m).includes(q);
-	}
-
-	let filteredModels = $derived.by(() => {
-		const q = filter.trim().toLowerCase();
-		return q ? models.filter((m) => matchesFilter(m, q)) : models;
-	});
+	// Search lives in `$lib/model-search` so the table and the /llms.txt route
+	// filter a `?q=` identically.
+	let filteredModels = $derived(models.filter((m) => matchesModelSearch(m, filter)));
 
 	type SortKey = 'name' | 'coding' | 'price' | 'quota' | 'fit' | 'burn' | 'score';
 
@@ -135,9 +112,8 @@
 				burn: burnFor(model, plan.tier)
 			}));
 		}
-		const q = filter.trim().toLowerCase();
 		return needEntries
-			.filter((e) => matchesFilter(e.model, q))
+			.filter((e) => matchesModelSearch(e.model, filter))
 			.map((e) => ({
 				model: e.model,
 				rank: e.rank,

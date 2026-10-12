@@ -136,14 +136,6 @@ maxCrap = 2200.0
 reason = "Compare workspace: model picker + per-metric compare grid; pinned at current score"
 
 [[health.thresholdOverrides]]
-files = ["src/lib/components/debug/ScenarioBreakdown.svelte"]
-functions = ["<template>"]
-maxCyclomatic = 25
-maxCognitive = 20
-maxCrap = 700.0
-reason = "Debug matrix with per-scenario filter rows"
-
-[[health.thresholdOverrides]]
 files = ["src/lib/components/debug/BurnTable.svelte"]
 functions = ["<template>"]
 maxCyclomatic = 14
