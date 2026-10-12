@@ -145,7 +145,7 @@
 		</div>
 
 		<!-- Plan tier + Search -->
-		<div class="flex items-center gap-2">
+		<div class="flex flex-col-reverse items-center gap-2">
 			<!-- Quota-limit plan: defaults to the $10 Go plan; Go Plus users flip it
 			     to read their own higher allowances. -->
 			<div class="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5">
