@@ -14,7 +14,9 @@
 
 	let { filter = $bindable(''), scenario = $bindable(''), need = $bindable('') }: Props = $props();
 
-	let searchOpen = $state(false);
+	// A shared link can arrive with ?q= already set — open the box filled in, or
+	// the table looks filtered for no visible reason.
+	let searchOpen = $state(Boolean(filter));
 
 	/**
 	 * One row, two dimensions — combined with AND semantics:

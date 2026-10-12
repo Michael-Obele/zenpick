@@ -15,15 +15,12 @@
 		TriangleAlert,
 		Infinity as InfinityIcon
 	} from '@lucide/svelte';
-	import { useSearchParams } from 'runed/kit';
 	import { burnClasses, burnLabel, burnRateFromPrice, isFreePricing } from '$lib/burn';
 	import { quotaFor } from '$lib/plan';
 	import { plan } from '$lib/stores/plan.svelte';
 	import { recommendModel, REFERENCE_TOKENS, REFERENCE_CACHED_PCT } from '$lib/recommendation';
-	import {
-		RECOMMENDATION_SCENARIO_VALUES,
-		recommendationSearchSchema
-	} from '$lib/recommendation-search';
+	import { RECOMMENDATION_SCENARIO_VALUES } from '$lib/recommendation-search';
+	import type { HomeSearchParamsHook } from '$lib/table-search';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import * as Popover from '$lib/components/ui/popover/index.js';
 	import * as Command from '$lib/components/ui/command/index.js';
@@ -37,16 +34,16 @@
 
 	interface Props {
 		models: GoModel[];
+		/**
+		 * The page's live URL params (see table-search.ts). The page owns the one
+		 * `useSearchParams` instance and hands it down, so the calculator's keys and
+		 * the model table's keys share one URL state instead of two hooks rewriting
+		 * the query string over each other. This component only touches its own keys.
+		 */
+		params: HomeSearchParamsHook;
 	}
 
-	let { models }: Props = $props();
-
-	// URL-backed funnel state (see recommendation-search.ts).
-	const params = useSearchParams(recommendationSearchSchema, {
-		pushHistory: false,
-		noScroll: true,
-		debounce: 250
-	});
+	let { models, params }: Props = $props();
 
 	const SCENARIO_LABELS: Record<string, string> = {
 		coding: 'Coding',

@@ -11,14 +11,24 @@
 	import { findNeed, needAnswer, rankNeed } from '$lib/needs';
 	import { scenarioLabel } from '$lib/scenarios';
 	import { compare } from '$lib/stores/compare.svelte';
+	import { homeSearchSchema } from '$lib/table-search';
+	import { useSearchParams } from 'runed/kit';
 	import { ArrowRight, Brain, Wallet, Server, X } from '@lucide/svelte';
 
-	let filter = $state('');
+	// The URL is the source of truth for the table's search + leaderboard, so a
+	// link carries the whole question: /?need=cheapest, /?q=vision (see
+	// table-search.ts). ONE instance per page — the calculator shares this object,
+	// because a second hook would rewrite the query string from its own keys alone
+	// and drop the table's params (and vice versa).
+	const params = useSearchParams(homeSearchSchema, {
+		pushHistory: false,
+		noScroll: true,
+		debounce: 250
+	});
+
 	let scenario = $state('');
 	let selectedModel = $state<GoModel | null>(null);
 	let drawerOpen = $state(false);
-	/** Active "browse by need" slug ('' = plain table). */
-	let need = $state('');
 
 	function openDrawer(model: GoModel) {
 		selectedModel = model;
@@ -27,7 +37,7 @@
 
 	const modelsPromise = getModels();
 
-	let needSpec = $derived(findNeed(need) ?? null);
+	let needSpec = $derived(findNeed(params.need) ?? null);
 	/** Task label when both a need and a scenario are active (blended ranking). */
 	let weightLabel = $derived(needSpec && scenario ? scenarioLabel(scenario) : null);
 	/** Blend options for the banner ranking — same shape the table uses. */
@@ -128,7 +138,7 @@
 		<!-- Calculator -->
 		<section id="quota-calculator" class="signal-board-enter motion-delay-100 mb-12">
 			{#await modelsPromise then models}
-				<QuotaCalculator {models} />
+				<QuotaCalculator {models} {params} />
 			{/await}
 		</section>
 
@@ -177,7 +187,7 @@
 						</div>
 						<button
 							class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-border hover:text-foreground"
-							onclick={() => (need = '')}
+							onclick={() => (params.need = '')}
 						>
 							<X class="size-4" />
 							All models
@@ -185,14 +195,20 @@
 					</div>
 				{/if}
 				<div class="mb-4">
-					<FilterBar bind:filter bind:scenario bind:need />
+					<!-- Function bindings: the search + leaderboard live in `params`, not
+					     in local state (a `$derived` can't be bound directly). -->
+					<FilterBar
+						bind:filter={() => params.q, (v) => (params.q = v)}
+						bind:scenario
+						bind:need={() => params.need, (v) => (params.need = v)}
+					/>
 				</div>
 				<ModelTable
 					{models}
-					{filter}
+					filter={params.q}
 					{scenario}
 					need={needSpec}
-					onExitNeed={() => (need = '')}
+					onExitNeed={() => (params.need = '')}
 					selectedModelId={selectedModel?.id}
 					onSelectModel={openDrawer}
 					selectedIds={compare.selection}

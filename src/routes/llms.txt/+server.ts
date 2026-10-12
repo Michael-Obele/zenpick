@@ -1,5 +1,7 @@
 import { loadModels } from '$lib/server/models';
 import { burnBandLabel, burnLabel, isFreePricing } from '$lib/burn';
+import { NEEDS, needAnswer, rankNeed } from '$lib/needs';
+import { DEBUG_SECTION_IDS } from '$lib/debug/sections';
 import { llmStatsModelUrl } from '$lib/utils/llm-stats-url';
 import type { GoModel } from '$lib/types/models';
 import type { RequestHandler } from './$types';
@@ -74,6 +76,39 @@ function render(models: GoModel[], origin: string): string {
 		'- **Req/mo** — estimated requests per month at the $60 Go tier.',
 		'- **Coding / Agentic** — task-fit score, 0–100 (algorithmic, not a benchmark).',
 		'- **Replaces** — closed-source frontier models this Go model substitutes.',
+		''
+	);
+
+	// The site's own verdict per leaderboard, from the same ranking the
+	// interactive table runs, so a reader does not have to recompute the scores
+	// (or guess at tie-breaking and data gaps) from the table above.
+	lines.push(
+		'',
+		'## Quick answers',
+		'',
+		'One line per leaderboard:',
+		'',
+		...NEEDS.map((need) => `- ${needAnswer(need, rankNeed(need, models))}`),
+		''
+	);
+
+	lines.push(
+		'',
+		'## Query URLs',
+		'',
+		'The interactive table keeps its search and leaderboard in the URL, so every answer above has a link:',
+		'',
+		`- Leaderboard: \`${origin}/?need=<slug>\`, where \`<slug>\` is one of ${NEEDS.map((n) => `\`${n.slug}\``).join(', ')}.`,
+		`- Search: \`${origin}/?q=<text>\` across model name, provider, tags, and capabilities.`,
+		`- Both at once: \`${origin}/?need=cheapest&q=vision\`.`,
+		`- Side by side: \`${origin}/compare?models=<id>,<id>\` (up to four model IDs).`,
+		`- Data, not prose: \`${origin}/debug/export?section=<id>&format=json\` (or \`format=md\`) returns one slice of the catalog with the right content type. Sections: ${DEBUG_SECTION_IDS.map((id) => `\`${id}\``).join(', ')}.`,
+		'',
+		'Those URLs render in the browser, so a crawler that cannot run JavaScript sees only the page shell; the markdown in this file is the machine-readable form of the same data.',
+		''
+	);
+
+	lines.push(
 		'',
 		'## Key pages',
 		'',
