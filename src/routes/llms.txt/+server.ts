@@ -7,6 +7,7 @@ import { tableSearchSchema } from '$lib/table-search';
 import { llmStatsModelUrl } from '$lib/utils/llm-stats-url';
 import { validateSearchParams } from 'runed/kit';
 import type { GoModel } from '$lib/types/models';
+import type { NeedSpec } from '$lib/needs';
 import type { TableSearchParams } from '$lib/table-search';
 import type { RequestHandler } from './$types';
 
@@ -69,60 +70,7 @@ function usageLines(origin: string): string[] {
 }
 
 function render(models: GoModel[], origin: string, params: TableSearchParams): string {
-	// Same vocabulary as the interactive table: `?need=` ranks with the site's own
-	// algorithm, `?q=` filters with the site's own search (both shared modules).
-	const needSpec = findNeed(params.need);
-	const query = params.q.trim();
-	const shown = query ? models.filter((m) => matchesModelSearch(m, query)) : models;
-	const rows = needSpec
-		? rankNeed(needSpec, shown).map((entry) => ({
-				model: entry.model,
-				rank: entry.rank,
-				value: entry.value
-			}))
-		: shown.map((model) => ({ model, rank: null, value: null }));
-
-	// A ranked view carries the need's own metric, so the order is legible.
-	const columns = needSpec
-		? [
-				'Rank',
-				'Model',
-				'ID',
-				'Provider',
-				cell(needSpec.metricLabel),
-				'Context',
-				'Input $/M',
-				'Output $/M',
-				'Burn',
-				'Req/mo',
-				'Coding',
-				'Agentic',
-				'Replaces',
-				'Source'
-			]
-		: [
-				'Model',
-				'ID',
-				'Provider',
-				'Context',
-				'Input $/M',
-				'Output $/M',
-				'Burn',
-				'Req/mo',
-				'Coding',
-				'Agentic',
-				'Replaces',
-				'Source'
-			];
-
-	const view =
-		[
-			needSpec ? `ranked for ${needSpec.cardTitle}, best first` : null,
-			query ? `filtered by "${query}"` : null
-		]
-			.filter(Boolean)
-			.join('; ') || 'full catalog';
-
+	const view = modelView(models, params);
 	const lines: string[] = [
 		'# ZenPick',
 		'',
@@ -130,8 +78,8 @@ function render(models: GoModel[], origin: string, params: TableSearchParams): s
 		'',
 		'ZenPick is a free, read-only comparison tool for the [OpenCode Go](https://opencode.ai/go) model catalog (the $10/month tier). It aggregates public data from modelgrep, LLM Stats, and the OpenCode Go docs, then ranks each model per task. The catalog is interactive on the site (JavaScript-rendered); the table below is the same catalog in plain markdown.',
 		'',
-		`- Models: ${rows.length}${rows.length === models.length ? '' : ` of ${models.length}`}`,
-		`- View: ${view}`,
+		`- Models: ${view.count}${view.count === models.length ? '' : ` of ${models.length}`}`,
+		`- View: ${view.label}`,
 		`- Data as of: ${newestFetch(models)}`,
 		`- Generated: ${new Date().toISOString()}`,
 		'',
@@ -145,35 +93,8 @@ function render(models: GoModel[], origin: string, params: TableSearchParams): s
 		// interactive table runs, so a reader does not have to recompute the scores
 		// (or guess at tie-breaking and data gaps) from the table below.
 		...NEEDS.map((need) => `- ${needAnswer(need, rankNeed(need, models))}`),
-		'',
-		'## Models',
-		'',
-		`| ${columns.join(' | ')} |`,
-		`| ${columns.map(() => '---').join(' | ')} |`
+		...view.section
 	];
-
-	for (const row of rows) {
-		const m = row.model;
-		const free = isFreePricing(m.pricing);
-		lines.push(
-			[
-				...(needSpec ? [row.rank == null ? '—' : String(row.rank)] : []),
-				cell(m.name),
-				cell(m.id),
-				cell(m.provider),
-				...(needSpec ? [row.value == null ? '—' : needSpec.format(row.value)] : []),
-				formatContext(m.contextWindow),
-				free ? 'Free' : formatPrice(m.pricing.inputPricePerM),
-				free ? 'Free' : formatPrice(m.pricing.outputPricePerM),
-				cell(burnLabelFor(m)),
-				m.quota.unlimited ? 'Unlimited' : formatCount(m.quota.requestsPerMonth),
-				formatScore(m.scenarioScores.coding),
-				formatScore(m.scenarioScores.agentic),
-				cell(formatReplaces(m)),
-				`[llm-stats](${llmStatsModelUrl(m)})`
-			].join(' | ')
-		);
-	}
 
 	lines.push(
 		'',
@@ -226,6 +147,98 @@ function render(models: GoModel[], origin: string, params: TableSearchParams): s
 	);
 
 	return lines.join('\n');
+}
+
+/** One model's place in a rendered table: rank and metric value only when ranked. */
+type TableRow = { model: GoModel; rank: number | null; value: number | null };
+
+/** The `## Models` section, plus what the file header needs to describe it. */
+type ModelView = { section: string[]; label: string; count: number };
+
+/**
+ * The requested view of the catalog. `?need=` ranks with the site's own algorithm
+ * and `?q=` filters with the site's own search (both shared with the browser), so
+ * a crawler can ask for the view it wants instead of sorting the catalog itself.
+ */
+function modelView(models: GoModel[], params: TableSearchParams): ModelView {
+	const needSpec = findNeed(params.need);
+	const query = params.q.trim();
+	const shown = query ? models.filter((m) => matchesModelSearch(m, query)) : models;
+	const rows = needSpec
+		? rankNeed(needSpec, shown).map((entry) => ({
+				model: entry.model,
+				rank: entry.rank,
+				value: entry.value
+			}))
+		: shown.map((model) => ({ model, rank: null, value: null }));
+
+	const columns = tableColumns(needSpec);
+	const section = [
+		'',
+		'## Models',
+		'',
+		`| ${columns.join(' | ')} |`,
+		`| ${columns.map(() => '---').join(' | ')} |`,
+		...rows.map((row) => tableRow(row, needSpec)),
+		''
+	];
+
+	return { section, label: viewLabel(needSpec, query), count: rows.length };
+}
+
+/** Column headers: a ranked view carries the need's own metric next to the name. */
+function tableColumns(needSpec: NeedSpec | null): string[] {
+	const tail = [
+		'ID',
+		'Provider',
+		'Context',
+		'Input $/M',
+		'Output $/M',
+		'Burn',
+		'Req/mo',
+		'Coding',
+		'Agentic',
+		'Replaces',
+		'Source'
+	];
+	return needSpec ? ['Rank', 'Model', cell(needSpec.metricLabel), ...tail] : ['Model', ...tail];
+}
+
+/** One markdown row. Column order and count must match `tableColumns`. */
+function tableRow(row: TableRow, needSpec: NeedSpec | null): string {
+	const m = row.model;
+	const free = isFreePricing(m.pricing);
+	const head = needSpec
+		? [
+				row.rank == null ? '—' : String(row.rank),
+				cell(m.name),
+				row.value == null ? '—' : needSpec.format(row.value)
+			]
+		: [cell(m.name)];
+
+	return [
+		...head,
+		cell(m.id),
+		cell(m.provider),
+		formatContext(m.contextWindow),
+		free ? 'Free' : formatPrice(m.pricing.inputPricePerM),
+		free ? 'Free' : formatPrice(m.pricing.outputPricePerM),
+		cell(burnLabelFor(m)),
+		m.quota.unlimited ? 'Unlimited' : formatCount(m.quota.requestsPerMonth),
+		formatScore(m.scenarioScores.coding),
+		formatScore(m.scenarioScores.agentic),
+		cell(formatReplaces(m)),
+		`[llm-stats](${llmStatsModelUrl(m)})`
+	].join(' | ');
+}
+
+/** One line for the file header: which view this response is. */
+function viewLabel(needSpec: NeedSpec | null, query: string): string {
+	const parts = [
+		needSpec ? `ranked for ${needSpec.cardTitle}, best first` : null,
+		query ? `filtered by "${query}"` : null
+	];
+	return parts.filter(Boolean).join('; ') || 'full catalog';
 }
 
 /** Escape a markdown table cell. */
