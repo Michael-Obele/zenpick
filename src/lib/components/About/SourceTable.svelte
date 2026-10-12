@@ -25,8 +25,8 @@
 			required: true
 		},
 		{
-			provider: 'opencode.ai/docs/go',
-			href: 'https://opencode.ai/docs/go/',
+			provider: 'opencode.ai/v2/docs/console/go',
+			href: 'https://opencode.ai/v2/docs/console/go',
 			license: 'Per OpenCode Go docs',
 			use: 'Model list, endpoint types, quota windows'
 		}

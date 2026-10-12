@@ -64,7 +64,7 @@ export function goIdToName(id: string): string {
  */
 export function goEndpointType(id: string): 'openai-compatible' | 'anthropic-compatible' {
 	// Models from these provider prefixes use Anthropic-compatible endpoints
-	// Source: https://opencode.ai/docs/go/ endpoint table
+	// Source: https://opencode.ai/v2/docs/console/go endpoint table
 	const anthropicPrefixes = ['minimax', 'qwen'];
 	return anthropicPrefixes.some((p) => id.startsWith(p))
 		? 'anthropic-compatible'

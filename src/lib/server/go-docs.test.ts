@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
+import { parse } from 'node-html-parser';
 import {
 	buildCatalogAudit,
 	matchDisplayName,
 	normalizeName,
 	parseCount,
+	parseGoDocsTables,
 	parsePrice,
 	parsePricingRow,
 	parseUsageLimitsRow
@@ -209,5 +211,62 @@ describe('buildCatalogAudit', () => {
 		expect(audit.pricedButUnlisted).toEqual([]);
 		expect(audit.listedButUnpriced).toEqual([]);
 		expect(audit.apiNotListed).toEqual([]);
+	});
+});
+/**
+ * The docs publish a model on SEVERAL pricing rows when it is tiered by
+ * context size or by DeepSeek's peak/off-peak windows. Every row normalizes to
+ * the same Go id, so the parser must keep the FIRST (base) tier — the last row
+ * would otherwise publish the long-context/peak surcharge.
+ */
+describe('parseGoDocsTables', () => {
+	const fixture = `
+		<table>
+			<thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Monthly limit</th></tr></thead>
+			<tbody>
+				<tr><td>Claude Haiku 5.5 (\u2264 100K tokens)</td><td>$0.10</td><td>$0.50</td><td>$0.01</td><td>$0.125</td><td>$15</td></tr>
+				<tr><td>Claude Haiku 5.5 (&gt; 100K tokens)</td><td>$0.50</td><td>$2.50</td><td>$0.05</td><td>$0.625</td><td>$15</td></tr>
+				<tr><td>GLM-5.3-Flash</td><td>$0.15</td><td>$0.50</td><td>$0.03</td><td>-</td><td>$60</td></tr>
+			</tbody>
+		</table>
+		<table>
+			<thead><tr><th>Model</th><th>Requests per 5 hours</th><th>Requests per week</th><th>Requests per month</th></tr></thead>
+			<tbody>
+				<tr><td>Claude Haiku 5.5</td><td>3,850</td><td>9,620</td><td>19,230</td></tr>
+			</tbody>
+		</table>`;
+
+	const nameMap = new Map<string, string>([
+		[normalizeName('Claude Haiku 5.5'), 'claude-haiku-5-5'],
+		[normalizeName('claude-haiku-5-5'), 'claude-haiku-5-5'],
+		[normalizeName('GLM-5.3-Flash'), 'glm-5.3-flash'],
+		[normalizeName('glm-5.3-flash'), 'glm-5.3-flash']
+	]);
+
+	it('keeps the BASE tier when a model spans several pricing rows', () => {
+		const { pricing } = parseGoDocsTables(parse(fixture), nameMap);
+
+		// The ≤ 100K row comes first and must win; the > 100K row is a 5x surcharge
+		// that applies only beyond 100K tokens.
+		expect(pricing['claude-haiku-5-5']).toEqual({
+			inputPricePerM: 0.1,
+			outputPricePerM: 0.5,
+			cachedReadPerM: 0.01,
+			source: 'go-docs'
+		});
+		// A single-row model is unaffected.
+		expect(pricing['glm-5.3-flash']?.inputPricePerM).toBeCloseTo(0.15);
+	});
+
+	it('parses the usage table into the Go tier', () => {
+		const { usageLimits, officialModelIds } = parseGoDocsTables(parse(fixture), nameMap);
+
+		expect(usageLimits.go['claude-haiku-5-5']).toEqual({
+			requestsPer5h: 3850,
+			requestsPerWeek: 9620,
+			requestsPerMonth: 19230,
+			unlimited: false
+		});
+		expect([...officialModelIds]).toEqual(['claude-haiku-5-5']);
 	});
 });

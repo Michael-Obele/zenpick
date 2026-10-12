@@ -373,7 +373,7 @@
 				(benchmark scores, rankings, and pricing), and used with attribution. The model list, endpoint
 				types, and quota windows come from the
 				<a
-					href="https://opencode.ai/docs/go/"
+					href="https://opencode.ai/v2/docs/console/go"
 					target="_blank"
 					rel="noopener noreferrer"
 					class="inline-flex items-center gap-0.5 text-primary underline-offset-4 hover:underline dark:text-primary-strong"

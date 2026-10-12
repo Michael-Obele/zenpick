@@ -87,7 +87,7 @@
 		<!-- Right side actions -->
 		<div class="flex items-center gap-2">
 			<a
-				href="https://opencode.ai/docs/go/"
+				href="https://opencode.ai/v2/docs/console/go"
 				target="_blank"
 				rel="noopener noreferrer"
 				class="group hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:inline-flex"
@@ -156,7 +156,7 @@
 
 					<div class="flex flex-col gap-1 px-3">
 						<a
-							href="https://opencode.ai/docs/go/"
+							href="https://opencode.ai/v2/docs/console/go"
 							target="_blank"
 							rel="noopener noreferrer"
 							class="inline-flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

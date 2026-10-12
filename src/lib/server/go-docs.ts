@@ -11,7 +11,10 @@ import type {
 import { cacheGet, cacheSet, GO_DOCS_PRICING_TTL } from '$lib/cache';
 import { goIdToName } from './opencode-go';
 
-const GO_DOCS_URL = 'https://opencode.ai/docs/go/';
+// The Go pricing/limits tables moved from /docs/go/ (now 404) to the v2 docs.
+// The table structure (2 pricing tables then 2 usage tables, Go then Go Plus) is
+// unchanged — only the URL moved.
+const GO_DOCS_URL = 'https://opencode.ai/v2/docs/console/go';
 const GO_API_BASE = 'https://opencode.ai/zen/go/v1';
 const CACHE_KEY = 'go-docs-data';
 
@@ -276,40 +279,39 @@ function cellText(td: NodeHtmlElement): string {
 	if (strong) return strong.text.trim();
 	return td.text.trim();
 }
+/** Raw collections from the docs tables, before the docs↔API audit is built. */
+export interface ParsedGoDocsTables {
+	pricing: Record<string, ModelPricing>;
+	usageLimits: Record<PlanTier, Record<string, UsageLimits>>;
+	officialModelIds: Set<string>;
+	matchedGoIds: Set<string>;
+	unmatchedDocsRows: { name: string; table: 'pricing' | 'usage' }[];
+	docsRows: number;
+}
+
 /**
- * Fetch Go docs data (pricing + per-plan usage limits) from the docs page.
- * Parses the two plan tiers with node-html-parser:
+ * Parse both plan tiers out of the docs HTML (pure — no network, no cache):
  *   - pricing tables (Model | Input | Output | Cached Read | Cached Write | Monthly limit),
- *     one per plan (tagged by the Monthly limit column)
+ *     one per plan (Go first, then Go Plus)
  *   - usage tables (Model | requests/5h | requests/week | requests/month), one per plan
  *     in the SAME order as the pricing tables
- * Returns pricing plus `{ go, plus }` request allowances.
+ *
+ * A model can occupy SEVERAL pricing rows: context tiers ("(≤ 100K tokens)" then
+ * "(> 100K tokens)") and DeepSeek's time tiers ("(Off-Peak)" then "(Peak)") all
+ * normalize to the same Go id. Only the FIRST row is kept, because OpenCode lists
+ * the base tier first — otherwise the last row wins with the long-context / peak
+ * surcharge and the model reads up to 5x too expensive.
  */
-async function refreshGoDocsData(): Promise<GoDocsData> {
-	let text: string;
-	try {
-		const res = await fetch(GO_DOCS_URL);
-		if (!res.ok) {
-			console.error(`[go-docs] returned ${res.status}: ${res.statusText}`);
-			return emptyGoDocsData();
-		}
-		text = await res.text();
-	} catch (e) {
-		console.error('[go-docs] fetch failed:', e);
-		return emptyGoDocsData();
-	}
-
-	const root = parse(text);
-
-	// Build name map once before the row loop — not per row
-	const nameMap = await buildNameToIdMap();
-
+export function parseGoDocsTables(
+	root: NodeHtmlElement,
+	nameMap: Map<string, string>
+): ParsedGoDocsTables {
 	const pricing: Record<string, ModelPricing> = {};
 	const usageLimits: Record<PlanTier, Record<string, UsageLimits>> = { go: {}, plus: {} };
 	const officialModelIds = new Set<string>();
-	// The pricing tables come first (one per plan, tagged by their "Monthly
-	// limit" column), then the usage tables in the SAME order — so the Nth usage
-	// table belongs to the Nth plan. Index 0 is the $10 Go plan, 1 is Go Plus.
+	// The pricing tables come first (one per plan), then the usage tables in the
+	// SAME order — so the Nth usage table belongs to the Nth plan. Index 0 is the
+	// $10 Go plan, 1 is Go Plus.
 	let usageTableIndex = 0;
 
 	// Reconciliation tracking — names every docs↔API mismatch so a mapping
@@ -361,8 +363,16 @@ async function refreshGoDocsData(): Promise<GoDocsData> {
 			matchedGoIds.add(goId);
 
 			if (isPricingTable) {
-				const row = parsePricingRow(cells);
-				if (row) pricing[goId] = row;
+				// A tiered model repeats its row — context tiers ("(≤ 100K tokens)"
+				// then "(> 100K tokens)") and DeepSeek's time tiers ("(Off-Peak)"
+				// then "(Peak)") — and every row normalizes to the SAME Go id.
+				// Keep the FIRST: OpenCode lists the base tier first, so letting a
+				// later row win would publish the long-context / peak surcharge
+				// (Claude Haiku 5.5 read 5x too expensive).
+				if (!pricing[goId]) {
+					const row = parsePricingRow(cells);
+					if (row) pricing[goId] = row;
+				}
 			} else if (isUsageTable) {
 				officialModelIds.add(goId);
 				const limits = parseUsageLimitsRow(cells);
@@ -370,6 +380,32 @@ async function refreshGoDocsData(): Promise<GoDocsData> {
 			}
 		}
 	}
+
+	return { pricing, usageLimits, officialModelIds, matchedGoIds, unmatchedDocsRows, docsRows };
+}
+
+/**
+ * Fetch combined Go docs data (pricing + per-plan usage limits) from the docs
+ * page (cached). Returns cached data instantly; refreshes in background if stale.
+ */
+async function refreshGoDocsData(): Promise<GoDocsData> {
+	let text: string;
+	try {
+		const res = await fetch(GO_DOCS_URL);
+		if (!res.ok) {
+			console.error(`[go-docs] returned ${res.status}: ${res.statusText}`);
+			return emptyGoDocsData();
+		}
+		text = await res.text();
+	} catch (e) {
+		console.error('[go-docs] fetch failed:', e);
+		return emptyGoDocsData();
+	}
+
+	// Build name map once before the row loop — not per row
+	const nameMap = await buildNameToIdMap();
+	const { pricing, usageLimits, officialModelIds, matchedGoIds, unmatchedDocsRows, docsRows } =
+		parseGoDocsTables(parse(text), nameMap);
 
 	const pKeys = Object.keys(pricing);
 	// Union of both plans' keys — a model missing from one tier's table is still

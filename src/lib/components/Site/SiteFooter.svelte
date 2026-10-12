@@ -15,7 +15,7 @@
 	const dataLinks = [
 		{ href: 'https://llm-stats.com', label: 'LLM Stats', external: true },
 		{ href: 'https://modelgrep.com', label: 'modelgrep', external: true },
-		{ href: 'https://opencode.ai/docs/go/', label: 'OpenCode Go docs', external: true },
+		{ href: 'https://opencode.ai/v2/docs/console/go', label: 'OpenCode Go docs', external: true },
 		{ href: 'https://github.com/Michael-Obele/zenpick', label: 'Source on GitHub', external: true }
 	];
 </script>

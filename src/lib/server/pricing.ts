@@ -5,7 +5,7 @@ import type { ModelgrepModelData, ModelPricing } from '$lib/types/models';
  * from the docs page or modelgrep. These models are still returned by the
  * Go API but haven't been published on the docs pricing page yet.
  *
- * Remove each entry once the model appears on https://opencode.ai/docs/go/
+ * Remove each entry once the model appears on https://opencode.ai/v2/docs/console/go
  * pricing table (the scraper in go-docs.ts will pick it up automatically).
  *
  * Last reviewed: 2026-07-17 — both mimo-v2-pro and mimo-v2-omni absent from docs.

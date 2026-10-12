@@ -17,7 +17,7 @@ export interface AiProvider {
 const enc = (s: string) => encodeURIComponent(s);
 
 /** Canonical OpenCode Go docs — the AI can read these for deeper context. */
-const OPENCODE_GO_DOCS = 'https://opencode.ai/docs/go/';
+const OPENCODE_GO_DOCS = 'https://opencode.ai/v2/docs/console/go';
 
 /**
  * AI chat providers that support a `?q=` pre-fill parameter.
