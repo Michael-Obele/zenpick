@@ -227,6 +227,85 @@
 			<CompareTray {models} />
 		{/await}
 
+		<!-- llms.txt for AI agents & scripts -->
+		<section
+			class="signal-board-enter motion-delay-300 mt-12 rounded-2xl border border-border bg-card/40 p-6 sm:p-8"
+			aria-labelledby="llms-txt-home"
+		>
+			<div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+				<div class="max-w-xl">
+					<p
+						class="mb-2 font-mono text-xs font-semibold uppercase tracking-[0.16em] text-primary dark:text-primary-strong"
+					>
+						For AI agents & scripts
+					</p>
+					<h2 id="llms-txt-home" class="mb-3 text-lg font-semibold tracking-tight text-foreground">
+						Every model as plain text — <code
+							class="rounded bg-muted px-1.5 py-0.5 font-mono text-sm">/llms.txt</code
+						>
+					</h2>
+					<p class="text-sm leading-relaxed text-muted-foreground">
+						Same live catalog the table reads, rendered as markdown so an LLM, curl, or script gets
+						current pricing, benchmarks, burn bands, and rankings without running JavaScript.
+						Regenerated on every request (≤6h stale).
+					</p>
+					<ul class="mt-4 space-y-1.5 font-mono text-xs leading-relaxed">
+						<li>
+							<span class="text-muted-foreground">Ranked</span>
+							<code class="text-foreground">/llms.txt?need=cheapest</code>
+							<span class="text-muted-foreground">— cheapest-first</span>
+						</li>
+						<li>
+							<span class="text-muted-foreground">Filtered</span>
+							<code class="text-foreground">/llms.txt?q=vision</code>
+							<span class="text-muted-foreground">— vision models only</span>
+						</li>
+						<li>
+							<span class="text-muted-foreground">Compare</span>
+							<code class="text-foreground">/compare?models=id1,id2</code>
+							<span class="text-muted-foreground">— side-by-side in browser</span>
+						</li>
+					</ul>
+					<p class="mt-3 text-xs leading-relaxed text-muted-foreground">
+						Quote the <code class="font-mono text-foreground">ID</code> column, not the display name
+						— IDs are the stable keys for compare URLs. See
+						<a
+							href="/about#llms-txt"
+							class="font-medium text-primary underline-offset-4 hover:underline dark:text-primary-strong"
+							>About → llms.txt</a
+						> for all query URLs.
+					</p>
+				</div>
+				<div class="shrink-0 lg:w-88">
+					<div class="rounded-xl border border-border bg-muted/40 p-4">
+						<p
+							class="mb-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
+						>
+							Try it
+						</p>
+						<pre
+							class="overflow-x-auto rounded-lg bg-foreground px-3 py-2.5 font-mono text-xs leading-relaxed text-background"><code
+								>curl https://zenpick.dev/llms.txt?need=coding | head -n 40</code
+							></pre>
+						<div class="mt-3 flex flex-wrap gap-2">
+							<a
+								href="/llms.txt"
+								class="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 dark:bg-primary-strong dark:text-background dark:hover:bg-primary-strong/90"
+							>
+								Open llms.txt
+							</a>
+							<a
+								href="/about#llms-txt"
+								class="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-muted"
+							>
+								How it works
+							</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
 		<!-- Footer (in-page attribution & tagline) -->
 		<div class="mt-20 text-center text-sm text-muted-foreground/60">
 			<p>

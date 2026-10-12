@@ -16,7 +16,15 @@
 	let { children } = $props();
 </script>
 
-<svelte:head><link rel="icon" href={favicon} /></svelte:head>
+<svelte:head>
+	<link rel="icon" href={favicon} />
+	<link
+		rel="alternate"
+		type="text/plain"
+		href="/llms.txt"
+		title="ZenPick — llms.txt (machine-readable catalog)"
+	/>
+</svelte:head>
 
 <div class="flex min-h-screen flex-col">
 	<SiteHeader />

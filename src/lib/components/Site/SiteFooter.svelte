@@ -8,7 +8,8 @@
 
 	const productLinks = [
 		{ href: '/', label: 'Compare models' },
-		{ href: '/about', label: 'About ZenPick' }
+		{ href: '/about', label: 'About ZenPick' },
+		{ href: '/llms.txt', label: 'llms.txt — for AI agents' }
 	];
 
 	const dataLinks = [

@@ -407,7 +407,121 @@
 		</div>
 	</section>
 
-	<!-- 05 THERMAL KEY -->
+	<!-- 05 LLMS.TXT — MACHINE-READABLE CATALOG -->
+	<section class="mb-20 scroll-mt-8" aria-labelledby="llms-txt" id="llms-txt">
+		<div class="mb-6 flex items-baseline gap-3">
+			<span
+				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary dark:text-primary-strong"
+				aria-hidden="true"
+			></span>
+			<h2 id="llms-txt-heading" class="text-2xl font-semibold tracking-tight text-foreground">
+				For AI agents — <code class="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.9em]"
+					>llms.txt</code
+				>
+			</h2>
+			<div class="ml-auto hidden h-px flex-1 bg-border sm:block" aria-hidden="true"></div>
+		</div>
+
+		<p class="mb-4 text-base leading-relaxed text-foreground">
+			The homepage is JavaScript-rendered, so fetching its HTML returns a shell. <a
+				href="/llms.txt"
+				class="font-medium text-primary underline-offset-4 hover:underline dark:text-primary-strong"
+				>ZenPick's <code class="font-mono text-sm">/llms.txt</code></a
+			> is the same live catalog as plain markdown — regenerated on every request from the server-side
+			cache (at most ~6 hours stale), no browser and no API key required.
+		</p>
+		<p class="mb-6 text-base leading-relaxed text-muted-foreground">
+			One fetch answers "which OpenCode Go model should I use" without running the app. Quick
+			answers at the top rank every leaderboard for you; the table below is grep-able and sortable
+			in context.
+		</p>
+
+		<div class="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+			<div class="rounded-xl border border-border bg-card p-5 sm:p-6">
+				<h3 class="mb-3 text-sm font-semibold text-foreground">Query URLs</h3>
+				<p class="mb-3 text-xs leading-relaxed text-muted-foreground">
+					The same <code class="font-mono text-foreground">?need=</code> and
+					<code class="font-mono text-foreground">?q=</code> the interactive table uses — they sort or
+					filter the markdown before you read it.
+				</p>
+				<ul class="space-y-2 font-mono text-xs leading-relaxed">
+					<li>
+						<span class="text-muted-foreground">Leaderboard</span><br />
+						<code class="break-all text-foreground">/llms.txt?need=cheapest</code>
+						<span class="text-muted-foreground"
+							>— cheapest-first (also: coding, design, smartest, reasoning, vision, open-source,
+							long-context)</span
+						>
+					</li>
+					<li>
+						<span class="text-muted-foreground">Search</span><br />
+						<code class="break-all text-foreground">/llms.txt?q=vision</code>
+						<span class="text-muted-foreground">— name, provider, tags, capabilities</span>
+					</li>
+					<li>
+						<span class="text-muted-foreground">Both</span><br />
+						<code class="break-all text-foreground">/llms.txt?need=cheapest&q=vision</code>
+					</li>
+					<li>
+						<span class="text-muted-foreground">Compare (browser)</span><br />
+						<code class="break-all text-foreground"
+							>/compare?models=deepseek-v4.1-flash,claude-sonnet-4</code
+						>
+					</li>
+					<li>
+						<span class="text-muted-foreground">Raw data</span><br />
+						<code class="break-all text-foreground">/debug/export?section=models&format=json</code>
+						<span class="text-muted-foreground">— JSON or md, per section</span>
+					</li>
+				</ul>
+				<p class="mt-4 text-xs leading-relaxed text-muted-foreground">
+					Quote the <code class="font-mono text-foreground">ID</code> column, not the display name —
+					IDs are the stable keys for compare URLs. Link
+					<code class="font-mono text-foreground">/llms.txt</code> and the
+					<code class="font-mono text-foreground">Data as of</code> timestamp when citing a number.
+				</p>
+			</div>
+
+			<div class="space-y-4">
+				<div class="rounded-xl border border-border bg-muted/40 p-5">
+					<p
+						class="mb-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
+					>
+						Try it
+					</p>
+					<pre
+						class="overflow-x-auto rounded-lg bg-foreground px-3 py-2.5 font-mono text-xs leading-relaxed text-background"><code
+							>curl https://zenpick.dev/llms.txt | head -n 40
+curl "https://zenpick.dev/llms.txt?need=coding&q=vision"
+curl https://zenpick.dev/debug/export?section=models&format=json | jq .</code
+						></pre>
+					<div class="mt-3 flex flex-wrap gap-2">
+						<a
+							href="/llms.txt"
+							class="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 dark:bg-primary-strong dark:text-background dark:hover:bg-primary-strong/90"
+						>
+							Open llms.txt
+							<ExternalLink class="size-3" />
+						</a>
+						<a
+							href="/llms.txt?need=cheapest"
+							class="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-muted"
+						>
+							Cheapest ranking
+						</a>
+					</div>
+				</div>
+				<Callout variant="cyan" label="what is not in the table">
+					Input/output modalities, tool calling, structured output, and reasoning flags are not
+					columns in <code class="font-mono">llms.txt</code>. Follow the
+					<code class="font-mono">Source</code> link per model (LLM Stats) or fetch the raw slice
+					for full <code class="font-mono">capabilities</code>.
+				</Callout>
+			</div>
+		</div>
+	</section>
+
+	<!-- 06 THERMAL KEY -->
 	<section class="mb-16" aria-labelledby="key">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
