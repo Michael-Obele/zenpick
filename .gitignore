@@ -31,3 +31,4 @@ docs/
 .browser-use/
 .swarm/
 .vitest/
+.agents/
