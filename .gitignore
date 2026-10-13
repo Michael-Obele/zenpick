@@ -30,3 +30,4 @@ docs/
 # Scratch: browser-automation output and swarm briefs (not shippable)
 .browser-use/
 .swarm/
+.vitest/

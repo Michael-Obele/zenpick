@@ -29,7 +29,7 @@
 	aria-label={label}
 >
 	<div
-		class="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.2em] {labelClasses[
+		class="mb-2 font-mono text-[10px] font-medium tracking-[0.2em] uppercase {labelClasses[
 			variant
 		]}"
 	>

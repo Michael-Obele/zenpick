@@ -66,7 +66,7 @@
 
 <div class="contents">
 	<div
-		class="sticky text-wrap left-0 z-10 flex min-w-0 flex-wrap items-center gap-1.5 border-t border-border/60 bg-muted px-3 py-2.5 text-sm font-medium text-muted-foreground"
+		class="sticky left-0 z-10 flex min-w-0 flex-wrap items-center gap-1.5 border-t border-border/60 bg-muted px-3 py-2.5 text-sm font-medium text-wrap text-muted-foreground"
 	>
 		{label}
 		{#if isTie}
@@ -86,12 +86,12 @@
 		{@const isBest = bestSet.has(i)}
 		<div
 			class="relative border-t border-l border-border/60 px-3 py-2.5 text-sm {isBest
-				? 'bg-primary/5 ring-1 ring-inset ring-primary/20'
+				? 'bg-primary/5 ring-1 ring-primary/20 ring-inset'
 				: ''}"
 		>
 			{#if isBest}
 				<Crown
-					class="absolute right-2 top-2 size-3.5 text-amber-800 dark:text-amber-300"
+					class="absolute top-2 right-2 size-3.5 text-amber-800 dark:text-amber-300"
 					aria-hidden="true"
 				/>
 				<span class="sr-only">{isTie ? 'Tied best' : 'Best'}</span>

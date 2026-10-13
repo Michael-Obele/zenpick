@@ -176,7 +176,7 @@
 	<select
 		id="compare-logic-select"
 		bind:value={selectedId}
-		class="max-w-md rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+		class="max-w-md rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/40 focus:outline-none"
 	>
 		{#each models as m (m.id)}
 			<option value={m.id}>
@@ -296,7 +296,7 @@
 
 	<!-- Legend -->
 	<div class="mt-4 flex flex-wrap items-center gap-2">
-		<span class="text-[11px] uppercase tracking-wide text-muted-foreground">Go model is…</span>
+		<span class="text-[11px] tracking-wide text-muted-foreground uppercase">Go model is…</span>
 		{#each TONE_ORDER as tone (tone)}
 			<span
 				class="inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium {toneClasses[

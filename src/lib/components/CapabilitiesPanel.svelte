@@ -22,7 +22,7 @@
 	<section>
 		<h3 class="mb-2 text-sm font-medium text-muted-foreground">Capabilities</h3>
 		<div class="rounded-lg border border-border p-3">
-			<div class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
+			<div class="text-[11px] font-medium tracking-wider text-muted-foreground/60 uppercase">
 				Accepts
 			</div>
 			<ul class="mt-2 grid gap-x-4 gap-y-2 sm:grid-cols-2">
@@ -38,7 +38,7 @@
 
 			{#if notableOutput.length > 0}
 				<div class="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-2.5">
-					<span class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
+					<span class="text-[11px] font-medium tracking-wider text-muted-foreground/60 uppercase">
 						Produces
 					</span>
 					<CapabilityBadges {capabilities} kind="output" />
@@ -47,7 +47,7 @@
 
 			{#if features.length > 0}
 				<div class="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-2.5">
-					<span class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
+					<span class="text-[11px] font-medium tracking-wider text-muted-foreground/60 uppercase">
 						Supports
 					</span>
 					<CapabilityBadges {capabilities} kind="features" />

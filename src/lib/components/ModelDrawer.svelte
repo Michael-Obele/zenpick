@@ -126,13 +126,13 @@
 						<div class="grid grid-cols-2 gap-2 text-sm">
 							<div class="rounded-lg border border-border p-3">
 								<div class="text-muted-foreground">Input</div>
-								<div class="text-lg tabular-nums text-foreground">
+								<div class="text-lg text-foreground tabular-nums">
 									{priceLabel(model.pricing.inputPricePerM, isFreePricing(model.pricing))}
 								</div>
 							</div>
 							<div class="rounded-lg border border-border p-3">
 								<div class="text-muted-foreground">Output</div>
-								<div class="text-lg tabular-nums text-foreground">
+								<div class="text-lg text-foreground tabular-nums">
 									{priceLabel(model.pricing.outputPricePerM, isFreePricing(model.pricing))}
 								</div>
 							</div>
@@ -152,19 +152,19 @@
 						<div class="grid grid-cols-3 gap-2 text-sm">
 							<div class="rounded-lg border border-border p-3 text-center">
 								<div class="text-xs text-muted-foreground">5 Hours ($12)</div>
-								<div class="text-lg font-medium tabular-nums text-foreground">
+								<div class="text-lg font-medium text-foreground tabular-nums">
 									{windowLabel(quota.unlimited, quota.requestsPer5h)}
 								</div>
 							</div>
 							<div class="rounded-lg border border-border p-3 text-center">
 								<div class="text-xs text-muted-foreground">Week ($30)</div>
-								<div class="text-lg font-medium tabular-nums text-foreground">
+								<div class="text-lg font-medium text-foreground tabular-nums">
 									{windowLabel(quota.unlimited, quota.requestsPerWeek)}
 								</div>
 							</div>
 							<div class="rounded-lg border border-border p-3 text-center">
 								<div class="text-xs text-muted-foreground">Month ($60)</div>
-								<div class="text-lg font-medium tabular-nums text-foreground">
+								<div class="text-lg font-medium text-foreground tabular-nums">
 									{windowLabel(quota.unlimited, quota.requestsPerMonth)}
 								</div>
 							</div>
@@ -187,7 +187,7 @@
 													>
 												{/if}
 											</span>
-											<span class="font-medium tabular-nums text-foreground"
+											<span class="font-medium text-foreground tabular-nums"
 												>{bench.value.toFixed(1)}</span
 											>
 										</div>
@@ -256,7 +256,7 @@
 					{/if}
 				</div>
 
-				<div class="border-t border-border bg-background/95 px-4 pb-4 pt-3 backdrop-blur-sm">
+				<div class="border-t border-border bg-background/95 px-4 pt-3 pb-4 backdrop-blur-sm">
 					<div class="flex flex-wrap gap-2">
 						{#if model}
 							<button

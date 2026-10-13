@@ -13,7 +13,7 @@ export function isFreePricing(pricing: {
 }
 
 /** Tailwind classes for a thermal-burn badge. */
-export function burnClasses(rate: BurnRate | string): string {
+export function burnClasses(rate: BurnRate | (string & {})): string {
 	switch (rate) {
 		case 'free':
 			return 'bg-teal-500/10 text-teal-600 border-teal-500/20';
@@ -29,7 +29,7 @@ export function burnClasses(rate: BurnRate | string): string {
 }
 
 /** Human-readable burn label. */
-export function burnLabel(rate: BurnRate | string): string {
+export function burnLabel(rate: BurnRate | (string & {})): string {
 	switch (rate) {
 		case 'free':
 			return 'Free';

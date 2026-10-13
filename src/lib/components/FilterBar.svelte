@@ -67,8 +67,8 @@
 		<!-- One row: Rank by need + Weight by task (AND merge), then status -->
 		<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
 			<!-- Rank by: browse-by-need metrics -->
-			<div class="flex items-center flex-wrap gap-1.5">
-				<span class="mr-1 text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
+			<div class="flex flex-wrap items-center gap-1.5">
+				<span class="mr-1 text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
 					Rank by
 				</span>
 				<ToggleGroup.Root
@@ -99,7 +99,7 @@
 
 			<!-- Weight by: task scenarios -->
 			<div class="flex flex-wrap items-center gap-1.5">
-				<span class="mr-1 text-xs font-medium uppercase tracking-wider text-muted-foreground/60">
+				<span class="mr-1 text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
 					Weight by
 				</span>
 				<ToggleGroup.Root

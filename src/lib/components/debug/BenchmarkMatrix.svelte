@@ -45,7 +45,7 @@
 											style="width: {barWidth(val, calibrationMax)}%"
 										></div>
 									</div>
-									<span class="tabular-nums text-muted-foreground">{val.toFixed(1)}</span>
+									<span class="text-muted-foreground tabular-nums">{val.toFixed(1)}</span>
 								</div>
 							{:else}
 								<span class="text-muted-foreground/30">—</span>

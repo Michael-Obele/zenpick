@@ -105,7 +105,7 @@
 			{#if mounted}
 				<div in:fly={{ y: 12, duration: 500 }}>
 					<p
-						class="mb-5 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-primary dark:text-primary-strong"
+						class="mb-5 font-mono text-xs font-semibold tracking-[0.18em] text-primary uppercase dark:text-primary-strong"
 					>
 						Why ZenPick exists
 					</p>
@@ -113,7 +113,7 @@
 			{/if}
 
 			<h1
-				class="mb-6 text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-6xl"
+				class="mb-6 text-4xl leading-[1.05] font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl"
 			>
 				I was not paying too much for AI.
 				<span class="block text-muted-foreground">I was paying for the wrong model.</span>
@@ -172,7 +172,7 @@
 					<div class="mb-5 flex items-start justify-between gap-4 border-b border-border pb-4">
 						<div>
 							<p
-								class="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-primary dark:text-primary-strong"
+								class="font-mono text-xs font-semibold tracking-[0.16em] text-primary uppercase dark:text-primary-strong"
 							>
 								ZenPick receipt
 							</p>
@@ -193,7 +193,7 @@
 	<section class="mb-20" aria-labelledby="product">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
-				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary dark:text-primary-strong"
+				class="section-number font-mono text-xs font-medium tracking-wider text-primary uppercase dark:text-primary-strong"
 				aria-hidden="true"
 			></span>
 			<h2 id="product" class="text-2xl font-semibold tracking-tight text-foreground">
@@ -222,7 +222,7 @@
 	<section class="mb-20" aria-labelledby="numbers">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
-				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary dark:text-primary-strong"
+				class="section-number font-mono text-xs font-medium tracking-wider text-primary uppercase dark:text-primary-strong"
 				aria-hidden="true"
 			></span>
 			<h2 id="numbers" class="text-2xl font-semibold tracking-tight text-foreground">
@@ -287,7 +287,7 @@
 		<div class="mt-8 text-center">
 			<a
 				href="/#compare-models"
-				class="inline-flex items-center rounded-full border border-border/60 bg-background px-4 py-2 text-sm text-foreground hover:underline underline-offset-12"
+				class="inline-flex items-center rounded-full border border-border/60 bg-background px-4 py-2 text-sm text-foreground underline-offset-12 hover:underline"
 			>
 				See all 13+ models ranked
 			</a>
@@ -298,7 +298,7 @@
 	<section class="mb-20" aria-labelledby="methodology">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
-				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary dark:text-primary-strong"
+				class="section-number font-mono text-xs font-medium tracking-wider text-primary uppercase dark:text-primary-strong"
 				aria-hidden="true"
 			></span>
 			<h2 id="methodology" class="text-2xl font-semibold tracking-tight text-foreground">
@@ -339,7 +339,7 @@
 	<section class="mb-20" aria-labelledby="attribution">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
-				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary dark:text-primary-strong"
+				class="section-number font-mono text-xs font-medium tracking-wider text-primary uppercase dark:text-primary-strong"
 				aria-hidden="true"
 			></span>
 			<h2 id="attribution" class="text-2xl font-semibold tracking-tight text-foreground">
@@ -411,7 +411,7 @@
 	<section class="mb-20 scroll-mt-8" aria-labelledby="llms-txt" id="llms-txt">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
-				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary dark:text-primary-strong"
+				class="section-number font-mono text-xs font-medium tracking-wider text-primary uppercase dark:text-primary-strong"
 				aria-hidden="true"
 			></span>
 			<h2 id="llms-txt-heading" class="text-2xl font-semibold tracking-tight text-foreground">
@@ -485,7 +485,7 @@
 			<div class="space-y-4">
 				<div class="rounded-xl border border-border bg-muted/40 p-5">
 					<p
-						class="mb-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
+						class="mb-2 font-mono text-[10px] font-semibold tracking-widest text-muted-foreground uppercase"
 					>
 						Try it
 					</p>
@@ -525,7 +525,7 @@ curl https://zenpick.dev/debug/export?section=models&format=json | jq .</code
 	<section class="mb-16" aria-labelledby="key">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
-				class="section-number font-mono text-xs font-medium uppercase tracking-wider text-primary dark:text-primary-strong"
+				class="section-number font-mono text-xs font-medium tracking-wider text-primary uppercase dark:text-primary-strong"
 				aria-hidden="true"
 			></span>
 			<h2 id="key" class="text-2xl font-semibold tracking-tight text-foreground">Thermal key</h2>
@@ -544,9 +544,9 @@ curl https://zenpick.dev/debug/export?section=models&format=json | jq .</code
 				<div class="rounded-lg border p-4 {color}">
 					<div class="mb-2 flex items-center gap-2">
 						<span class="inline-block h-2 w-2 rounded-full bg-current" aria-hidden="true"></span>
-						<span class="font-mono text-[10px] uppercase tracking-[0.2em]">{tier.name}</span>
+						<span class="font-mono text-[10px] tracking-[0.2em] uppercase">{tier.name}</span>
 					</div>
-					<div class="font-mono text-2xl tabular-nums text-foreground">{tier.range}</div>
+					<div class="font-mono text-2xl text-foreground tabular-nums">{tier.range}</div>
 					<div class="mt-1 text-xs text-muted-foreground">{tier.description}</div>
 				</div>
 			{/each}

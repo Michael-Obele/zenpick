@@ -38,13 +38,13 @@
 									: ''}"
 				>
 					<td class="p-2 font-medium text-foreground">{m.name}</td>
-					<td class="p-2 tabular-nums text-muted-foreground">
+					<td class="p-2 text-muted-foreground tabular-nums">
 						{m.pricing.inputPricePerM != null ? `$${m.pricing.inputPricePerM.toFixed(4)}` : '—'}
 					</td>
-					<td class="p-2 tabular-nums text-muted-foreground">
+					<td class="p-2 text-muted-foreground tabular-nums">
 						{m.pricing.outputPricePerM != null ? `$${m.pricing.outputPricePerM.toFixed(4)}` : '—'}
 					</td>
-					<td class="p-2 tabular-nums text-muted-foreground">
+					<td class="p-2 text-muted-foreground tabular-nums">
 						{m.pricing.cachedReadPerM != null ? `$${m.pricing.cachedReadPerM.toFixed(4)}` : '—'}
 					</td>
 					<td class="p-2"><FallbackBadge source={m.pricing.source} /></td>

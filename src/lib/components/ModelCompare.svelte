@@ -299,7 +299,7 @@
 				<div
 					class={[
 						'border-l border-border px-2 py-2.5 sm:px-3 sm:py-3',
-						crownWinnerId === m.id && 'ring-1 ring-inset ring-amber-500/40'
+						crownWinnerId === m.id && 'ring-1 ring-amber-500/40 ring-inset'
 					]}
 				>
 					{#if onMove || onRemove}
@@ -391,7 +391,7 @@
 	     settles each model column clear of the pinned label column rather than
 	     stopping mid-model. -->
 	<div
-		class="overflow-x-auto overscroll-x-contain rounded-b-xl [scrollbar-width:thin] snap-x snap-proximity"
+		class="snap-x snap-proximity [scrollbar-width:thin] overflow-x-auto overscroll-x-contain rounded-b-xl"
 		style="scroll-padding-left: var(--cmp-label);"
 		onscroll={handleScroll}
 	>
@@ -629,7 +629,7 @@
 								<span
 									class={active
 										? 'font-semibold text-primary dark:text-primary-strong'
-										: 'tabular-nums text-foreground'}>{m.scenarioScores[key]}</span
+										: 'text-foreground tabular-nums'}>{m.scenarioScores[key]}</span
 								>
 							</div>
 						{/each}
@@ -646,7 +646,7 @@
 			{#each models as m, i (m.id)}
 				<div
 					class="border-t border-l border-border/60 px-3 py-2.5 text-sm {openYes[i]
-						? 'bg-primary/5 ring-1 ring-inset ring-primary/20'
+						? 'bg-primary/5 ring-1 ring-primary/20 ring-inset'
 						: ''}"
 				>
 					{#if m.openWeight}

@@ -28,7 +28,7 @@
 			{#each models as m (m.id)}
 				<tr class="border-b border-border/50 hover:bg-muted/30">
 					<td class="p-2 font-medium text-foreground">{m.name}</td>
-					<td class="p-2 tabular-nums text-muted-foreground">
+					<td class="p-2 text-muted-foreground tabular-nums">
 						{m.burnDetails?.band != null ? m.burnDetails.score : '—'}
 					</td>
 					<td class="p-2">
@@ -38,7 +38,7 @@
 							>
 						{:else}—{/if}
 					</td>
-					<td class="p-2 tabular-nums text-muted-foreground">
+					<td class="p-2 text-muted-foreground tabular-nums">
 						{m.burnDetails?.requestsPer12?.toLocaleString() ?? '—'}
 					</td>
 					<td class="p-2">

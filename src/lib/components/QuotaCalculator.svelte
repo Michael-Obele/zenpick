@@ -289,7 +289,7 @@
 					Avg. tokens per request
 				</Label>
 				<div class="flex items-center gap-2">
-					<span class="text-sm font-medium tabular-nums text-foreground">
+					<span class="text-sm font-medium text-foreground tabular-nums">
 						{tokenInput.toLocaleString()}
 					</span>
 					{#if selectedModel?.contextWindow}
@@ -367,7 +367,7 @@
 				{#if selectedModel && !hasCachedPricing}
 					<span class="text-xs text-muted-foreground/60">Not available for this model</span>
 				{:else}
-					<span class="text-sm font-medium tabular-nums text-foreground">
+					<span class="text-sm font-medium text-foreground tabular-nums">
 						{cachedPctValue}%
 					</span>
 				{/if}
@@ -424,7 +424,7 @@
 			>
 				<div class="flex flex-wrap items-baseline justify-between gap-2">
 					<div>
-						<div class="mb-1 text-xs font-medium uppercase tracking-wider text-primary">
+						<div class="mb-1 text-xs font-medium tracking-wider text-primary uppercase">
 							Best fit for these assumptions
 						</div>
 						<div class="text-lg font-semibold text-foreground">
@@ -449,26 +449,26 @@
 					{/if}
 				</div>
 
-				<div class="flex sm:flex-row justify-start flex-col flex-wrap gap-2">
+				<div class="flex flex-col flex-wrap justify-start gap-2 sm:flex-row">
 					<div class="rounded-lg border border-border bg-background/60 p-2.5 text-center">
 						<div class="mb-1 flex items-center justify-center gap-1 text-xs text-muted-foreground">
 							<Clock class="size-3" /> 5 Hours
 						</div>
-						<div class="text-lg font-medium tabular-nums text-foreground">
+						<div class="text-lg font-medium text-foreground tabular-nums">
 							{fmtRequests(quotaEstimates?.per5h)}
 						</div>
 						<div class="text-xs text-muted-foreground/60">requests</div>
 					</div>
 					<div class="rounded-lg border border-border bg-background/60 p-2.5 text-center">
 						<div class="mb-1 text-xs text-muted-foreground">Week</div>
-						<div class="text-lg font-medium tabular-nums text-foreground">
+						<div class="text-lg font-medium text-foreground tabular-nums">
 							{fmtRequests(quotaEstimates?.perWeek)}
 						</div>
 						<div class="text-xs text-muted-foreground/60">requests</div>
 					</div>
 					<div class="rounded-lg border border-border bg-background/60 p-2.5 text-center">
 						<div class="mb-1 text-xs text-muted-foreground">Month</div>
-						<div class="text-lg font-medium tabular-nums text-foreground">
+						<div class="text-lg font-medium text-foreground tabular-nums">
 							{fmtRequests(quotaEstimates?.perMonth)}
 						</div>
 						<div class="text-xs text-muted-foreground/60">requests</div>
@@ -479,7 +479,7 @@
 				{#if recommendation.top.length > 1}
 					<div class="space-y-2 border-t border-primary/10 pt-3">
 						<div
-							class="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground/70"
+							class="flex items-center gap-1.5 text-xs font-medium tracking-wider text-muted-foreground/70 uppercase"
 						>
 							<Layers class="size-3" />
 							Also consider
@@ -493,7 +493,7 @@
 									aria-label={`Compare ${alt.model.name} instead`}
 								>
 									{alt.model.name}
-									<span class="tabular-nums text-muted-foreground/50">{alt.score.toFixed(1)}</span>
+									<span class="text-muted-foreground/50 tabular-nums">{alt.score.toFixed(1)}</span>
 								</button>
 							{/each}
 						</div>
@@ -538,7 +538,7 @@
 									aria-expanded={modelComboboxOpen}
 									aria-controls="model-combobox-list"
 									aria-labelledby="recommend-model-label"
-									class="flex h-9 w-fit max-w-full items-center justify-between gap-2 rounded-4xl border border-input bg-input/30 px-3 py-1 text-sm transition-colors hover:bg-input/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none select-none dark:bg-input/30 dark:hover:bg-input/50"
+									class="flex h-9 w-fit max-w-full items-center justify-between gap-2 rounded-4xl border border-input bg-input/30 px-3 py-1 text-sm transition-colors outline-none select-none hover:bg-input/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50"
 								>
 									<span class="min-w-0 truncate">
 										{#if explicitModelId}

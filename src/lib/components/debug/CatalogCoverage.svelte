@@ -93,15 +93,15 @@
 	<div class="mb-4 grid grid-cols-3 gap-2 text-sm">
 		<div class="rounded-lg border border-border p-2 text-center">
 			<div class="text-xs text-muted-foreground">API models</div>
-			<div class="tabular-nums text-foreground">{audit.apiCount}</div>
+			<div class="text-foreground tabular-nums">{audit.apiCount}</div>
 		</div>
 		<div class="rounded-lg border border-border p-2 text-center">
 			<div class="text-xs text-muted-foreground">Docs rows</div>
-			<div class="tabular-nums text-foreground">{audit.docsRows}</div>
+			<div class="text-foreground tabular-nums">{audit.docsRows}</div>
 		</div>
 		<div class="rounded-lg border border-border p-2 text-center">
 			<div class="text-xs text-muted-foreground">Matched</div>
-			<div class="tabular-nums text-foreground">{audit.matchedRows}</div>
+			<div class="text-foreground tabular-nums">{audit.matchedRows}</div>
 		</div>
 	</div>
 

@@ -74,11 +74,11 @@
 		<div class="grid grid-cols-2 gap-3 text-sm">
 			<div class="rounded border border-border bg-card p-3">
 				<div class="text-xs text-muted-foreground">Quality</div>
-				<div class="text-lg tabular-nums text-foreground">{((score ?? 0) / 100).toFixed(2)}</div>
+				<div class="text-lg text-foreground tabular-nums">{((score ?? 0) / 100).toFixed(2)}</div>
 			</div>
 			<div class="rounded border border-border bg-card p-3">
 				<div class="text-xs text-muted-foreground">Fit</div>
-				<div class="text-lg tabular-nums text-foreground">
+				<div class="text-lg text-foreground tabular-nums">
 					{(score ?? 0) > 0 ? ((score ?? 0) / 100).toFixed(2) : 'N/A'}
 				</div>
 			</div>

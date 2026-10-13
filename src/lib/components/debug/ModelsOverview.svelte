@@ -34,13 +34,13 @@
 					<td class="p-2 text-muted-foreground">{m.provider}</td>
 					<td class="p-2"><FallbackBadge source={m.pricing.source} /></td>
 					<td class="p-2"><BurnBadge burnDetails={m.burnDetails} /></td>
-					<td class="p-2 tabular-nums text-muted-foreground">
+					<td class="p-2 text-muted-foreground tabular-nums">
 						{#if m.burnDetails?.band != null}
 							{m.burnDetails.score} ({m.burnDetails.requestsPer12?.toLocaleString() ?? '?'}/$12)
 						{:else}—{/if}
 					</td>
 					{#each ['coding', 'brainstorming', 'agentic', 'budget', 'frontend'] as sc}
-						<td class="p-2 tabular-nums text-muted-foreground">
+						<td class="p-2 text-muted-foreground tabular-nums">
 							{m.scenarioScores[sc as keyof typeof m.scenarioScores]}
 						</td>
 					{/each}

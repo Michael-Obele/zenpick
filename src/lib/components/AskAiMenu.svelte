@@ -81,7 +81,7 @@
 					rel="noopener noreferrer"
 					role="menuitem"
 					tabindex={0}
-					class="flex cursor-pointer select-none items-center gap-2 rounded-lg px-2 py-1.5 text-sm outline-none transition-colors hover:bg-muted focus-visible:bg-muted"
+					class="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors outline-none select-none hover:bg-muted focus-visible:bg-muted"
 				>
 					<span class="font-medium">Ask {provider.label}</span>
 					<ExternalLink class="ml-auto size-3.5 text-muted-foreground/50" />
@@ -90,7 +90,7 @@
 			<DropdownMenu.Separator class="my-1 h-px bg-border" />
 			<DropdownMenu.Item
 				onSelect={copyPrompt}
-				class="flex cursor-pointer select-none items-center gap-2 rounded-lg px-2 py-1.5 text-sm outline-none transition-colors hover:bg-muted focus-visible:bg-muted"
+				class="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors outline-none select-none hover:bg-muted focus-visible:bg-muted"
 				aria-label="Copy the full prompt to the clipboard"
 			>
 				<Copy class="size-4 text-muted-foreground" />

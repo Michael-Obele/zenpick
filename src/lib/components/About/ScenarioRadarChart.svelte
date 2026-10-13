@@ -26,7 +26,7 @@
 	 * polygon silently renders empty. Sanitize ids to plain path-safe keys;
 	 * display names are unaffected (they come from the config `label`).
 	 */
-	const seriesKey = (id: string) => id.replace(/[\[\]'"\.]/g, '-');
+	const seriesKey = (id: string) => id.replace(/[[\]'".]/g, '-');
 
 	const topModels = $derived.by(() => {
 		const scored = models
@@ -132,7 +132,7 @@
 				<div class="flex items-center gap-2 leading-none font-medium text-foreground">
 					Each model's 5 scenario scores form a unique shape
 				</div>
-				<div class="text-muted-foreground flex items-center gap-2 leading-none">
+				<div class="flex items-center gap-2 leading-none text-muted-foreground">
 					Brainstorming · Coding · Agentic · Budget · Frontend
 				</div>
 			</div>

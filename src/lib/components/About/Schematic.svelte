@@ -25,7 +25,7 @@
 
 <figure class="relative my-8 overflow-hidden rounded-lg border border-border bg-card/40 p-4 sm:p-6">
 	<figcaption
-		class="mb-4 flex items-center justify-between border-b border-border pb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground"
+		class="mb-4 flex items-center justify-between border-b border-border pb-3 font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase"
 	>
 		<span>fig.02 — system schematic</span>
 		<span class="text-cyan-900 dark:text-cyan-200">data flow</span>
@@ -34,7 +34,7 @@
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_auto_1.4fr_auto_1fr]">
 		<!-- INPUT column -->
 		<div class="space-y-3">
-			<div class="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+			<div class="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
 				input
 			</div>
 			{#each sources as s (s.id)}
@@ -47,7 +47,7 @@
 
 		<!-- Arrow 1 -->
 		<div
-			class="hidden items-center justify-center self-center text-cyan-700 dark:text-cyan-300 lg:flex"
+			class="hidden items-center justify-center self-center text-cyan-700 lg:flex dark:text-cyan-300"
 			aria-hidden="true"
 		>
 			<svg width="48" height="12" viewBox="0 0 48 12" fill="none">
@@ -59,7 +59,7 @@
 		<!-- ENGINE column -->
 		<div class="space-y-3">
 			<div
-				class="font-mono text-[10px] uppercase tracking-[0.2em] text-cyan-900 dark:text-cyan-200"
+				class="font-mono text-[10px] tracking-[0.2em] text-cyan-900 uppercase dark:text-cyan-200"
 			>
 				engine
 			</div>
@@ -80,7 +80,7 @@
 
 		<!-- Arrow 2 -->
 		<div
-			class="hidden items-center justify-center self-center text-cyan-700 dark:text-cyan-300 lg:flex"
+			class="hidden items-center justify-center self-center text-cyan-700 lg:flex dark:text-cyan-300"
 			aria-hidden="true"
 		>
 			<svg width="48" height="12" viewBox="0 0 48 12" fill="none">
@@ -91,7 +91,7 @@
 
 		<!-- OUTPUT column -->
 		<div class="space-y-3">
-			<div class="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+			<div class="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
 				output
 			</div>
 			{#each surfaces as s (s.id)}
@@ -105,7 +105,7 @@
 
 	<!-- Dimension marks -->
 	<div
-		class="mt-6 grid grid-cols-3 gap-4 border-t border-border pt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground"
+		class="mt-6 grid grid-cols-3 gap-4 border-t border-border pt-4 font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase"
 	>
 		<div class="flex flex-col gap-1">
 			<span class="text-cyan-900 dark:text-cyan-200">scale</span>
@@ -123,11 +123,11 @@
 
 	<!-- Corner brackets (subtle, just a hint of the datasheet feel) -->
 	<div
-		class="pointer-events-none absolute left-2 top-2 h-2 w-2 border-l border-t border-cyan-500/30"
+		class="pointer-events-none absolute top-2 left-2 h-2 w-2 border-t border-l border-cyan-500/30"
 		aria-hidden="true"
 	></div>
 	<div
-		class="pointer-events-none absolute right-2 top-2 h-2 w-2 border-r border-t border-cyan-500/30"
+		class="pointer-events-none absolute top-2 right-2 h-2 w-2 border-t border-r border-cyan-500/30"
 		aria-hidden="true"
 	></div>
 	<div
@@ -135,7 +135,7 @@
 		aria-hidden="true"
 	></div>
 	<div
-		class="pointer-events-none absolute bottom-2 right-2 h-2 w-2 border-b border-r border-cyan-500/30"
+		class="pointer-events-none absolute right-2 bottom-2 h-2 w-2 border-r border-b border-cyan-500/30"
 		aria-hidden="true"
 	></div>
 </figure>

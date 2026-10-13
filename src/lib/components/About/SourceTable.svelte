@@ -35,7 +35,7 @@
 
 <div class="overflow-hidden rounded-lg border border-border bg-card/40">
 	<div
-		class="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground"
+		class="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-2 font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase"
 	>
 		<span class="flex items-center gap-1.5">
 			<Database class="size-3" />
@@ -46,7 +46,7 @@
 
 	<table class="w-full text-left text-sm">
 		<thead>
-			<tr class="border-b border-border text-xs uppercase tracking-wider text-muted-foreground">
+			<tr class="border-b border-border text-xs tracking-wider text-muted-foreground uppercase">
 				<th class="px-4 py-2 font-medium">Provider</th>
 				<th class="px-4 py-2 font-medium">License</th>
 				<th class="px-4 py-2 font-medium">Use in ZenPick</th>
@@ -54,7 +54,7 @@
 		</thead>
 		<tbody class="font-mono">
 			{#each sources as source (source.provider)}
-				<tr class="border-b border-border/50 last:border-0 align-top">
+				<tr class="border-b border-border/50 align-top last:border-0">
 					<td class="px-4 py-3">
 						<a
 							href={source.href}
@@ -67,7 +67,7 @@
 						</a>
 						{#if source.required}
 							<div
-								class="mt-1 text-[10px] uppercase tracking-wider text-amber-900 dark:text-amber-300"
+								class="mt-1 text-[10px] tracking-wider text-amber-900 uppercase dark:text-amber-300"
 							>
 								attribution required
 							</div>

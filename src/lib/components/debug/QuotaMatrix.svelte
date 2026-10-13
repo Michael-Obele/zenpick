@@ -104,12 +104,12 @@
 				{@const c = computeCost(m)}
 				<tr class="border-b border-border/50 hover:bg-muted/30">
 					<td class="p-2 font-medium text-foreground">{m.name}</td>
-					<td class="p-2 tabular-nums text-muted-foreground">
+					<td class="p-2 text-muted-foreground tabular-nums">
 						{c.costPerRequest != null ? `$${c.costPerRequest.toFixed(6)}` : '—'}
 					</td>
-					<td class="p-2 tabular-nums text-muted-foreground">{c.per5h.toLocaleString()}</td>
-					<td class="p-2 tabular-nums text-muted-foreground">{c.perWeek.toLocaleString()}</td>
-					<td class="p-2 tabular-nums text-muted-foreground">{c.perMonth.toLocaleString()}</td>
+					<td class="p-2 text-muted-foreground tabular-nums">{c.per5h.toLocaleString()}</td>
+					<td class="p-2 text-muted-foreground tabular-nums">{c.perWeek.toLocaleString()}</td>
+					<td class="p-2 text-muted-foreground tabular-nums">{c.perMonth.toLocaleString()}</td>
 				</tr>
 			{/each}
 		</tbody>

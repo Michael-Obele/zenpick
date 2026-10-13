@@ -334,7 +334,7 @@
 				{@const isCompared = selectedIds.includes(model.id)}
 				{@const isLeader = need !== null && row.rank === 1}
 				<Table.Row
-					class="cursor-pointer border-b border-border transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/50 {isSelected
+					class="cursor-pointer border-b border-border transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none focus-visible:ring-inset {isSelected
 						? 'bg-muted/70 hover:bg-muted/80'
 						: ''} {isCompared ? 'bg-primary/4' : ''} {isLeader ? 'bg-amber-500/5' : ''}"
 					onclick={() => onSelectModel(model)}
@@ -430,7 +430,7 @@
 							<span class="text-muted-foreground/30">—</span>
 						{/if}
 					</Table.Cell>
-					<Table.Cell class="text-sm tabular-nums text-muted-foreground/70">
+					<Table.Cell class="text-sm text-muted-foreground/70 tabular-nums">
 						{row.quota.unlimited ? 'Unlimited' : formatCompact(row.quota.requestsPer5h)}
 					</Table.Cell>
 					<Table.Cell class="text-sm tabular-nums">
@@ -450,7 +450,7 @@
 										style="width: {score}%"
 									></div>
 								</div>
-								<span class="text-xs tabular-nums text-muted-foreground">{score}</span>
+								<span class="text-xs text-muted-foreground tabular-nums">{score}</span>
 							</div>
 						</Table.Cell>
 					{/if}
@@ -498,7 +498,7 @@
 		-->
 {#snippet rankBadge(rank: number | null, activeNeed: NeedSpec | null, name: string)}
 	{#if !activeNeed}
-		<span class="text-sm tabular-nums text-muted-foreground/60">{rank}</span>
+		<span class="text-sm text-muted-foreground/60 tabular-nums">{rank}</span>
 	{:else if rank == null}
 		<!-- No data for this need's metric: the model is listed but unranked,
 				     so it shows an em dash rather than a rank it was never given. -->
@@ -517,18 +517,18 @@
 		</span>
 	{:else if rank === 2}
 		<span
-			class="inline-flex size-6 items-center justify-center rounded-md bg-slate-400/15 text-sm font-semibold tabular-nums text-slate-400"
+			class="inline-flex size-6 items-center justify-center rounded-md bg-slate-400/15 text-sm font-semibold text-slate-400 tabular-nums"
 		>
 			2
 		</span>
 	{:else if rank === 3}
 		<span
-			class="inline-flex size-6 items-center justify-center rounded-md bg-orange-400/15 text-sm font-semibold tabular-nums text-orange-500"
+			class="inline-flex size-6 items-center justify-center rounded-md bg-orange-400/15 text-sm font-semibold text-orange-500 tabular-nums"
 		>
 			3
 		</span>
 	{:else}
-		<span class="text-sm tabular-nums text-muted-foreground/50">{rank}</span>
+		<span class="text-sm text-muted-foreground/50 tabular-nums">{rank}</span>
 	{/if}
 {/snippet}
 
@@ -545,7 +545,7 @@
 				{activeNeed.format(row.value)}
 			</span>
 			{#if row.fit != null}
-				<span class="text-xs tabular-nums text-muted-foreground/60">fit {row.fit}</span>
+				<span class="text-xs text-muted-foreground/60 tabular-nums">fit {row.fit}</span>
 			{/if}
 		</div>
 	{:else if activeNeed}

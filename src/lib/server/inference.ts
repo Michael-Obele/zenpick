@@ -325,7 +325,7 @@ function isOpenWeightFamily(goId: string): boolean {
 	return OPEN_WEIGHT_FAMILIES.some((prefix) => goId.startsWith(prefix));
 }
 
-function inferContextWindow(goId: string): number {
+function inferContextWindow(_goId: string): number {
 	// No hardcoded model IDs — use a sensible default.
 	// modelgrep data (context_length) takes priority in inferModel().
 	return 128_000;

@@ -71,7 +71,7 @@
 
 	<!-- Hero with decorative background -->
 	<div class="relative overflow-hidden">
-		<div class="relative mx-auto max-w-6xl px-4 pb-6 pt-16 sm:pt-20">
+		<div class="relative mx-auto max-w-6xl px-4 pt-16 pb-6 sm:pt-20">
 			<section class="mb-16 text-center">
 				<!-- Headline -->
 				<h1
@@ -79,7 +79,7 @@
 				>
 					Spend your AI budget
 					<br class="hidden sm:inline" />
-					<span class="text-primary text-stroke-bg">on the right model</span>
+					<span class="text-stroke-bg text-primary">on the right model</span>
 				</h1>
 
 				<!-- Supporting copy -->
@@ -235,7 +235,7 @@
 			<div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
 				<div class="max-w-xl">
 					<p
-						class="mb-2 font-mono text-xs font-semibold uppercase tracking-[0.16em] text-primary dark:text-primary-strong"
+						class="mb-2 font-mono text-xs font-semibold tracking-[0.16em] text-primary uppercase dark:text-primary-strong"
 					>
 						For AI agents & scripts
 					</p>
@@ -279,7 +279,7 @@
 				<div class="shrink-0 lg:w-88">
 					<div class="rounded-xl border border-border bg-muted/40 p-4">
 						<p
-							class="mb-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
+							class="mb-2 font-mono text-[10px] font-semibold tracking-widest text-muted-foreground uppercase"
 						>
 							Try it
 						</p>

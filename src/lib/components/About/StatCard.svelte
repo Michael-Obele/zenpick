@@ -13,7 +13,7 @@
 	class="group relative rounded-lg border border-border bg-card/40 p-5 transition-colors hover:border-primary/40"
 >
 	<div class="flex items-baseline gap-1">
-		<span class="font-mono text-4xl font-medium tabular-nums text-foreground">
+		<span class="font-mono text-4xl font-medium text-foreground tabular-nums">
 			{figure}
 		</span>
 		{#if unit}
@@ -22,7 +22,7 @@
 	</div>
 
 	<div class="mt-2">
-		<span class="text-xs uppercase tracking-wider text-muted-foreground">{label}</span>
+		<span class="text-xs tracking-wider text-muted-foreground uppercase">{label}</span>
 	</div>
 
 	{#if footnote}

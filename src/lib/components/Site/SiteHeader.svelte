@@ -101,7 +101,7 @@
 				href="https://github.com/Michael-Obele/zenpick"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="group inline-flex items-center gap-2 rounded-full border border-border/60 bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition-all hover:border-primary/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="group inline-flex items-center gap-2 rounded-full border border-border/60 bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition-all hover:border-primary/30 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
 				aria-label="ZenPick on GitHub"
 			>
 				<span class="size-3.5 transition-transform group-hover:-rotate-6">
@@ -112,13 +112,13 @@
 
 			<Sheet.Root bind:open>
 				<Sheet.Trigger
-					class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
+					class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:hidden"
 					aria-label="Open menu"
 				>
 					<Menu class="size-4" />
 				</Sheet.Trigger>
 				<Sheet.Content side="right" class="w-70 border-l border-border/60 px-0">
-					<Sheet.Header class="px-5 pb-4 pt-2">
+					<Sheet.Header class="px-5 pt-2 pb-4">
 						<Sheet.Title class="sr-only">Navigation menu</Sheet.Title>
 						<a href="/" class="group flex items-center gap-2.5" onclick={closeMenu}>
 							<img src={logo} alt="" class="size-8 rounded-lg" />

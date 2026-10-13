@@ -51,7 +51,7 @@
 
 			<!-- Product -->
 			<div class="space-y-4">
-				<h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+				<h3 class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
 					Product
 				</h3>
 				<ul class="space-y-2">
@@ -59,7 +59,7 @@
 						<li>
 							<a
 								href={link.href}
-								class="group inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+								class="group inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								{link.label}
 								<ArrowUpRight class="size-3 opacity-0 transition-opacity group-hover:opacity-60" />
@@ -73,7 +73,7 @@
 			<div class="space-y-3 rounded-lg border border-border/60 bg-muted/40 p-4">
 				<div class="space-y-1">
 					<h3
-						class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+						class="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase"
 					>
 						<Database class="size-3.5" />
 						Data & source
@@ -89,7 +89,7 @@
 								href={link.href}
 								target="_blank"
 								rel="noopener noreferrer"
-								class="group inline-flex items-center gap-1.5 rounded-md text-sm text-muted-foreground outline-none transition-all duration-200 hover:translate-x-0.5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+								class="group inline-flex items-center gap-1.5 rounded-md text-sm text-muted-foreground transition-all duration-200 outline-none hover:translate-x-0.5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								{#if link.href.includes('github')}
 									<span class="size-3.5"><GithubIcon class="size-full" /></span>
@@ -116,7 +116,7 @@
 				href="https://github.com/Michael-Obele/zenpick"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="inline-flex items-center gap-1.5 rounded-md outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+				class="inline-flex items-center gap-1.5 rounded-md transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 			>
 				<span class="size-3.5"><GithubIcon class="size-full" /></span>
 				<span class="font-mono">Michael-Obele/zenpick</span>

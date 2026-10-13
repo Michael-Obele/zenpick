@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from 'vite-plus';
 
 /**
  * Vitest configuration for ZenPick's pure logic tests.

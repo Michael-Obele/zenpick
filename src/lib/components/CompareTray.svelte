@@ -38,16 +38,16 @@
 					<span>Compare ({selected.length}/{MAX_COMPARE})</span>
 				</div>
 				<div
-					class="no-scrollbar -mx-1 flex min-w-0 flex-1 gap-1.5 overflow-x-auto px-1 sm:flex-wrap sm:overflow-x-visible"
+					class="-mx-1 no-scrollbar flex min-w-0 flex-1 gap-1.5 overflow-x-auto px-1 sm:flex-wrap sm:overflow-x-visible"
 				>
 					{#each selectedModels as m (m.id)}
 						<span
-							class="inline-flex max-w-36 shrink-0 items-center gap-0.5 rounded-full border border-border bg-muted/50 py-1 pl-2.5 pr-1 text-xs text-foreground/80 sm:max-w-48"
+							class="inline-flex max-w-36 shrink-0 items-center gap-0.5 rounded-full border border-border bg-muted/50 py-1 pr-1 pl-2.5 text-xs text-foreground/80 sm:max-w-48"
 						>
 							<span class="truncate">{m.name}</span>
 							<button
 								type="button"
-								class="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								class="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
 								onclick={() => compare.remove(m.id)}
 								aria-label={`Remove ${m.name} from comparison`}
 							>
