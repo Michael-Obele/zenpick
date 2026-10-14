@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { GoModel } from '$lib/types/models';
-	import * as Drawer from '$lib/components/ui/drawer/index.js';
+	import * as Sheet from '$lib/components/ui/sheet/index.js';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import { ExternalLink, Copy, Check, Info, GitCompare, LockKeyhole } from '@lucide/svelte';
 	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
@@ -58,41 +58,52 @@
 	}
 </script>
 
-<Drawer.Root bind:open>
-	<Drawer.Content class="mx-auto max-w-2xl">
-		<ScrollArea class="h-[65vh] rounded-md border">
-			{#if model}
-				{@const quota = quotaFor(model, plan.tier)}
-				{@const burn = burnFor(model, plan.tier)}
-				<Drawer.Header>
-					<div class="flex items-start justify-between gap-3">
-						<div>
-							<Drawer.Title class="flex flex-wrap items-center gap-2 text-xl">
-								{model.name}
-								<BurnBadge burnDetails={burn} />
-							</Drawer.Title>
-							<Drawer.Description>
-								{model.provider}
-								{#if model.description}
-									<span class="mt-1 block text-sm text-muted-foreground">{model.description}</span>
-								{/if}
-							</Drawer.Description>
-						</div>
+<!--
+  A right-hand Sheet (a Bits UI Dialog), not a vaul Drawer. The Drawer's bottom-sheet
+  anatomy fought this content at desktop widths: its header forces `text-center` via a
+  `group-data-[vaul-drawer-direction=bottom]` variant whose specificity outranks the
+  `md:text-left` meant to undo it, and it ships no close button. `side` stays fixed at
+  `right` — the panel is full-bleed on phones and caps at `max-w-2xl` from `sm` up.
+-->
+<Sheet.Root bind:open>
+	<Sheet.Content side="right" class="data-[side=right]:w-full data-[side=right]:sm:max-w-2xl">
+		{#if model}
+			{@const quota = quotaFor(model, plan.tier)}
+			{@const burn = burnFor(model, plan.tier)}
+			<!-- `pr-14` keeps the title clear of the sheet's own close button. -->
+			<Sheet.Header class="p-5 pr-14">
+				<div class="flex items-start justify-between gap-3">
+					<div>
+						<Sheet.Title class="flex flex-wrap items-center gap-2 text-xl">
+							{model.name}
+							<BurnBadge burnDetails={burn} />
+						</Sheet.Title>
+						<Sheet.Description>
+							{model.provider}
+							{#if model.description}
+								<span class="mt-1 block text-sm text-muted-foreground">{model.description}</span>
+							{/if}
+						</Sheet.Description>
 					</div>
-					{#if model.tags.length > 0}
-						<div class="mt-3 flex flex-wrap gap-1.5">
-							{#each model.tags as tag (tag.label)}
-								<span
-									class="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground"
-								>
-									{tag.label}
-								</span>
-							{/each}
-						</div>
-					{/if}
-				</Drawer.Header>
+				</div>
+				{#if model.tags.length > 0}
+					<div class="mt-3 flex flex-wrap gap-1.5">
+						{#each model.tags as tag (tag.label)}
+							<span
+								class="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground"
+							>
+								{tag.label}
+							</span>
+						{/each}
+					</div>
+				{/if}
+			</Sheet.Header>
 
-				<div class="px-4 pb-2">
+			<!-- Only the middle scrolls. Actions live in the pinned footer below: they
+			     are outside the scroller, so Bits UI's open-focus cannot scroll the
+			     panel past its own heading. -->
+			<ScrollArea class="min-h-0 flex-1">
+				<div class="px-5 pb-2">
 					{#if burn.band != null}
 						<BurnGauge
 							score={burn.score}
@@ -108,15 +119,15 @@
 
 				{#if model.pricing.source === 'unknown'}
 					<div
-						class="mx-4 mb-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 text-xs text-amber-600"
+						class="mx-5 mb-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 text-xs text-amber-600"
 					>
 						Pricing source: unknown — contact OpenCode for accurate pricing
 					</div>
 				{/if}
 
-				<div class="space-y-6 px-4 pb-8">
+				<div class="space-y-6 px-5 pb-6">
 					<!-- Capabilities — what the model accepts and what it can do.
-					     Placed first: it is the question the rest of the drawer
+					     Placed first: it is the question the rest of the panel
 					     (price, quota, benchmarks) only makes sense after. -->
 					<CapabilitiesPanel capabilities={model.capabilities} />
 
@@ -234,7 +245,9 @@
 							<div class="space-y-2">
 								{#each model.migrationHints as hint (hint.model)}
 									<div class="rounded-lg border border-border bg-muted/30 p-3 text-sm">
-										<div class="font-medium text-foreground/80">{hint.model}</div>
+										<div class="font-medium text-foreground/80">
+											{hint.model}
+										</div>
 										<div class="text-muted-foreground">{hint.reason}</div>
 									</div>
 								{/each}
@@ -255,60 +268,57 @@
 						</section>
 					{/if}
 				</div>
+			</ScrollArea>
 
-				<div class="border-t border-border bg-background/95 px-4 pt-3 pb-4 backdrop-blur-sm">
-					<div class="flex flex-wrap gap-2">
-						{#if model}
-							<button
-								type="button"
-								class={buttonVariants({
-									variant: isCompared ? 'default' : 'outline',
-									size: 'sm'
-								})}
-								disabled={!isCompared && compareFull}
-								onclick={() => compare.toggle(model.id)}
-							>
-								<GitCompare class="size-3.5" />
-								{isCompared ? 'In comparison' : 'Add to compare'}
-							</button>
-						{/if}
+			<Sheet.Footer class="border-t border-border p-5 py-3">
+				<div class="flex flex-wrap gap-2">
+					{#if model}
 						<button
-							class={buttonVariants({ variant: 'default', size: 'sm' })}
-							onclick={copyModelId}
+							type="button"
+							class={buttonVariants({
+								variant: isCompared ? 'default' : 'outline',
+								size: 'sm'
+							})}
+							disabled={!isCompared && compareFull}
+							onclick={() => compare.toggle(model.id)}
 						>
-							{#if copied}
-								<Check class="size-3.5" />
-								Copied!
-							{:else}
-								<Copy class="size-3.5" />
-								Copy model ID
-							{/if}
+							<GitCompare class="size-3.5" />
+							{isCompared ? 'In comparison' : 'Add to compare'}
 						</button>
-						{#if model.modelgrepId}
-							<a
-								href={'https://modelgrep.com/models/' + model.modelgrepId}
-								target="_blank"
-								rel="noopener noreferrer"
-								class={buttonVariants({ variant: 'outline', size: 'sm' })}
-							>
-								<ExternalLink class="size-3.5" />
-								View on modelgrep
-							</a>
+					{/if}
+					<button class={buttonVariants({ variant: 'default', size: 'sm' })} onclick={copyModelId}>
+						{#if copied}
+							<Check class="size-3.5" />
+							Copied!
+						{:else}
+							<Copy class="size-3.5" />
+							Copy model ID
 						{/if}
+					</button>
+					{#if model.modelgrepId}
 						<a
-							href={llmStatsModelUrl(model)}
+							href={'https://modelgrep.com/models/' + model.modelgrepId}
 							target="_blank"
 							rel="noopener noreferrer"
 							class={buttonVariants({ variant: 'outline', size: 'sm' })}
 						>
 							<ExternalLink class="size-3.5" />
-							View on llm-stats
+							View on modelgrep
 						</a>
-					</div>
+					{/if}
+					<a
+						href={llmStatsModelUrl(model)}
+						target="_blank"
+						rel="noopener noreferrer"
+						class={buttonVariants({ variant: 'outline', size: 'sm' })}
+					>
+						<ExternalLink class="size-3.5" />
+						View on llm-stats
+					</a>
 				</div>
-			{:else}
-				<div class="p-8 text-center text-muted-foreground">No model selected.</div>
-			{/if}
-		</ScrollArea>
-	</Drawer.Content>
-</Drawer.Root>
+			</Sheet.Footer>
+		{:else}
+			<div class="p-8 text-center text-muted-foreground">No model selected.</div>
+		{/if}
+	</Sheet.Content>
+</Sheet.Root>
