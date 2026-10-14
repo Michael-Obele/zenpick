@@ -2,7 +2,7 @@
 
 ## Tech Stack & Architecture
 
-- **Runtime & Tooling**: Bun (`bun`, `bunx`) is the preferred package manager and task runner.
+- **Runtime & Tooling**: Vite+ (`vp`) is the toolchain and entry point — Vite, Rolldown, Vitest, Oxlint, Oxfmt, tsdown and Vite Task behind one CLI, with package management delegated to Bun. Project scripts run via `vpr <script>` (`vpr` = `vp run`). See **Using Vite+** at the end of this file.
 - **Framework**: SvelteKit 5 (using Runes: `$state`, `$props`, `$derived`, `$effect`).
 - **Styling**: Tailwind CSS v4. Prefer semantic classes (e.g., `btn-primary`, `text-muted-foreground`).
 - **Database**: Prisma ORM v6 (NOT v7) with PostgreSQL. Use a singleton client (typically at `$lib/prisma` or `$lib/server/db`).
@@ -21,13 +21,14 @@
 
 ### Quality Gate
 
-- **Formatting**: When using Bun, format only the files you have edited rather than the entire application. Use `bunx prettier --write <file_path>` for edited files. Additionally, verify changes with `bunx prettier --check <file_path>`. Avoid full-project formatting to prevent unnecessary file changes.
-- **Proactive Checking**: Run `bun check` immediately after substantive edits to catch regressions or type errors.
+- **Formatting**: Oxfmt through Vite+ — Prettier is no longer in the toolchain. Settings live in the `fmt` block of `vite.config.ts` (`useTabs: true`, `singleQuote: true`, `printWidth: 100`); never add a separate `.oxfmtrc.json`. Format only the files you edited, then verify the project: `vp fmt <file_path>` followed by `vp fmt --check .`. Write the configured style from the start — Oxfmt re-indents an entire file when its indentation is inconsistent, which turns a small change into a huge diff that then fails `--check`.
+- **Proactive Checking**: Run `vp check` after substantive edits — one pass running Oxfmt, Oxlint and the tsgolint type-check (`typeCheck: true`). Without `--fix` it is read-only. It is a Vite+ built-in, so it SHADOWS the `check` npm script; run both: `vp check` (fast static gate) and `vpr check` (`svelte-kit sync && svelte-check`).
+- **Type-check ownership**: tsgolint has no Svelte transform, so `src/lib/components/ui/**/index.ts` barrel re-exports are excluded from `vp check`. **`vpr check` / `svelte-check` is the source of truth for `.svelte` files and those barrels** — never treat a green `vp check` as full coverage.
 - **Error Handling**: Only warnings can be ignored; errors must be fixed immediately. Use `<svelte:boundary>` for async operations to handle loading and error states gracefully.
 
 ### Package Management
 
-- **Installation**: Always install packages via CLI using `bun add <package>` or `bunx <package>` for one-time use. Never edit package.json directly.
+- **Installation**: Install through the Vite+ CLI — `vp add <package>`, `vp remove <package>`, `vp update`, `vp install`, `vp why <package>` (it delegates to Bun). One-off package binaries: `vp dlx` / `vpx`. Project-local binaries: `vp exec`. Never edit package.json directly.
 - **Research**: Thoroughly research packages before installation to ensure compatibility, necessity, and alignment with project standards (e.g., check for Svelte 5 compatibility, bundle size, maintenance status).
 
 ### Svelte 5 Runes
@@ -81,7 +82,7 @@ Default to **Remote Functions** (experimental `@sveltejs/kit` features or standa
 
 - **Version**: Always use Prisma v6 (not v7).
 - Default to using a singleton Prisma client.
-- Schema changes: Use `bunx prisma db push` for rapid prototyping and `bunx prisma migrate dev` for stable environments.
+- Schema changes: Use `vp dlx prisma db push` for rapid prototyping and `vp dlx prisma migrate dev` for stable environments.
 
 ### Styling & UI Design
 
@@ -90,6 +91,8 @@ Default to **Remote Functions** (experimental `@sveltejs/kit` features or standa
 - **Tailwind v4**: Use semantic tokens from the CSS configuration. Avoid hardcoded HSL/Hex strings in components.
 - **Responsive**: Use standard Tailwind responsive prefixes (e.g., `lg:flex-row`).
 - **Utility**: Use a `cn` utility (clsx + tailwind-merge) for conditional class merging.
+- **Registry classes (`ui/`)**: these are CLI-generated — fix a broken one by changing its _usage_, not the file, and never hand-author one. When a class silently does nothing it is almost always `cn()`/tailwind-merge dropping an earlier class in the same group (`'fixed relative'` → **neither** survives the merge) or a plain class losing on specificity to a `data-[…]`/`group-data-[…]` variant (`md:text-left` can never beat `group-data-[…]:text-center`). Override by passing the SAME variant the component already uses: `data-[side=right]:sm:max-w-2xl` merges and wins; a plain `sm:max-w-2xl` does neither.
+- **Bits UI focus**: `Dialog.Content` auto-focuses on open (`onOpenAutoFocus`). Content inside a scroller therefore opens scrolled down to its first tabbable element — keep primary actions OUTSIDE the scroller (e.g. `Sheet.Footer`) so a panel opens at its heading.
 
 ## Key Files & Directories Pattern
 
@@ -101,14 +104,17 @@ Default to **Remote Functions** (experimental `@sveltejs/kit` features or standa
 
 ## Common Workflows
 
-- Do not run `bun run dev`
-- **Type Checking**: `bun run check`
+- Do not run the dev server (`vp dev`; `bun run dev` maps to it) unless the user explicitly asks for live verification.
+- **Type Checking**: `vp check` (Oxfmt + Oxlint + tsgolint) plus `vpr check` / `bun run check` (svelte-check — the source of truth for `.svelte` and the `ui/` barrels).
+- **Tests**: `vpr test` / `bun run test` → `vp test run` (single pass). Bare `vp test` is **watch mode** — only use it when the user wants a watcher.
+- **Import from `vite-plus`**, not from the packages it wraps: `defineConfig` / `lazyPlugins` from `'vite-plus'`, and test APIs from `'vite-plus/test'` (`import { describe, it, expect } from 'vite-plus/test'`). The `vite-plus/prefer-vite-plus-imports` lint rule enforces this as an error.
 
 ## AI Agent Integration
 
 - **Memory MCP**: Persist useful context by writing to and reading from the Memory MCP during work to maintain consistency across sessions.
 - **Documentation**: Use `mcp_svelte_get-documentation` for the latest Svelte 5/Kit logic and `mcp_svelte_svelte-autofixer` to validate components before finalizing.
 - **shadcn-svelte Workflow**: Never author shadcn-svelte components manually. Always use the CLI commands recommended by MCP documentation or equivalent trusted research to create, add, or update them.
+- **MCP tool routing**: `shadcn-svelte-get` FIRST for any component/block/chart/doc question; use `bits-ui-get` only for the lower-level primitive, and only once the shadcn tool has named it. `components.json` pins `style: "maia"` — that style's registry copies carry class-composition bugs, so review the diff of any component you regenerate.
 
 ## Fallow Quality Gate
 
