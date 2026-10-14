@@ -62,6 +62,14 @@ export default defineConfig({
 		noExternal: ['@dagrejs/dagre']
 	},
 	run: {
-		cache: { scripts: true }
+		tasks: {
+			tscheck: {
+				command: 'svelte-kit sync && svelte-check --tsconfig ./tsconfig.json',
+				cache: {
+					input: [{ auto: true }, '!.svelte-kit/**'],
+					output: ['.svelte-kit/**']
+				}
+			}
+		}
 	}
 });
