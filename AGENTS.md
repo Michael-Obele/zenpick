@@ -105,7 +105,7 @@ Default to **Remote Functions** (experimental `@sveltejs/kit` features or standa
 ## Common Workflows
 
 - Do not run the dev server (`vp dev`; `bun run dev` maps to it) unless the user explicitly asks for live verification.
-- **Type Checking**: `vp check` (Oxfmt + Oxlint + tsgolint) plus `vpr check` / `bun run check` (svelte-check — the source of truth for `.svelte` and the `ui/` barrels).
+- **Type Checking**: `vp check` (Oxfmt + Oxlint + tsgolint) plus `vpr check` / `bun run check` (svelte-check — the source of truth for `.svelte` and the `ui/` barrels). For a repeat run use the cached `vpr typecheck` task (`vite.config.ts`); `package.json` scripts are uncached by default, tasks are cached.
 - **Tests**: `vpr test` / `bun run test` → `vp test run` (single pass). Bare `vp test` is **watch mode** — only use it when the user wants a watcher.
 - **Import from `vite-plus`**, not from the packages it wraps: `defineConfig` / `lazyPlugins` from `'vite-plus'`, and test APIs from `'vite-plus/test'` (`import { describe, it, expect } from 'vite-plus/test'`). The `vite-plus/prefer-vite-plus-imports` lint rule enforces this as an error.
 

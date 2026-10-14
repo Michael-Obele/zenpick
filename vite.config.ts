@@ -60,5 +60,8 @@ export default defineConfig({
 	]),
 	ssr: {
 		noExternal: ['@dagrejs/dagre']
+	},
+	run: {
+		cache: { scripts: true }
 	}
 });
