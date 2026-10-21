@@ -112,7 +112,19 @@ export async function loadCatalogAudit(): Promise<CatalogAudit> {
 		// docs model as "not published by models.dev for Go", i.e. a large false
 		// amber signal. A models.dev outage must surface as an error, not as
 		// fabricated drift — the page load degrades it to the model-free audit.
-		fetchModelsDevCatalog()
+		//
+		// The catch here is the LAST line of defence. `fetchModelsDevCatalog`
+		// already serves the last known-good catalog on a fetch failure and
+		// only throws when there is nothing cached at all — a cold start
+		// during an outage. Letting that throw escape would take down the
+		// WHOLE `/debug` page and `/debug/export` for every section, because
+		// an advisory source must never be able to do that. Degrade to the
+		// docs-only audit (no drift information) instead.
+		fetchModelsDevCatalog().catch((e: unknown) => {
+			const msg = e instanceof Error ? e.message : String(e);
+			console.error('[models] models.dev unavailable, drift report degraded:', msg);
+			return emptyModelsDevCatalog();
+		})
 	]);
 
 	// A catalog that contributed NOTHING (both blocks empty) carries no drift

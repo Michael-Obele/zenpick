@@ -66,6 +66,27 @@ export interface ModelsDevCatalog {
 
 const API_URL = 'https://models.dev/api.json';
 
+/**
+ * The api.json download is ~6 MB, so the timeout has to cover a slow link.
+ * 20s aborted downloads that were still making progress.
+ */
+const FETCH_TIMEOUT_MS = 45_000;
+
+/**
+ * Attempts for a network-level failure.
+ *
+ * A dropped connection part-way through a 6 MB download is TRANSIENT:
+ * undici reports it as a bare `TypeError: fetch failed`, and the same URL
+ * succeeds seconds later. Only that class of failure is retried — an HTTP
+ * error status, or a payload that violates the api.json contract, is a
+ * PERMANENT answer from the server, and retrying it would only delay the
+ * failure.
+ */
+const FETCH_ATTEMPTS = 3;
+
+/** Backoff between attempts, multiplied by the attempt number. */
+const RETRY_DELAY_MS = 500;
+
 /** Own cache entry — separate from the enriched model cache in `models.ts`. */
 export const MODELS_DEV_CACHE_KEY = 'models-dev-catalog';
 
@@ -112,7 +133,7 @@ export function emptyModelsDevCatalog(): ModelsDevCatalog {
 async function fetchModelsDevCatalogUncached(): Promise<ModelsDevCatalog> {
 	const res = await fetch(API_URL, {
 		headers: { accept: 'application/json' },
-		signal: AbortSignal.timeout(20_000)
+		signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
 	});
 	if (!res.ok) throw new Error(`models.dev api.json: ${res.status}`);
 
@@ -133,6 +154,43 @@ async function fetchModelsDevCatalogUncached(): Promise<ModelsDevCatalog> {
 }
 
 /**
+ * Whether a failure is worth another attempt.
+ *
+ * A network-level failure — undici's `TypeError: fetch failed` for DNS, TLS
+ * and socket errors, plus the `TimeoutError` the abort signal raises — is
+ * transient. Everything else is a decision the server already made.
+ */
+function isTransientNetworkError(error: unknown): boolean {
+	if (typeof error !== 'object' || error === null) return false;
+	const name = (error as { name?: string }).name;
+	return name === 'TypeError' || name === 'TimeoutError' || name === 'AbortError';
+}
+
+/**
+ * The api.json download, with transient network failures retried.
+ *
+ * The whole file is ~6 MB and models.dev sits behind a CDN that occasionally
+ * resets the connection part-way through — undici reports that as a bare
+ * `TypeError: fetch failed`. One quick retry turns most of those into a
+ * slightly slower load instead of a degraded catalog.
+ */
+async function fetchModelsDevCatalogWithRetry(): Promise<ModelsDevCatalog> {
+	let lastError: unknown;
+	for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt++) {
+		try {
+			return await fetchModelsDevCatalogUncached();
+		} catch (e) {
+			lastError = e;
+			if (!isTransientNetworkError(e) || attempt === FETCH_ATTEMPTS) break;
+			const msg = e instanceof Error ? e.message : String(e);
+			console.warn(`[models-dev] attempt ${attempt} failed (${msg}); retrying…`);
+			await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * attempt));
+		}
+	}
+	throw lastError;
+}
+
+/**
  * Fetch models.dev and index the provider blocks we use.
  *
  * The whole api.json is downloaded (5.7 MB raw / ~591 KB gzipped) and only the
@@ -150,7 +208,7 @@ async function fetchModelsDevCatalogUncached(): Promise<ModelsDevCatalog> {
 export async function fetchModelsDevCatalog(): Promise<ModelsDevCatalog> {
 	const cached = cacheGet<ModelsDevCatalog>(MODELS_DEV_CACHE_KEY);
 	try {
-		const fresh = await fetchModelsDevCatalogUncached();
+		const fresh = await fetchModelsDevCatalogWithRetry();
 		// Only a successful, contract-valid fetch reaches here, so this write
 		// can never pin an empty catalog as the "last good" one.
 		cacheSet(MODELS_DEV_CACHE_KEY, fresh, MODELS_TTL);

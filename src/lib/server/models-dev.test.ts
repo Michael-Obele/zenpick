@@ -208,6 +208,42 @@ describe('fetchModelsDevCatalog', () => {
 
 		await expect(fetchModelsDevCatalog()).rejects.toThrow(/502/);
 	});
+
+	it('retries a transient network failure and succeeds', async () => {
+		// models.dev occasionally resets the connection part-way through the
+		// 6 MB download; undici reports that as a bare `TypeError: fetch
+		// failed`. The same URL succeeds moments later, so a retry turns the
+		// failure into a slightly slower load instead of a degraded catalog.
+		let calls = 0;
+		globalThis.fetch = (async () => {
+			calls++;
+			if (calls === 1) throw new TypeError('fetch failed');
+			return {
+				ok: true,
+				status: 200,
+				json: async () => ({ 'opencode-go': { models: { hy3: { id: 'hy3' } } } })
+			};
+		}) as unknown as typeof fetch;
+
+		const catalog = await fetchModelsDevCatalog();
+
+		expect(calls).toBe(2);
+		expect(catalog.byId.get('hy3')).toBeDefined();
+	});
+
+	it('does NOT retry a contract violation', async () => {
+		// A payload without the `opencode-go` block is a permanent answer from
+		// the server, not a transient glitch — retrying it would only delay
+		// the failure.
+		let calls = 0;
+		globalThis.fetch = (async () => {
+			calls++;
+			return { ok: true, status: 200, json: async () => ({ opencode: { models: {} } }) };
+		}) as unknown as typeof fetch;
+
+		await expect(fetchModelsDevCatalog()).rejects.toThrow(/missing 'opencode-go' provider block/);
+		expect(calls).toBe(1);
+	});
 });
 
 describe('isModelsDevDegraded', () => {

@@ -300,6 +300,23 @@ describe('loadCatalogAudit — models.dev drift', () => {
 		expect(audit.pricedButUnlisted).toEqual(['claude-haiku-5-5']);
 		expect(audit.officialModelIds).toEqual(['hy3']);
 	});
+
+	it('degrades to the docs-only audit when models.dev is unreachable', async () => {
+		// A cold start during a models.dev outage: there is no last-good
+		// catalog to serve, so the fetcher throws. The audit must still
+		// RESOLVE — an advisory source must never 500 the /debug page or
+		// /debug/export for every section.
+		fetchModelsDevCatalog.mockRejectedValue(new Error('fetch failed'));
+
+		const audit = await loadCatalogAudit();
+
+		// No drift information, so no drift rows — but the docs↔API findings
+		// survive the degrade.
+		expect(audit.modelsDevMissing).toEqual([]);
+		expect(audit.modelsDevOnly).toEqual([]);
+		expect(audit.unmatchedDocsRows).toEqual([{ name: 'Claude Haiku 5.5', table: 'pricing' }]);
+		expect(audit.officialModelIds).toEqual(['hy3']);
+	});
 });
 
 describe('revalidateLifecycle', () => {
