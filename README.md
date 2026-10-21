@@ -134,6 +134,25 @@ curl -X POST https://zp.svelte-apps.me/api/revalidate \
 
 `POST /api/revalidate` forces a fresh upstream fetch (bypassing the TTL) and rebuilds both the model cache and the frontier snapshot. Point a Netlify build hook, a scheduled GitHub Action, or a manual `curl` at it.
 
+### The lifecycle ledger (separate, 24h cache)
+
+`/debug?section=lifecycle` shows an advisory ledger of when each model was live on OpenCode Go, plus models.dev's canonical benchmarks. It caches separately with a **24h** TTL, because building it sweeps ~140 GitHub Atom feeds — a sweep must never block a catalog rebuild, so the default revalidation leaves it alone.
+
+To force just that rebuild (e.g. after a model was retired):
+
+```bash
+curl -X POST 'https://zp.svelte-apps.me/api/revalidate?scope=lifecycle' \
+  -H "Authorization: Bearer $REVALIDATE_SECRET"
+# → { "ok": true, "scope": "lifecycle", "models": 131, "benchmarks": 272,
+#     "builtAt": 1792…, "durationMs": 4123, "at": "..." }
+```
+
+(`models` and `benchmarks` are the row counts of that build — they move with the catalog, so treat the numbers above as illustrative.)
+
+`scope=lifecycle` rebuilds the lifecycle ledger **and** the canonical benchmark index together (they share the live-catalog universe, so they must not disagree), and clears both caches before rebuilding. `scope` accepts `all` (the default — catalog + frontier) or `lifecycle`; anything else returns `400`. The `/debug` ledger renders its build timestamp and flags itself once it is more than 24h old, so a stale `alive` row beside a freshly rebuilt catalog is visible rather than silent.
+
+One thing it does **not** do: `/debug` reads the ledger from the same `getModels()` query as the catalog, and that query does not re-run when you press Refresh — only a page load or a navigation re-pulls it, so a lifecycle rebuild lands in the browser on the next page load.
+
 - **Setup**: set `REVALIDATE_SECRET` (any long random string) in your local `.env` **and** in the Netlify environment. If it is unset the endpoint returns `500`; a wrong/missing token returns `401`.
 - **Effect**: only the instance that handles the request is invalidated (the cache is per-instance memory). On a single warm serverless instance that is the whole app; with multiple instances the rest converge as their own TTLs lapse. Making it global would require a shared cache (Netlify Blobs / KV / Redis).
 - **Client pages**: an already-open tab keeps its current data until reload or navigation. A fresh page load (or `getModels().refresh()`) picks up the rebuilt cache.

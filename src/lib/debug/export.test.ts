@@ -58,7 +58,53 @@ function dataset(): DebugDataset {
 			officialModelIds: ['m1', 'm2'],
 			modelsDevOnly: ['legacy-x'],
 			modelsDevMissing: []
-	}
+		},
+		lifecycle: {
+			rows: [
+				{
+					id: 'm1',
+					status: 'alive',
+					firstSeen: '2026-07-22',
+					killedOn: null,
+					lastTouched: '2026-09-01',
+					benchmarkCount: 1
+				},
+				{
+					id: 'retired-x',
+					status: 'killed',
+					firstSeen: '2026-05-01',
+					killedOn: '2026-08-14',
+					lastTouched: '2026-08-14',
+					benchmarkCount: 0
+				}
+			],
+			canonicalByModel: [['m1', 'acme/one']],
+			benchmarks: [
+				{
+					id: 'm1',
+					canonicalId: 'acme/one',
+					name: 'Terminal-Bench',
+					metric: 'pass@1',
+					score: 61.4,
+					isPercentage: true,
+					comparable: true,
+					coverage: 12
+				}
+			],
+			builtAt: Date.UTC(2026, 9, 21, 12)
+		},
+		benchmarks: [
+			{
+				id: 'm1',
+				canonicalId: 'acme/one',
+				name: 'Terminal-Bench',
+				metric: 'pass@1',
+				score: 61.4,
+				isPercentage: true,
+				comparable: true,
+				coverage: 12
+			}
+		]
 	};
 }
 
@@ -130,6 +176,44 @@ describe('sectionMarkdown', () => {
 		const md = sectionMarkdown('matching', dataset());
 		expect(md).toContain('### Unmatched docs rows');
 		expect(md).toContain('deprecated-model');
+	});
+
+	it('matching includes the models.dev drift lists', () => {
+		const md = sectionMarkdown('matching', dataset());
+		expect(md).toContain('models.dev publishes for Go but the docs dropped');
+		expect(md).toContain('legacy-x');
+	});
+
+	it('lifecycle renders both the ledger and the canonical benchmarks', () => {
+		const md = sectionMarkdown('lifecycle', dataset());
+		expect(md).toContain('## Model Lifecycle');
+		expect(md).toContain('| Model | Status | First seen | Killed | Last touched |');
+		expect(md).toContain('retired-x');
+		expect(md).toContain('2026-08-14');
+		expect(md).toContain('### Canonical benchmarks (models.dev)');
+		expect(md).toContain('Terminal-Bench');
+	});
+
+	it('lifecycle json exposes the ledger, join keys and benchmarks', () => {
+		const out = sectionJson('lifecycle', dataset()) as {
+			lifecycle: { id: string; status: string }[];
+			canonicalByModel: [string, string][];
+			benchmarks: { name: string; comparable: boolean; isPercentage: boolean }[];
+			builtAt: number | null;
+		};
+		expect(out.lifecycle.map((r) => r.status)).toEqual(['alive', 'killed']);
+		expect(out.canonicalByModel).toEqual([['m1', 'acme/one']]);
+		expect(out.benchmarks[0].name).toBe('Terminal-Bench');
+		expect(out.benchmarks[0].comparable).toBe(true);
+		// The SCALE must survive the export: a raw score alone cannot tell a
+		// Codeforces rating from a percentage.
+		expect(out.benchmarks[0].isPercentage).toBe(true);
+		expect(out.builtAt).toBe(Date.UTC(2026, 9, 21, 12));
+	});
+
+	it('lifecycle markdown dates the ledger', () => {
+		const md = sectionMarkdown('lifecycle', dataset());
+		expect(md).toContain('Ledger built: 2026-10-21T12:00:00.000Z');
 	});
 
 	it('raw wraps the JSON in a fenced block', () => {

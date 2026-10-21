@@ -22,6 +22,7 @@ export const DEBUG_SECTIONS = [
 	{ id: 'burn', label: 'Burn Details' },
 	{ id: 'benchmarks', label: 'Benchmarks' },
 	{ id: 'matching', label: 'Matching & Coverage' },
+	{ id: 'lifecycle', label: 'Model Lifecycle' },
 	{ id: 'migration', label: 'Migration Report' },
 	{ id: 'compare', label: 'Compare Logic' },
 	{ id: 'tags', label: 'Tag Report' },

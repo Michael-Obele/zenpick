@@ -1,5 +1,10 @@
 import { query } from '$app/server';
-import { loadModels, loadFrontierSnapshot, loadCatalogAudit } from '$lib/server/models';
+import {
+	loadModels,
+	loadFrontierSnapshot,
+	loadCatalogAudit,
+	loadModelLifecycle
+} from '$lib/server/models';
 
 /**
  * Fetch all enriched Go models.
@@ -22,6 +27,15 @@ export const getFrontierCandidates = query(() => loadFrontierSnapshot());
 
 /**
  * Docs↔API reconciliation report. Non-empty `unmatchedDocsRows` or
- * `pricedButUnlisted` means the catalog silently lost model(s).
+ * `pricedButUnlisted` means the catalog silently lost model(s). The
+ * models.dev drift rows are applied at read time, so they stay fresh even
+ * though the docs payload behind this call is cached for 24h.
  */
 export const getCatalogAudit = query(() => loadCatalogAudit());
+
+/**
+ * The Go model lifecycle ledger (alive / deprecated / killed / drift) plus the
+ * canonical benchmark index over the same universe. ADVISORY — it never
+ * changes which models the catalog shows; it exists for `/debug`.
+ */
+export const getModelLifecycle = query(() => loadModelLifecycle());
