@@ -6,12 +6,13 @@
 	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
 	import { compare, MAX_COMPARE } from '$lib/stores/compare.svelte';
 	import BurnBadge from './BurnBadge.svelte';
+	import DeprecatedBadge from './DeprecatedBadge.svelte';
 	import BurnGauge from './BurnGauge.svelte';
 	import ModelScatterContext from './ModelScatterContext.svelte';
 	import CapabilitiesPanel from './CapabilitiesPanel.svelte';
 	import { llmStatsModelUrl } from '$lib/utils/llm-stats-url';
 	import { benchmarkToPercent, benchmarkSourceNote } from '$lib/compare-defaults';
-	import { formatCompact } from '$lib/utils';
+	import { formatCompact, detailRowsFor } from '$lib/utils';
 	import { isFreePricing } from '$lib/burn';
 	import { quotaFor, burnFor } from '$lib/plan';
 	import { plan } from '$lib/stores/plan.svelte';
@@ -35,11 +36,15 @@
 		setTimeout(() => (copied = false), 2000);
 	}
 
-	function formatTokens(n: number | null): string {
-		if (!n) return '—';
-		if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-		return `${Math.round(n / 1_000)}K`;
-	}
+	/**
+	 * Details rows, most model-specific first. Every row is a fact some models
+	 * lack, so it is omitted rather than shown empty — including an empty
+	 * `reasoningEfforts`, which is present-but-meaningless.
+	 *
+	 * The rule itself lives in `detailRowsFor` so it is unit-testable without a
+	 * DOM (the Sheet portals via `mount()`, which renders nothing under SSR).
+	 */
+	let detailRows = $derived(detailRowsFor(model));
 
 	function benchmarkBarWidth(value: number | null, max: number = 60): number {
 		if (!value || value < 1) return 0;
@@ -218,20 +223,15 @@
 					<section>
 						<h3 class="mb-2 text-sm font-medium text-muted-foreground">Details</h3>
 						<div class="space-y-2 rounded-lg border border-border p-3 text-sm">
-							<div class="flex justify-between">
-								<span class="text-muted-foreground">Context window</span>
-								<span class="text-foreground/80">{formatTokens(model.contextWindow)}</span>
-							</div>
-							<div class="flex justify-between">
-								<span class="text-muted-foreground">Endpoint</span>
-								<span class="text-foreground/80">{model.endpoint}</span>
-							</div>
-							{#if model.speed}
-								<div class="flex justify-between">
-									<span class="text-muted-foreground">Speed</span>
-									<span class="text-foreground/80">{model.speed.tokensPerSecond} tok/s</span>
+							{#each detailRows as row (row.label)}
+								<div class="flex justify-between gap-3">
+									<span class="text-muted-foreground">{row.label}</span>
+									<span class="text-right text-foreground/80">{row.value}</span>
 								</div>
-							{/if}
+							{/each}
+							<!-- Self-suppressing: renders nothing unless models.dev marks it
+							     deprecated, so no `{#if}` is needed here. -->
+							<DeprecatedBadge status={model.modelsDevStatus} />
 						</div>
 					</section>
 

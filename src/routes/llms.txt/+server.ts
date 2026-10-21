@@ -99,10 +99,15 @@ function render(models: GoModel[], origin: string, params: TableSearchParams): s
 	lines.push(
 		'',
 		'- **Context** — maximum input context window in tokens.',
+		'- **Output cap** — maximum output tokens (`—`: not published).',
+		'- **Reasoning efforts** — reasoning-effort levels the model accepts (e.g. `low, high`); `—` if no effort control is published.',
+		'- **Knowledge cutoff** — training-data cutoff date (`—`: not published).',
+		'- **Status** — `active`, or `deprecated` when the upstream catalog marks the model deprecated. `—` means models.dev published no status for the model (or its catalog was unavailable), so the lifecycle is unknown rather than confirmed active. Advisory: a deprecated model may still be served.',
 		'- **Burn** — how fast a model consumes the Go quota (`Excellent` is quota-friendly, `Extreme` burns fastest).',
 		'- **Req/mo** — estimated requests per month at the $60 Go tier.',
 		'- **Coding / Agentic** — task-fit score, 0–100 (algorithmic, not a benchmark).',
 		'- **Replaces** — closed-source frontier models this Go model substitutes.',
+		'- **Source** — LLM Stats page for the model.',
 		''
 	);
 
@@ -136,6 +141,7 @@ function render(models: GoModel[], origin: string, params: TableSearchParams): s
 		'- [modelgrep](https://modelgrep.com): OpenRouter pricing plus Artificial Analysis and Design Arena benchmarks',
 		'- [LLM Stats](https://llm-stats.com): model benchmarks and release metadata',
 		'- [OpenCode Go docs](https://opencode.ai/v2/docs/console/go): official model list, pricing, and usage limits',
+		'- [models.dev](https://models.dev): first-party OpenCode catalog metadata (display names, output caps, reasoning efforts, knowledge cutoff) and the Go model lifecycle history. Advisory only: it never changes which models are listed.',
 		'',
 		'## Notes',
 		'',
@@ -192,6 +198,10 @@ function tableColumns(needSpec: NeedSpec | null): string[] {
 		'ID',
 		'Provider',
 		'Context',
+		'Output cap',
+		'Reasoning efforts',
+		'Knowledge cutoff',
+		'Status',
 		'Input $/M',
 		'Output $/M',
 		'Burn',
@@ -221,6 +231,14 @@ function tableRow(row: TableRow, needSpec: NeedSpec | null): string {
 		cell(m.id),
 		cell(m.provider),
 		formatContext(m.contextWindow),
+		formatContext(m.maxOutputTokens),
+		cell(m.reasoningEfforts?.length ? m.reasoningEfforts.join(', ') : '—'),
+		cell(m.knowledgeCutoff ?? '—'),
+		// `null` is UNKNOWN (models.dev has no entry, or its catalog was unavailable),
+		// never "active" — this file is consumed by crawlers, so a false lifecycle
+		// claim is a factual error. Same em-dash convention as the columns above,
+		// routed through `cell()` like every other text column.
+		cell(m.modelsDevStatus ?? '—'),
 		free ? 'Free' : formatPrice(m.pricing.inputPricePerM),
 		free ? 'Free' : formatPrice(m.pricing.outputPricePerM),
 		cell(burnLabelFor(m)),

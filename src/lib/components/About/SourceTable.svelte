@@ -29,8 +29,17 @@
 			href: 'https://opencode.ai/v2/docs/console/go',
 			license: 'Per OpenCode Go docs',
 			use: 'Model list, endpoint types, quota windows'
+		},
+		{
+			provider: 'models.dev',
+			href: 'https://models.dev',
+			license: 'Open source (MIT)',
+			use: 'First-party OpenCode catalog metadata and the Go model lifecycle history'
 		}
 	];
+
+	/** Two of the four are advisory (Go docs, models.dev); only two require it. */
+	const attributionCount = sources.filter((source) => source.required).length;
 </script>
 
 <div class="overflow-hidden rounded-lg border border-border bg-card/40">
@@ -41,7 +50,9 @@
 			<Database class="size-3" />
 			data_sources.json
 		</span>
-		<span class="text-cyan-900 dark:text-cyan-200">3 sources · required attribution</span>
+		<span class="text-cyan-900 dark:text-cyan-200"
+			>{sources.length} sources · {attributionCount} require attribution</span
+		>
 	</div>
 
 	<table class="w-full text-left text-sm">
