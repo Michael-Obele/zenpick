@@ -227,6 +227,36 @@
 			<CompareTray {models} />
 		{/await}
 
+		<!-- Burn vs Performance — the chart that carries the argument -->
+		<section
+			class="signal-board-enter motion-delay-300 mt-12 rounded-2xl border border-primary/20 bg-card p-6 sm:p-8"
+			aria-labelledby="graph-home"
+		>
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+				<div>
+					<p
+						class="mb-2 font-mono text-xs font-semibold tracking-[0.16em] text-primary uppercase dark:text-primary-strong"
+					>
+						The sweet spot
+					</p>
+					<h2 id="graph-home" class="mb-2 text-lg font-semibold tracking-tight text-foreground">
+						Burn vs. Performance — where every model sits
+					</h2>
+					<p class="max-w-xl text-sm leading-relaxed text-muted-foreground">
+						Every model is one dot. The shaded quadrants show the trade-off: efficient burn vs. raw
+						coding score. The sweet spot is top-left — high score without torching your quota.
+					</p>
+				</div>
+				<a
+					href="/about#price-performance"
+					class="inline-flex shrink-0 items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 dark:bg-primary-strong dark:text-background dark:hover:bg-primary-strong/90"
+				>
+					Explore the graph
+					<ArrowRight class="size-4" />
+				</a>
+			</div>
+		</section>
+
 		<!-- llms.txt for AI agents & scripts -->
 		<section
 			class="signal-board-enter motion-delay-300 mt-12 rounded-2xl border border-border bg-card/40 p-6 sm:p-8"

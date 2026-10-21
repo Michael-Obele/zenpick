@@ -27,6 +27,24 @@
 		mounted = true;
 	});
 
+	/**
+	 * The jump list under the header.
+	 *
+	 * The page is seven sections long and the headline chart sat in the
+	 * middle of one of them, so nothing pointed a reader at it. The chart
+	 * gets its own entry (and its own highlight) because it is the one
+	 * visual that carries the whole argument.
+	 */
+	const pageSections = [
+		{ id: 'product', label: 'What it does' },
+		{ id: 'numbers', label: 'The numbers' },
+		{ id: 'price-performance', label: 'Burn vs. performance', featured: true },
+		{ id: 'methodology', label: 'Methodology' },
+		{ id: 'attribution', label: 'Data & attribution' },
+		{ id: 'llms-txt', label: 'llms.txt' },
+		{ id: 'key', label: 'Thermal key' }
+	];
+
 	const burnTiers = [
 		{
 			name: 'free',
@@ -180,7 +198,11 @@
 						</div>
 						<Thermometer class="size-5 text-primary dark:text-primary-strong" />
 					</div>
-					<ReceiptBlock />
+					{#await modelsPromise}
+						<ReceiptBlock />
+					{:then models}
+						<ReceiptBlock modelCount={models.length} />
+					{/await}
 					<p class="mt-4 border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground">
 						Check cost and burn before the session starts, not after the quota is gone.
 					</p>
@@ -189,6 +211,30 @@
 		{/if}
 	</header>
 
+	<!-- On this page — sticky so the chart stays findable on a long page. -->
+	<nav
+		aria-label="On this page"
+		class="sticky top-0 z-30 -mx-4 mb-16 border-y border-border/70 bg-background/80 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/60 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+	>
+		<div class="mx-auto flex max-w-6xl flex-wrap items-center gap-1.5">
+			<span
+				class="mr-1 font-mono text-[10px] font-medium tracking-[0.2em] text-muted-foreground uppercase"
+			>
+				On this page
+			</span>
+			{#each pageSections as section (section.id)}
+				<a
+					href="#{section.id}"
+					class="rounded-full border px-2.5 py-0.5 text-xs transition-colors {section.featured
+						? 'border-primary/40 bg-primary/10 font-medium text-primary hover:border-primary/60 dark:text-primary-strong'
+						: 'border-border/70 text-muted-foreground hover:border-foreground/30 hover:text-foreground'}"
+				>
+					{section.label}
+				</a>
+			{/each}
+		</div>
+	</nav>
+
 	<!-- 01 THE PRODUCT -->
 	<section class="mb-20" aria-labelledby="product">
 		<div class="mb-6 flex items-baseline gap-3">
@@ -196,7 +242,7 @@
 				class="section-number font-mono text-xs font-medium tracking-wider text-primary uppercase dark:text-primary-strong"
 				aria-hidden="true"
 			></span>
-			<h2 id="product" class="text-2xl font-semibold tracking-tight text-foreground">
+			<h2 id="product" class="scroll-mt-24 text-2xl font-semibold tracking-tight text-foreground">
 				What ZenPick does
 			</h2>
 			<div class="ml-auto hidden h-px flex-1 bg-border sm:block" aria-hidden="true"></div>
@@ -225,7 +271,7 @@
 				class="section-number font-mono text-xs font-medium tracking-wider text-primary uppercase dark:text-primary-strong"
 				aria-hidden="true"
 			></span>
-			<h2 id="numbers" class="text-2xl font-semibold tracking-tight text-foreground">
+			<h2 id="numbers" class="scroll-mt-24 text-2xl font-semibold tracking-tight text-foreground">
 				The numbers
 			</h2>
 			<div class="ml-auto hidden h-px flex-1 bg-border sm:block" aria-hidden="true"></div>
@@ -238,7 +284,16 @@
 				label="subscription"
 				footnote="The budget you are already spending."
 			/>
-			<StatCard figure="13" unit="+" label="models tracked" footnote="Across 6 providers." />
+			{#await modelsPromise}
+				<StatCard figure="—" label="models tracked" footnote="Loading…" />
+			{:then models}
+				<StatCard
+					figure={String(models.length)}
+					unit={models.length === 1 ? '' : '+'}
+					label="models tracked"
+					footnote="Across {new Set(models.map((m) => m.provider)).size} providers."
+				/>
+			{/await}
 			<StatCard figure="6" unit="h" label="cache TTL" footnote="Stale-while-revalidate." />
 			<StatCard
 				figure="324"
@@ -256,7 +311,25 @@
 			{/if}
 		</div>
 
-		<div class="mt-10">
+		<!-- The headline chart. It carries the whole argument, so it gets an
+		     anchor (the jump list links here) and a lead-in that says what to
+		     look for. -->
+		<div class="mt-10 scroll-mt-24" id="price-performance">
+			<div class="mb-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+				<p class="max-w-2xl text-base leading-relaxed text-foreground">
+					Every model is one dot. The shaded corner is the sweet spot — scoring above the median
+					while costing less than it — and the ringed dot is the strongest model in there.
+				</p>
+				<div class="flex items-center gap-3 text-xs text-muted-foreground">
+					<span>Live, from upstream data.</span>
+					<a
+						href="/#compare-models"
+						class="text-primary underline-offset-4 hover:underline dark:text-primary-strong"
+					>
+						Interact with it — filter by task
+					</a>
+				</div>
+			</div>
 			{#await modelsPromise}
 				<div class="h-48 animate-pulse rounded-xl bg-muted"></div>
 			{:then models}
@@ -268,16 +341,6 @@
 			{/await}
 		</div>
 
-		<div class="mt-3 flex items-center justify-end gap-1.5 text-xs text-muted-foreground">
-			<span>Live price-vs-performance from upstream data.</span>
-			<a
-				href="/#compare-models"
-				class="text-primary underline-offset-4 hover:underline dark:text-primary-strong"
-			>
-				Interact with it — filter by task
-			</a>
-		</div>
-
 		<Callout variant="cyan" label="methodology note">
 			"Upstream" refers to the data aggregated at modelgrep.com (OpenRouter pricing + Artificial
 			Analysis benchmarks) and llm-stats.com (benchmark scores, rankings, and pricing), which tracks
@@ -285,12 +348,21 @@
 		</Callout>
 
 		<div class="mt-8 text-center">
-			<a
-				href="/#compare-models"
-				class="inline-flex items-center rounded-full border border-border/60 bg-background px-4 py-2 text-sm text-foreground underline-offset-12 hover:underline"
-			>
-				See all 13+ models ranked
-			</a>
+			{#await modelsPromise}
+				<a
+					href="/#compare-models"
+					class="inline-flex items-center rounded-full border border-border/60 bg-background px-4 py-2 text-sm text-foreground underline-offset-12 hover:underline"
+				>
+					See all models ranked
+				</a>
+			{:then models}
+				<a
+					href="/#compare-models"
+					class="inline-flex items-center rounded-full border border-border/60 bg-background px-4 py-2 text-sm text-foreground underline-offset-12 hover:underline"
+				>
+					See all {models.length}+ models ranked
+				</a>
+			{/await}
 		</div>
 	</section>
 
@@ -301,7 +373,10 @@
 				class="section-number font-mono text-xs font-medium tracking-wider text-primary uppercase dark:text-primary-strong"
 				aria-hidden="true"
 			></span>
-			<h2 id="methodology" class="text-2xl font-semibold tracking-tight text-foreground">
+			<h2
+				id="methodology"
+				class="scroll-mt-24 text-2xl font-semibold tracking-tight text-foreground"
+			>
 				Methodology
 			</h2>
 			<div class="ml-auto hidden h-px flex-1 bg-border sm:block" aria-hidden="true"></div>
@@ -342,7 +417,10 @@
 				class="section-number font-mono text-xs font-medium tracking-wider text-primary uppercase dark:text-primary-strong"
 				aria-hidden="true"
 			></span>
-			<h2 id="attribution" class="text-2xl font-semibold tracking-tight text-foreground">
+			<h2
+				id="attribution"
+				class="scroll-mt-24 text-2xl font-semibold tracking-tight text-foreground"
+			>
 				Data &amp; attribution
 			</h2>
 			<div class="ml-auto hidden h-px flex-1 bg-border sm:block" aria-hidden="true"></div>
@@ -408,7 +486,7 @@
 	</section>
 
 	<!-- 05 LLMS.TXT — MACHINE-READABLE CATALOG -->
-	<section class="mb-20 scroll-mt-8" aria-labelledby="llms-txt" id="llms-txt">
+	<section class="mb-20 scroll-mt-24" aria-labelledby="llms-txt" id="llms-txt">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
 				class="section-number font-mono text-xs font-medium tracking-wider text-primary uppercase dark:text-primary-strong"
@@ -528,7 +606,9 @@ curl https://zenpick.dev/debug/export?section=models&format=json | jq .</code
 				class="section-number font-mono text-xs font-medium tracking-wider text-primary uppercase dark:text-primary-strong"
 				aria-hidden="true"
 			></span>
-			<h2 id="key" class="text-2xl font-semibold tracking-tight text-foreground">Thermal key</h2>
+			<h2 id="key" class="scroll-mt-24 text-2xl font-semibold tracking-tight text-foreground">
+				Thermal key
+			</h2>
 			<div class="ml-auto hidden h-px flex-1 bg-border sm:block" aria-hidden="true"></div>
 		</div>
 

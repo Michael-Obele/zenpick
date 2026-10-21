@@ -13,6 +13,14 @@
    (text-sm, text-base, text-lg, etc.) scale up proportionally. ~6% larger. */
 html {
 	font-size: 17px;
+	scroll-behavior: smooth;
+	scroll-padding-top: 4.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html {
+		scroll-behavior: auto;
+	}
 }
 
 /*
@@ -60,6 +68,21 @@ html {
 	--chart-3: oklch(0.591 0.293 322.896);
 	--chart-4: oklch(0.518 0.253 323.949);
 	--chart-5: oklch(0.452 0.211 324.591);
+	/*
+	 * Burn-band colours. The chart palette (--chart-1..5) is one magenta ramp,
+	 * so it cannot express "excellent -> extreme": a legend naming cyan and
+	 * red would describe colours that do not exist. These reference Tailwind's
+	 * own scale so the chart dots, the legend, BurnBadge and the "Thermal key"
+	 * section all speak the same colour language.
+	 */
+	--burn-free: var(--color-teal-500);
+	--burn-excellent: var(--color-cyan-500);
+	--burn-good: var(--color-emerald-500);
+	--burn-moderate: var(--color-amber-500);
+	--burn-high: var(--color-orange-500);
+	--burn-extreme: var(--color-red-500);
+	/* Annotation ink: readable on the card in either theme. */
+	--annotation-label: var(--primary);
 	--radius: 0.625rem;
 	--sidebar: oklch(0.985 0.001 106.423);
 	--sidebar-foreground: oklch(0.147 0.004 49.25);
@@ -98,6 +121,14 @@ html {
 	--chart-3: oklch(0.591 0.293 322.896);
 	--chart-4: oklch(0.518 0.253 323.949);
 	--chart-5: oklch(0.452 0.211 324.591);
+	/* One step lighter: the 500 level reads muddy against a dark card. */
+	--burn-free: var(--color-teal-400);
+	--burn-excellent: var(--color-cyan-400);
+	--burn-good: var(--color-emerald-400);
+	--burn-moderate: var(--color-amber-400);
+	--burn-high: var(--color-orange-400);
+	--burn-extreme: var(--color-red-400);
+	--annotation-label: var(--primary-strong);
 	--sidebar: oklch(0.216 0.006 56.043);
 	--sidebar-foreground: oklch(0.985 0.001 106.423);
 	--sidebar-primary: oklch(0.704 0.14 182.503);
@@ -124,6 +155,12 @@ html {
 	--color-chart-3: var(--chart-3);
 	--color-chart-2: var(--chart-2);
 	--color-chart-1: var(--chart-1);
+	--color-burn-free: var(--burn-free);
+	--color-burn-excellent: var(--burn-excellent);
+	--color-burn-good: var(--burn-good);
+	--color-burn-moderate: var(--burn-moderate);
+	--color-burn-high: var(--burn-high);
+	--color-burn-extreme: var(--burn-extreme);
 	--color-ring: var(--ring);
 	--color-input: var(--input);
 	--color-border: var(--border);
