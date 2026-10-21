@@ -18,6 +18,14 @@ import type {
 	ModelQuota,
 	BurnDetails
 } from '$lib/types/models';
+import type { ModelsDevEntry } from '$lib/server/models-dev';
+import {
+	extractCanonicalId,
+	extractKnowledgeCutoff,
+	extractMaxOutputTokens,
+	extractModelsDevStatus,
+	extractReasoningEfforts
+} from '$lib/server/models-dev';
 import { goEndpointType, goEndpointUrl, goIdToName } from './opencode-go';
 import { inferPricing } from './pricing';
 import { estimateQuota, DEFAULT_QUOTA_INPUTS } from './quota';
@@ -93,11 +101,16 @@ export function inferModel(
 	docsPricing?: Record<string, ModelPricing>,
 	lsModel?: LlmStatsModel | null,
 	frontierCandidates: FrontierCandidate[] = [],
-	quota: QuotaContext = DEFAULT_QUOTA_CONTEXT
+	quota: QuotaContext = DEFAULT_QUOTA_CONTEXT,
+	mdEntry: ModelsDevEntry | null = null
 ): GoModel {
-	const name = lsModel && lsModel.id === goId ? lsModel.name : goIdToName(goId);
-	// Open-weight is triangulated across sources — see inferOpenWeight().
-	const openWeight = inferOpenWeight(goId, mgModel, lsModel);
+	// Display name: models.dev publishes the real brand name ("GPT-5.6
+	// Luna"); goIdToName() would render "Gpt 5.6 luna". Fall back to the
+	// heuristic when models.dev is silent.
+	const name = mdEntry?.name ?? (lsModel?.id === goId ? lsModel.name : goIdToName(goId));
+	// Open-weight is authoritative from models.dev when present, otherwise
+	// triangulated across the other sources — see inferOpenWeight().
+	const openWeight = inferOpenWeight(goId, mgModel, lsModel, mdEntry?.open_weights);
 	const pricing = inferPricing(goId, mgModel, docsPricing);
 	// OpenCode's published usage-limit request counts are the ground truth for
 	// how fast a model burns through the Go quota — prefer them over a
@@ -157,6 +170,14 @@ export function inferModel(
 		endpointUrl: goEndpointUrl(goId),
 		modelgrepId: mgModel?.id ?? null,
 		llmStatsId: lsModel?.id ?? null,
+		// models.dev enrichment (advisory); null means "models.dev has no
+		// entry for this model".
+		displayName: mdEntry?.name ?? null,
+		maxOutputTokens: extractMaxOutputTokens(mdEntry),
+		reasoningEfforts: extractReasoningEfforts(mdEntry),
+		knowledgeCutoff: extractKnowledgeCutoff(mdEntry),
+		canonicalId: extractCanonicalId(mdEntry),
+		modelsDevStatus: extractModelsDevStatus(mdEntry),
 		fetchedAt: Date.now()
 	};
 }
@@ -285,8 +306,18 @@ function inferProvider(goId: string): string {
 function inferOpenWeight(
 	goId: string,
 	mgModel: ModelgrepModelData | null,
-	lsModel: LlmStatsModel | null | undefined
+	lsModel: LlmStatsModel | null | undefined,
+	mdOpenWeight?: boolean
 ): boolean {
+	// models.dev is FIRST-PARTY OpenCode data and is authoritative about
+	// open weights. It wins over the triangulation below.
+	//
+	// This corrects a real error: the `qwen` family allowlist marks
+	// qwen3.8-max, qwen3.8-flash and qwen3.7-plus as open, but models.dev
+	// says all three are closed — which matters, because inferMigrationHints()
+	// only offers "replaces" hints for open-weight models.
+	if (mdOpenWeight !== undefined) return mdOpenWeight;
+
 	// No llm-stats counterpart → nothing to contradict. The Go API only serves
 	// open alternatives in that case, so an unmatched model counts as open.
 	if (!lsModel) return true;

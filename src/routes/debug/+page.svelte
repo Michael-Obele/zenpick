@@ -9,7 +9,6 @@
 		DEBUG_FORMATS,
 		DEBUG_SECTIONS,
 		debugSearchSchema,
-		sectionLabel,
 		type DebugFormat,
 		type DebugSection
 	} from '$lib/debug/sections';
@@ -22,6 +21,9 @@
 	import MatchingReport from '$lib/components/debug/MatchingReport.svelte';
 	import MigrationReport from '$lib/components/debug/MigrationReport.svelte';
 	import CatalogCoverage from '$lib/components/debug/CatalogCoverage.svelte';
+	import LifecycleReport from '$lib/components/debug/LifecycleReport.svelte';
+	import DebugSectionNav from '$lib/components/debug/DebugSectionNav.svelte';
+	import DebugExportPanel from '$lib/components/debug/DebugExportPanel.svelte';
 	import CompareLogic from '$lib/components/debug/CompareLogic.svelte';
 	import TagReport from '$lib/components/debug/TagReport.svelte';
 	import ScenarioBreakdown from '$lib/components/debug/ScenarioBreakdown.svelte';
@@ -31,7 +33,10 @@
 	let { data }: { data: PageData } = $props();
 
 	// URL is the source of truth for the active tab and output format.
-	const params = useSearchParams(debugSearchSchema, { pushHistory: true, noScroll: true });
+	const params = useSearchParams(debugSearchSchema, {
+		pushHistory: true,
+		noScroll: true
+	});
 
 	/**
 	 * SSR-safe view state. `data` is validated in the load function (which
@@ -62,7 +67,9 @@
 			: exportSection(data.section as DebugSection, data.format as DebugFormat, {
 					models: data.models,
 					frontierSnapshot: data.frontierSnapshot,
-					catalogAudit: data.catalogAudit
+					catalogAudit: data.catalogAudit,
+					lifecycle: data.lifecycle,
+					benchmarks: data.benchmarks
 				})
 	);
 
@@ -70,7 +77,9 @@
 		(): [DebugSection, DebugFormat, number] => [section, format, revision],
 		async ([s, f], _prev, { signal }) => {
 			if (f === 'html') return '';
-			const res = await fetch(`/debug/export?section=${s}&format=${f}`, { signal });
+			const res = await fetch(`/debug/export?section=${s}&format=${f}`, {
+				signal
+			});
 			if (!res.ok) throw new Error(`Export failed (${res.status})`);
 			return await res.text();
 		},
@@ -149,25 +158,13 @@
 		<p class="mb-4 text-xs text-muted-foreground">
 			Refreshed {refreshRes.current.models} models at {new Date(
 				refreshRes.current.at
-			).toLocaleTimeString()}.
+			).toLocaleTimeString()}. The models.dev history ledger is unchanged by this refresh — rebuild
+			it with
+			<code>POST /api/revalidate?scope=lifecycle</code>.
 		</p>
 	{/if}
 
-	<!-- Section nav -->
-	<div class="mb-6 flex flex-wrap gap-1.5">
-		{#each DEBUG_SECTIONS as s (s.id)}
-			<button
-				class="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition-all {section ===
-				s.id
-					? 'border-primary/40 bg-primary/10 text-primary'
-					: 'border-border bg-card text-muted-foreground hover:text-foreground'}"
-				aria-current={section === s.id ? 'page' : undefined}
-				onclick={() => (params.section = s.id)}
-			>
-				{s.label}
-			</button>
-		{/each}
-	</div>
+	<DebugSectionNav {section} onselect={(id) => (params.section = id)} />
 
 	<!-- Machine-readable links (for LLM agents and curl) -->
 	<p class="mb-4 text-xs text-muted-foreground">
@@ -203,6 +200,8 @@
 			{:else if section === 'matching'}
 				<CatalogCoverage audit={data.catalogAudit} />
 				<MatchingReport models={data.models} />
+			{:else if section === 'lifecycle'}
+				<LifecycleReport lifecycle={data.lifecycle} models={data.models} />
 			{:else if section === 'migration'}
 				<MigrationReport models={data.models} />
 			{:else if section === 'compare'}
@@ -220,23 +219,14 @@
 			{/if}
 		</div>
 	{:else}
-		<div class="rounded-xl border border-border bg-card">
-			<div class="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
-				<span class="text-xs text-muted-foreground">
-					{sectionLabel(section)} · {FORMAT_LABELS[format]}
-					{#if exportRes.loading}<span> · loading…</span>{/if}
-					{#if exportRes.error}<span class="text-red-500"> · {exportRes.error.message}</span>{/if}
-				</span>
-				<button
-					class="text-xs text-muted-foreground transition-colors hover:text-foreground"
-					onclick={() => exportRes.refetch()}
-				>
-					Reload
-				</button>
-			</div>
-			<pre
-				class="max-h-[70vh] overflow-auto p-4 text-xs leading-relaxed whitespace-pre-wrap text-foreground"
-				aria-label="{sectionLabel(section)} {FORMAT_LABELS[format]}">{exportRes.current ?? ''}</pre>
-		</div>
+		<DebugExportPanel
+			{section}
+			{format}
+			label={FORMAT_LABELS[format]}
+			text={exportRes.current ?? ''}
+			loading={exportRes.loading}
+			error={exportRes.error?.message ?? null}
+			onreload={() => exportRes.refetch()}
+		/>
 	{/if}
 </div>

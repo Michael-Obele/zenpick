@@ -48,6 +48,20 @@
 			items: audit.apiNotListed,
 			empty: 'None.',
 			tone: 'info'
+		},
+		{
+			title: 'models.dev publishes for Go but the docs dropped',
+			note: 'Retirement candidates: models.dev still tracks these, so they pair with a “killed” lifecycle row.',
+			items: audit.modelsDevOnly,
+			empty: 'None.',
+			tone: 'info'
+		},
+		{
+			title: 'On the docs page but not published by models.dev for Go',
+			note: 'models.dev lags the docs for these — often a model published only under the opencode (Zen) provider so far.',
+			items: audit.modelsDevMissing,
+			empty: 'None.',
+			tone: 'info'
 		}
 	]);
 
@@ -120,7 +134,9 @@
 				{:else}
 					<ul class="mt-0.5 space-y-0.5">
 						{#each section.items as item (item)}
-							<li class="font-mono text-xs {toneClass(section.tone)}">{item}</li>
+							<li class="font-mono text-xs {toneClass(section.tone)}">
+								{item}
+							</li>
 						{/each}
 					</ul>
 				{/if}

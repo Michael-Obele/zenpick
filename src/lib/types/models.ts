@@ -1,5 +1,19 @@
 // OpenCode Go model with enriched metadata
 
+/**
+ * The models.dev publication status vocabulary — the ONE definition.
+ *
+ * `models-dev.ts` derives its `KNOWN_STATUSES` list from this union, so adding
+ * a status here is the single edit that teaches the parser about it. The field
+ * is consumer-facing (`llms.txt`'s Status column, `DeprecatedBadge`), and
+ * `null` means "models.dev published no status, or one we do not recognise" —
+ * never `'active'`, which would erase that distinction.
+ */
+export type ModelsDevStatus = 'active' | 'deprecated';
+
+/** What a `GoModel` carries: a known status, or `null` for "no/unknown status". */
+export type GoModelModelsDevStatus = ModelsDevStatus | null;
+
 export interface GoModel {
 	/** Model ID for OpenCode config (e.g. "opencode-go/deepseek-v4-pro") */
 	id: string;
@@ -69,6 +83,32 @@ export interface GoModel {
 
 	/** LLM Stats model ID (slug used in llm-stats.com URLs), null if unmatched */
 	llmStatsId: string | null;
+
+	/**
+	 * models.dev enrichment (advisory). models.dev is first-party OpenCode data:
+	 * the `providers/opencode-go/models/*.toml` files are authored by the
+	 * OpenCode core team, so these fields supplement — never replace — the
+	 * modelgrep/llm-stats/docs sources above. Every field is `null` when
+	 * models.dev has no entry for the model.
+	 */
+
+	/** Real display name from models.dev (e.g. "GPT-5.6 Luna"). */
+	displayName: string | null;
+
+	/** Output-token cap. Null when models.dev publishes none. */
+	maxOutputTokens: number | null;
+
+	/** Reasoning-effort levels (e.g. ["minimal","low","high"]). */
+	reasoningEfforts: string[] | null;
+
+	/** Training-cutoff date from models.dev. */
+	knowledgeCutoff: string | null;
+
+	/** models.dev's canonical model id (join key into the canonical layer). */
+	canonicalId: string | null;
+
+	/** models.dev publication status: "active", "deprecated", or null. */
+	modelsDevStatus: GoModelModelsDevStatus;
 
 	/** Last time this data was fetched */
 	fetchedAt: number;
@@ -151,6 +191,16 @@ export interface CatalogAudit {
 	listedButUnpriced: string[];
 	/** INFO — returned by the API but not endorsed by the docs (usually deprecated on purpose). */
 	apiNotListed: string[];
+	/**
+	 * The ids the docs usage-limits table endorses. Carried on the audit so a
+	 * LATER cross-source comparison (models.dev) can run at read time without
+	 * re-parsing the docs payload.
+	 */
+	officialModelIds: string[];
+	/** NOTE — models.dev publishes for Go but the docs page no longer lists. */
+	modelsDevOnly: string[];
+	/** NOTE — the docs page lists but models.dev has not published for Go. */
+	modelsDevMissing: string[];
 }
 
 /** Detailed burn efficiency */

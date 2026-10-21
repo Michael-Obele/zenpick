@@ -158,10 +158,14 @@ reason = "Debug pricing matrix cells (cognitive-only trigger)"
 [[health.thresholdOverrides]]
 files = ["src/routes/debug/+page.svelte"]
 functions = ["<template>"]
-maxCyclomatic = 25
-maxCognitive = 31
-maxCrap = 220.0
-reason = "Debug shell: 11-way tab switch + format/refresh controls; pinned at current score"
+# Re-measured after the lifecycle section landed (12-way) and the nav / export
+# panel moved to DebugSectionNav / DebugExportPanel. What remains here is the
+# 12-way section switch plus the format toggle, refresh button and its
+# refreshed/error banners — scores 23 / 24 / 6.5, pinned exactly.
+maxCyclomatic = 23
+maxCognitive = 24
+maxCrap = 6.5
+reason = "Debug section switch (12 pages of panels) + format toggle, refresh control and its status/error banners; pinned at current score"
 
 [[health.thresholdOverrides]]
 files = ["src/lib/components/debug/CompareLogic.svelte"]

@@ -1,5 +1,7 @@
 import type { CatalogAudit, FrontierSnapshot, GoModel, ModelQuota } from '$lib/types/models';
+import type { CanonicalBenchmarkRow, ModelLifecycleReport } from '$lib/server/models';
 import { benchmarkSourceNote, benchmarkToPercent } from '$lib/compare-defaults';
+import { MIN_COVERAGE } from '$lib/canonical-benchmarks';
 import type { DebugFormat, DebugSection } from './sections';
 
 /**
@@ -18,6 +20,10 @@ export interface DebugDataset {
 	models: GoModel[];
 	frontierSnapshot: FrontierSnapshot;
 	catalogAudit: CatalogAudit;
+	/** The Go lifecycle ledger — when each model was live (advisory). */
+	lifecycle: ModelLifecycleReport;
+	/** Canonical benchmarks from models.dev, over the live Go universe. */
+	benchmarks: CanonicalBenchmarkRow[];
 }
 
 const DASH = '—';
@@ -175,6 +181,12 @@ const MARKDOWN: Record<DebugSection, (d: DebugDataset) => string> = {
 			`### In the API but not on the docs page (${a.apiNotListed.length})`,
 			bullets(a.apiNotListed),
 			'',
+			`### models.dev publishes for Go but the docs dropped (${a.modelsDevOnly.length})`,
+			bullets(a.modelsDevOnly),
+			'',
+			`### On the docs page but not published by models.dev for Go (${a.modelsDevMissing.length})`,
+			bullets(a.modelsDevMissing),
+			'',
 			'### Source matching',
 			mdTable(
 				['Go ID', 'modelgrep', 'llm-stats', 'Coding src', 'Reasoning src', 'Math src'],
@@ -202,6 +214,45 @@ const MARKDOWN: Record<DebugSection, (d: DebugDataset) => string> = {
 				m.migrationHints.map((h) => `${h.model} (${h.reason})`).join('; ') || DASH
 			])
 		)}`,
+
+	lifecycle: (d) =>
+		[
+			'## Model Lifecycle',
+			'',
+			'When each model was live on OpenCode Go, reconstructed from models.dev git history. A model',
+			'MISSING from the table below means its history could not be read — state unknown, not',
+			'`never` (`never` means the model was never on Go at all).',
+			'',
+			`Ledger built: ${d.lifecycle.builtAt == null ? 'unknown (empty fallback)' : new Date(d.lifecycle.builtAt).toISOString()}`,
+			'',
+			mdTable(
+				['Model', 'Status', 'First seen', 'Killed', 'Last touched'],
+				d.lifecycle.rows.map((r) => [
+					r.id,
+					r.status,
+					r.firstSeen ?? DASH,
+					r.killedOn ?? DASH,
+					r.lastTouched ?? DASH
+				])
+			),
+			'',
+			'### Canonical benchmarks (models.dev)',
+			'',
+			`Scores are RAW: Elo and rating benchmarks are not on a 0-100 scale. Comparable marks the`,
+			`pairs reported by ${MIN_COVERAGE}+ live Go models; the rest are single-model noise.`,
+			'',
+			mdTable(
+				['Model', 'Benchmark', 'Metric', 'Score', 'Coverage', 'Comparable'],
+				d.benchmarks.map((b) => [
+					b.id,
+					b.name,
+					b.metric ?? DASH,
+					b.score,
+					b.coverage,
+					b.comparable ? 'yes' : 'no'
+				])
+			)
+		].join('\n'),
 
 	compare: (d) => {
 		const cutoff = new Date(d.frontierSnapshot.cutoff).toISOString().slice(0, 10);
@@ -318,6 +369,12 @@ const JSON_PAYLOAD: Record<DebugSection, (d: DebugDataset) => unknown> = {
 			benchmarks: m.benchmarks,
 			migrationHints: m.migrationHints
 		})),
+	lifecycle: (d) => ({
+		lifecycle: d.lifecycle.rows,
+		canonicalByModel: d.lifecycle.canonicalByModel,
+		benchmarks: d.benchmarks,
+		builtAt: d.lifecycle.builtAt
+	}),
 	compare: (d) => ({
 		cutoff: d.frontierSnapshot.cutoff,
 		models: d.models.map((m) => ({
