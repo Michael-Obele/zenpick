@@ -8,7 +8,8 @@ import {
 	parseGoDocsTables,
 	parsePrice,
 	parsePricingRow,
-	parseUsageLimitsRow
+	parseUsageLimitsRow,
+	withModelsDevDrift
 } from './go-docs';
 
 describe('normalizeName', () => {
@@ -211,6 +212,77 @@ describe('buildCatalogAudit', () => {
 		expect(audit.pricedButUnlisted).toEqual([]);
 		expect(audit.listedButUnpriced).toEqual([]);
 		expect(audit.apiNotListed).toEqual([]);
+	});
+
+	it('carries the official ids and leaves the models.dev rows EMPTY', () => {
+		// The audit is cached inside GoDocsData for 24h, so it must never hold a
+		// models.dev snapshot — the drift is applied at READ time instead.
+		const audit = buildCatalogAudit({
+			apiIds: new Set(['a', 'b']),
+			docsRows: 2,
+			unmatchedDocsRows: [],
+			matchedGoIds: new Set(['a', 'b']),
+			pricingIds: ['a', 'b'],
+			usageIds: ['a', 'b'],
+			officialModelIds: new Set(['a', 'b'])
+		});
+
+		expect(audit.officialModelIds.sort()).toEqual(['a', 'b']);
+		expect(audit.modelsDevOnly).toEqual([]);
+		expect(audit.modelsDevMissing).toEqual([]);
+	});
+});
+
+/** The smallest audit `withModelsDevDrift` can be applied to. */
+function auditFor(officialIds: string[]) {
+	return buildCatalogAudit({
+		apiIds: new Set(officialIds),
+		docsRows: officialIds.length,
+		unmatchedDocsRows: [],
+		matchedGoIds: new Set(officialIds),
+		pricingIds: officialIds,
+		usageIds: officialIds,
+		officialModelIds: new Set(officialIds)
+	});
+}
+
+describe('withModelsDevDrift', () => {
+	it('flags a models.dev-only model as a retirement candidate', () => {
+		const audit = withModelsDevDrift(auditFor(['a', 'b']), new Set(['a', 'b', 'legacy-x']));
+
+		expect(audit.modelsDevOnly).toEqual(['legacy-x']);
+		expect(audit.modelsDevMissing).toEqual([]);
+	});
+
+	it('flags a docs model models.dev has not published for Go', () => {
+		const audit = withModelsDevDrift(auditFor(['a', 'b', 'new-model']), new Set(['a', 'b']));
+
+		expect(audit.modelsDevMissing).toEqual(['new-model']);
+		expect(audit.modelsDevOnly).toEqual([]);
+	});
+
+	it('produces two empty arrays for an empty models.dev set', () => {
+		// models.dev unreachable is NOT "every model is docs-only": the caller
+		// degrades to an empty catalog, so the docs side must not be reported as
+		// missing from a source that simply failed.
+		const empty = withModelsDevDrift(auditFor([]), new Set());
+		expect(empty.modelsDevOnly).toEqual([]);
+		expect(empty.modelsDevMissing).toEqual([]);
+	});
+
+	it('reports every docs model when models.dev is empty but the docs are not', () => {
+		const audit = withModelsDevDrift(auditFor(['a']), new Set());
+		expect(audit.modelsDevMissing).toEqual(['a']);
+	});
+
+	it('leaves the existing rows untouched', () => {
+		const base = auditFor(['a']);
+		const audit = withModelsDevDrift(base, new Set(['a', 'b']));
+
+		expect(audit.apiCount).toBe(base.apiCount);
+		expect(audit.docsRows).toBe(base.docsRows);
+		expect(audit.matchedRows).toBe(base.matchedRows);
+		expect(audit.officialModelIds).toEqual(base.officialModelIds);
 	});
 });
 /**

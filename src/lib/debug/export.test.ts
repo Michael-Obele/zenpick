@@ -54,8 +54,11 @@ function dataset(): DebugDataset {
 			unmatchedDocsRows: [],
 			pricedButUnlisted: [],
 			listedButUnpriced: ['m1'],
-			apiNotListed: ['deprecated-model']
-		}
+			apiNotListed: ['deprecated-model'],
+			officialModelIds: ['m1', 'm2'],
+			modelsDevOnly: ['legacy-x'],
+			modelsDevMissing: []
+	}
 	};
 }
 

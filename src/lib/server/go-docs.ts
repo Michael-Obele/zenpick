@@ -131,7 +131,10 @@ function emptyAudit(): CatalogAudit {
 		unmatchedDocsRows: [],
 		pricedButUnlisted: [],
 		listedButUnpriced: [],
-		apiNotListed: []
+		apiNotListed: [],
+		officialModelIds: [],
+		modelsDevOnly: [],
+		modelsDevMissing: []
 	};
 }
 
@@ -236,7 +239,32 @@ export function buildCatalogAudit(input: {
 		unmatchedDocsRows: input.unmatchedDocsRows,
 		pricedButUnlisted: input.pricingIds.filter((id) => !input.officialModelIds.has(id)),
 		listedButUnpriced: input.usageIds.filter((id) => !pricingSet.has(id)),
-		apiNotListed: [...input.apiIds].filter((id) => !input.matchedGoIds.has(id))
+		apiNotListed: [...input.apiIds].filter((id) => !input.matchedGoIds.has(id)),
+		officialModelIds: [...input.officialModelIds],
+		// Filled in at READ time by `withModelsDevDrift` — never here. This audit
+		// is cached inside `GoDocsData` for 24h, while models.dev's Go roster
+		// changes daily, so baking the ids in would serve a stale snapshot.
+		modelsDevOnly: [],
+		modelsDevMissing: []
+	};
+}
+
+/**
+ * Add the models.dev↔docs drift rows to an audit.
+ *
+ * Applied at READ time, not baked into the cached docs payload: the docs
+ * payload is cached for 24h, while models.dev's Go roster changes daily.
+ *
+ * `modelsDevIds` is the `opencode-go` provider block — the set of ids
+ * models.dev publishes FOR GO. A model in `modelsDevOnly` is a retirement
+ * candidate (models.dev still tracks it, the docs dropped it), which pairs
+ * with the lifecycle ledger's `killed` status.
+ */
+export function withModelsDevDrift(audit: CatalogAudit, modelsDevIds: Set<string>): CatalogAudit {
+	return {
+		...audit,
+		modelsDevOnly: [...modelsDevIds].filter((id) => !audit.officialModelIds.includes(id)),
+		modelsDevMissing: audit.officialModelIds.filter((id) => !modelsDevIds.has(id))
 	};
 }
 
@@ -264,6 +292,9 @@ function logCatalogAudit(audit: CatalogAudit, apiKnown: boolean): void {
 			`[go-docs] no scraped price for catalog models: ${audit.listedButUnpriced.join(', ')}`
 		);
 	}
+	// models.dev drift is NOT logged here: the rows are filled in at read time
+	// (see `withModelsDevDrift`), so this cached audit always carries empty
+	// arrays and logging them would report a permanent false all-clear.
 }
 /**
  * Extract text content from a table cell, preferring <strong> text when present.

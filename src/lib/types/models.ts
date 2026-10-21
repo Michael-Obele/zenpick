@@ -191,6 +191,16 @@ export interface CatalogAudit {
 	listedButUnpriced: string[];
 	/** INFO — returned by the API but not endorsed by the docs (usually deprecated on purpose). */
 	apiNotListed: string[];
+	/**
+	 * The ids the docs usage-limits table endorses. Carried on the audit so a
+	 * LATER cross-source comparison (models.dev) can run at read time without
+	 * re-parsing the docs payload.
+	 */
+	officialModelIds: string[];
+	/** NOTE — models.dev publishes for Go but the docs page no longer lists. */
+	modelsDevOnly: string[];
+	/** NOTE — the docs page lists but models.dev has not published for Go. */
+	modelsDevMissing: string[];
 }
 
 /** Detailed burn efficiency */
