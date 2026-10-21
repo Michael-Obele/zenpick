@@ -81,6 +81,12 @@ export function makeGoModel(partial: Partial<GoModel> = {}): GoModel {
 		endpointUrl: 'https://opencode.ai/zen/go/v1',
 		modelgrepId: null,
 		llmStatsId: null,
+		displayName: null,
+		maxOutputTokens: null,
+		reasoningEfforts: null,
+		knowledgeCutoff: null,
+		canonicalId: null,
+		modelsDevStatus: null,
 		fetchedAt: 0,
 		...partial
 	};

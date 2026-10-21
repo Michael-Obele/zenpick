@@ -23,6 +23,12 @@ import {
 	FRONTIER_MAX_AGE_DAYS
 } from '$lib/server/llm-stats';
 import { inferModel, inferMigrationHints } from '$lib/server/inference';
+import {
+	fetchModelsDevCatalog,
+	emptyModelsDevCatalog,
+	isModelsDevDegraded,
+	resolveModelsDevEntry
+} from '$lib/server/models-dev';
 import { inferBurnDetails, deriveBurnScale } from '$lib/server/burn';
 import { blendBenchmarks } from '$lib/server/blend';
 import type {
@@ -100,7 +106,7 @@ export async function revalidateModels(): Promise<GoModel[]> {
 }
 
 async function refreshCache(): Promise<GoModel[]> {
-	const [goModels, mgResult, docsData, lsModels] = await Promise.all([
+	const [goModels, mgResult, docsData, lsModels, mdCatalog] = await Promise.all([
 		fetchGoModels(),
 		fetchModelgrepModels().catch((e: unknown) => {
 			const msg = e instanceof Error ? e.message : String(e);
@@ -116,6 +122,17 @@ async function refreshCache(): Promise<GoModel[]> {
 			const msg = e instanceof Error ? e.message : String(e);
 			console.error('[refreshCache] llm-stats failed:', msg);
 			return [] as LlmStatsModel[];
+		}),
+		// models.dev is ADVISORY: it enriches fields and corrects open-weight
+		// verdicts, but never changes which models are shown. A failure here
+		// must not break the catalog, so it degrades to an empty catalog and
+		// every model falls back to the existing heuristics. (`fetchModelsDevCatalog`
+		// already serves the last known-good catalog on a fetch failure — this
+		// catch only fires when there is nothing cached yet.)
+		fetchModelsDevCatalog().catch((e: unknown) => {
+			const msg = e instanceof Error ? e.message : String(e);
+			console.error('[refreshCache] models.dev failed:', msg);
+			return emptyModelsDevCatalog();
 		})
 	]);
 
@@ -157,8 +174,15 @@ async function refreshCache(): Promise<GoModel[]> {
 	const officialModels =
 		docsOfficialIds.size > 0 ? goModels.filter((gm) => docsOfficialIds.has(gm.id)) : goModels;
 
+	// Count what enrichment ACTUALLY used, not just the `opencode-go` block: a
+	// live Go model models.dev has not published under that provider is resolved
+	// from the Zen block instead, so the two counts together describe the real
+	// contribution (they can overlap, so the sum is an upper bound).
+	// `modelsDevDegraded` means models.dev contributed NOTHING — both blocks
+	// empty — and the catalog gets the short TTL below.
+	const degraded = isModelsDevDegraded(mdCatalog);
 	console.log(
-		`[refreshCache] goModels=${goModels.length} official=${officialModels.length} modelgrepModels=${mgResult.byId.size} docsModels=${Object.keys(docsPricing).length} llmStats=${lsModels.length} frontier=${frontierLs.length}`
+		`[refreshCache] goModels=${goModels.length} official=${officialModels.length} modelgrepModels=${mgResult.byId.size} docsModels=${Object.keys(docsPricing).length} llmStats=${lsModels.length} frontier=${frontierLs.length} modelsDevGo=${mdCatalog.byId.size} modelsDevZen=${mdCatalog.zenById.size} modelsDevDegraded=${degraded}`
 	);
 
 	// Pre-match each Go model to its llm-stats counterpart against the FULL
@@ -189,15 +213,35 @@ async function refreshCache(): Promise<GoModel[]> {
 		// Get pre-matched llm-stats model
 		const lsModel = lsMatchCache.get(gm.id) ?? null;
 
-		return inferModel(gm.id, mgModel, docsPricing, lsModel, frontierCandidates, {
-			go: { usage: docsUsage.go[gm.id] ?? null, scale: goScale },
-			plus: hasPlus ? { usage: docsUsage.plus[gm.id] ?? null, scale: plusScale } : null
-		});
+		return inferModel(
+			gm.id,
+			mgModel,
+			docsPricing,
+			lsModel,
+			frontierCandidates,
+			{
+				go: { usage: docsUsage.go[gm.id] ?? null, scale: goScale },
+				plus: hasPlus ? { usage: docsUsage.plus[gm.id] ?? null, scale: plusScale } : null
+			},
+			resolveModelsDevEntry(mdCatalog, gm.id)
+		);
 	});
 
-	cacheSet(CACHE_KEY, enriched, MODELS_TTL);
+	// A degraded catalog must not be pinned for the full 6h — a short TTL makes
+	// the next request re-attempt the fetch, so the enrichment (and the
+	// open-weight correction) self-heals quickly. A Zen-only catalog is NOT
+	// degraded: its entries resolve through the fallback.
+	cacheSet(CACHE_KEY, enriched, degraded ? DEGRADED_MODELS_TTL : MODELS_TTL);
 	return enriched;
 }
+
+/**
+ * TTL for a model-derived entry that got NO models.dev contribution. Short so
+ * a cold-start models.dev failure self-heals on the next request instead of
+ * pinning un-enriched data (and, for the ledger, a misclassified one) for the
+ * full TTL. Used by the model catalog and the lifecycle/benchmark caches.
+ */
+const DEGRADED_MODELS_TTL = 15 * 60 * 1000;
 
 /**
  * The cache key is DERIVED from the enrichment pipeline's source code — not a
