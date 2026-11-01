@@ -4,7 +4,7 @@
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/91fb6716-5f3e-42ad-87cc-58d7fcc6b1ec/deploy-status)](https://app.netlify.com/projects/zenpick/deploys)
 
-[ZenPick](https://zp.svelte-apps.me/) compares every [OpenCode Go](https://opencode.ai/go) model side-by-side with live benchmarks, algorithmic fit scores, and quota burn estimates. One $10/month subscription, 13+ models — pick the one that matches your task and your budget.
+[ZenPick](https://zp.svelte-apps.me/) compares OpenCode Go models and also shows Zed Pro and GitHub Copilot Pro options. It lets you pick a main agent and cheaper sub-agents, inspect plan-scoped prices, and compare plan models, so you can find the pick that matches your task and your budget.
 
 👉 [zp.svelte-apps.me](https://zp.svelte-apps.me/) · [github.com/Michael-Obele/zenpick](https://github.com/Michael-Obele/zenpick)
 
@@ -26,12 +26,27 @@ ZenPick answers three questions:
 
 ## Features
 
-- **🎯 Scenario filters** — Every model gets a 0–100 fit score per scenario. No empty tables, no brittle tag matching.
-- **📊 Sortable table** — Compare by benchmark scores, pricing, quota requests, or scenario fit.
-- **🔥 Thermal burn badges** — ❄️ Quota-friendly (cyan) · 🌡️ Moderate (amber) · 🔥 Burns fast (red)
-- **🖥️ Detail drawer** — Per-model deep dive: pricing, quota estimates, benchmark bars, migration hints, one-tap copy model ID.
-- **🧮 Quota calculator** — Slider to estimate token usage and cost-per-request against your Go subscription.
-- **⚡ Live data** — Fetches from [modelgrep](https://modelgrep.com) (OpenRouter pricing + Artificial Analysis benchmarks) and [OpenCode Go](https://opencode.ai/v2/docs/console/go). Cached for 6 hours with stale-while-revalidate.
+- **🎯 Scenario filters**: OpenCode Go models get a 0 to 100 fit score per scenario. No empty tables, no brittle tag matching.
+- **📊 Plan-scoped Compare Models table**: One row per model, with filters for All plans, OpenCode Go, Zed Pro and Copilot Pro (`?plan=go|zed|copilot`). A specific plan shows that plan's price; All plans shows the cheapest input price and the plan badges.
+- **🔎 Search across plans**: Search matches model names and plan names, so `zed` or `copilot` finds those rows.
+- **🗂️ Detail drawer for every row**: Go rows keep the full model panel with quota and burn detail. Zed and Copilot rows open a plan drawer with that plan's prices, intelligence, coding score and context, plus links to modelgrep and llm-stats.
+- **🔥 Thermal burn badges**: Quota-friendly (cyan), moderate (amber), burns fast (red). Burn, quota windows and the price versus performance scatter graph stay OpenCode Go only, and non-Go rows show a dash for those cells.
+- **🧩 Agent stack**: Choose a main agent and cheaper sub-agents for OpenCode Go, Zed Pro or GitHub Copilot Pro. The panel shows cost per 100 requests, the saving against an all-main setup, and the monthly requests the pair covers. Nothing joins the comparison until you click **Compare this pair**.
+- **🧭 Compact compare workspace**: `/compare` has a plan-filtered searchable picker, a single task-focus row and a collapsed **Build an agent pair** panel. A pair link carries both keys (`?models=plan:id,plan:id`), and a mixed selection renders the cross-plan comparison table instead of the Go-only grid.
+- **🧮 Quota calculator (OpenCode Go only)**: A slider estimates token usage and cost per request against your Go subscription. Zed Pro and Copilot Pro use a monthly allowance, so those plans show a short scope panel that points you to the agent stack instead.
+- **⚡ Live data**: Fetches from [modelgrep](https://modelgrep.com) (OpenRouter pricing + Artificial Analysis benchmarks) and [OpenCode Go](https://opencode.ai/v2/docs/console/go). Cached for 6 hours with stale-while-revalidate.
+
+---
+
+## Plan data
+
+The static plan facts for Zed Pro and GitHub Copilot Pro were checked on 2026-11-01 against the vendor pages:
+
+- [Zed hosted models](https://zed.dev/docs/account/zed-hosted-models)
+- [GitHub Copilot supported models](https://docs.github.com/en/copilot/reference/ai-models/supported-models)
+- [OpenCode Go](https://opencode.ai/v2/docs/console/go)
+
+Prices and allowances change. Treat the numbers in the app as a snapshot and check the vendor page before you rely on them.
 
 ---
 
@@ -43,7 +58,7 @@ ZenPick answers three questions:
 | Styling    | [Tailwind CSS v4](https://tailwindcss.com)                                  |
 | Components | [shadcn-svelte](https://shadcn-svelte.com) + [Bits UI](https://bits-ui.com) |
 | Icons      | [Lucide](https://lucide.dev)                                                |
-| Data       | modelgrep API + OpenCode Go `/models` endpoint                              |
+| Data       | modelgrep API + OpenCode Go `/models` endpoint + static plan data           |
 | Runtime    | [Bun](https://bun.sh)                                                       |
 | Deployment | [Netlify](https://netlify.com)                                              |
 
@@ -81,18 +96,36 @@ src/
       modelgrep.ts            — modelgrep API client
       opencode-go.ts          — OpenCode Go /models endpoint
       inference.ts            — Algorithmic tag & scenario scoring
+      stack.ts                — Plan data loader with single-flight cache
+      catalog.ts              — Merges the Go catalog and static plans into rows
     cache.ts                  — In-memory TTL cache (6h)
     burn.ts                   — Burn rate tier calculations
+    catalog.ts                — Cross-plan catalog rows, plan filters and search
+    compare-selection.ts      — plan:id compare keys, parsing and resolution
+    stack/
+      plans.ts                — OpenCode Go, Zed Pro and Copilot Pro plan data
+      logic.ts                — Stack resolution, cost and recommendations
+      build.ts                — Builds plans from the catalog and modelgrep
+      search.ts               — Shared stack URL state
     remote/
-      models.remote.ts        — getModels() query
+      models.remote.ts        — getModels(), getStackPlans() and getCatalogRows()
     components/
-      FilterBar.svelte        — Scenario pills + search
-      ModelTable.svelte       — Sortable/filterable model table
-      ModelDrawer.svelte      — Detail panel with migration hints
-      QuotaCalculator.svelte  — Token → quota estimator
+      FilterBar.svelte        — Scenario pills, search and plan filter
+      ModelTable.svelte       — Plan-aware sortable model table
+      ModelDrawer.svelte      — Go detail panel with migration hints
+      PlanModelDrawer.svelte  — Detail drawer for Zed and Copilot rows
+      PlanBadges.svelte       — Plan badges for a catalog row
+      PlanCompare.svelte      — Cross-plan comparison table
+      QuotaCalculator.svelte  — Token → quota estimator (OpenCode Go)
+      AgentStack/
+        AgentStack.svelte     — Main-agent and sub-agent picker
+        AgentPairBuilder.svelte — Collapsed pair builder for /compare
+        RolePicker.svelte     — Main and sub role pickers
+        PlanStrip.svelte      — Plan comparison strip
       ui/                     — shadcn-svelte primitives
   routes/
-    +page.svelte              — Single-page app
+    +page.svelte              — Home: agent stack, calculator, plan-aware table
+    compare/+page.svelte      — Compact compare workspace
     layout.css                — Global styles
 static/
   screenshot.png              — README screenshot
