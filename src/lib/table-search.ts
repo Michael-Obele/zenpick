@@ -2,6 +2,8 @@ import * as v from 'valibot';
 import type { ReturnUseSearchParams } from 'runed/kit';
 import { NEEDS } from '$lib/needs';
 import { recommendationSearchSchema } from '$lib/recommendation-search';
+import { PLAN_IDS, type PlanId } from '$lib/stack/plans';
+import { stackSearchSchema } from '$lib/stack/search';
 
 /**
  * Model-table URL state (deep links into the catalog)
@@ -15,6 +17,7 @@ import { recommendationSearchSchema } from '$lib/recommendation-search';
  * Keys:
  *   q    — free-text search (model name, provider, tags, capabilities)
  *   need — a NEEDS leaderboard slug, e.g. `cheapest`, `coding`, `vision`
+ *   plan — a plan id, or `''` for every plan (`go`, `zed`, `copilot`)
  *
  * Invalid or missing values fall back to the defaults, and default values are
  * omitted from the URL (`showDefaults` is off), so clearing the search leaves
@@ -38,20 +41,26 @@ const needSchema = v.union([v.literal(''), v.picklist(NEED_SLUGS)]);
 
 export const tableSearchSchema = v.object({
 	q: v.optional(v.fallback(v.string(), ''), ''),
-	need: v.optional(v.fallback(needSchema, ''), '')
+	need: v.optional(v.fallback(needSchema, ''), ''),
+	plan: v.optional(
+		v.fallback(v.union([v.literal(''), v.picklist(PLAN_IDS as [PlanId, ...PlanId[]])]), ''),
+		''
+	)
 });
 
 export type TableSearchParams = v.InferOutput<typeof tableSearchSchema>;
 
 export const DEFAULT_TABLE_PARAMS: TableSearchParams = {
 	q: '',
-	need: ''
+	need: '',
+	plan: ''
 };
 
 /** Everything the homepage keeps in the URL: the table's keys + the calculator's. */
 export const homeSearchSchema = v.object({
 	...tableSearchSchema.entries,
-	...recommendationSearchSchema.entries
+	...recommendationSearchSchema.entries,
+	...stackSearchSchema.entries
 });
 
 export type HomeSearchParams = v.InferOutput<typeof homeSearchSchema>;

@@ -68,5 +68,13 @@ export function cacheClear(key: string): boolean {
 /** Default TTL for model data: 6 hours. */
 export const MODELS_TTL = 6 * 60 * 60 * 1000;
 
+/**
+ * Short TTL for a build that ran without modelgrep data: 15 minutes.
+ *
+ * Used by the stack plans and the catalog rows: pinning a modelgrep-less build
+ * for `MODELS_TTL` would hold null intelligence/coding scores for 6 hours.
+ */
+export const DEGRADED_STACK_TTL = 15 * 60 * 1000;
+
 /** Default TTL for Go docs pricing: 24 hours (docs change infrequently). */
 export const GO_DOCS_PRICING_TTL = 24 * 60 * 60 * 1000;

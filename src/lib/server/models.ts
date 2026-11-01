@@ -616,7 +616,7 @@ const DEGRADED_MODELS_TTL = 15 * 60 * 1000;
  * automatic — the key stops matching when the computation that produced the
  * data changes.
  */
-function fnv1a(input: string): string {
+export function fnv1a(input: string): string {
 	let h = 0x811c9dc5;
 	for (let i = 0; i < input.length; i++) {
 		h ^= input.charCodeAt(i);

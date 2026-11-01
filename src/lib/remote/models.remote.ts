@@ -5,6 +5,8 @@ import {
 	loadCatalogAudit,
 	loadModelLifecycle
 } from '$lib/server/models';
+import { loadStackPlans } from '$lib/server/stack';
+import { loadCatalogRows } from '$lib/server/catalog';
 
 /**
  * Fetch all enriched Go models.
@@ -16,6 +18,12 @@ import {
  * `loadModels` / `revalidateModels` functions.
  */
 export const getModels = query(() => loadModels());
+
+/** Fetch plan-aware main-agent / sub-agent options and pricing. */
+export const getStackPlans = query(() => loadStackPlans());
+
+/** Fetch one row per model across every plan (Go, Zed Pro, Copilot Pro). */
+export const getCatalogRows = query(() => loadCatalogRows());
 
 /**
  * Fetch the frontier comparison snapshot (closed-source candidates + the

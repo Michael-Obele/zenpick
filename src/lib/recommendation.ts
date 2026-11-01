@@ -131,7 +131,11 @@ function clamp(value: number, min: number, max: number): number {
  * split as the homepage calculator. Cached reads are applied when the
  * model advertises a cached-read rate. Returns `null` for unusable pricing.
  */
-function costPerRequest(pricing: ModelPricing, tokens: number, cachedPct: number): number | null {
+export function costPerRequest(
+	pricing: Pick<ModelPricing, 'inputPricePerM' | 'outputPricePerM' | 'cachedReadPerM'>,
+	tokens: number,
+	cachedPct: number
+): number | null {
 	if (pricing.inputPricePerM == null || pricing.outputPricePerM == null) return null;
 	if (tokens <= 0) return null;
 	const inputTokens = tokens * 0.7;

@@ -1,4 +1,5 @@
 import * as v from 'valibot';
+import { stackSearchSchema } from '$lib/stack/search';
 
 /**
  * Compare-page URL state (shareable deep links)
@@ -22,14 +23,19 @@ const compareScenarioSchema = v.union([v.literal(''), v.picklist(COMPARE_SCENARI
 
 export const compareSearchSchema = v.object({
 	models: v.optional(v.fallback(v.string(), ''), ''),
-	scenario: v.optional(v.fallback(compareScenarioSchema, ''), '')
+	scenario: v.optional(v.fallback(compareScenarioSchema, ''), ''),
+	...stackSearchSchema.entries
 });
 
 export type CompareSearchParams = v.InferOutput<typeof compareSearchSchema>;
 
 export const DEFAULT_COMPARE_PARAMS: CompareSearchParams = {
 	models: '',
-	scenario: ''
+	scenario: '',
+	stack: 'zed',
+	main: '',
+	sub: '',
+	split: 70
 };
 
 /** Scenario values accepted by the compare URL (empty string excluded). */
