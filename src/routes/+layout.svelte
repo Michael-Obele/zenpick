@@ -7,6 +7,11 @@
 	import { Agentation, type AnnotationProps } from 'sv-agentation';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 
+	// Analytics: InsightFlare tracker, emitted only when the deploy sets
+	// VITE_INSIGHTFLARE_SRC (https://<instance>/script.js?siteId=<id>).
+	// Kept out of the repo so the site id and instance are not hardcoded.
+	const analyticsSrc = import.meta.env.VITE_INSIGHTFLARE_SRC as string | undefined;
+
 	let playgroundAnnotationProps: AnnotationProps = {
 		toolbarPosition: 'bottom-left',
 		outputMode: 'detailed',
@@ -24,6 +29,9 @@
 		href="/llms.txt"
 		title="ZenPick — llms.txt (machine-readable catalog)"
 	/>
+	{#if analyticsSrc}
+		<script defer src={analyticsSrc}></script>
+	{/if}
 </svelte:head>
 
 <div class="flex min-h-screen flex-col">
