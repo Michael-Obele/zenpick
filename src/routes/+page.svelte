@@ -1,10 +1,13 @@
 <script lang="ts">
-	import { getModels } from '$lib/remote/models.remote';
+	import { getCatalogRows, getModels, getStackPlans } from '$lib/remote/models.remote';
+	import { matchesCatalogPlan, PLAN_LABEL, type CatalogRow, type PlanFilter } from '$lib/catalog';
 	import type { GoModel } from '$lib/types/models';
 	import FilterBar from '$lib/components/FilterBar.svelte';
 	import QuotaCalculator from '$lib/components/QuotaCalculator.svelte';
+	import AgentStack from '$lib/components/AgentStack/AgentStack.svelte';
 	import ModelTable from '$lib/components/ModelTable.svelte';
 	import ModelDrawer from '$lib/components/ModelDrawer.svelte';
+	import PlanModelDrawer from '$lib/components/PlanModelDrawer.svelte';
 	import ScenarioHelpDialog from '$lib/components/ScenarioHelpDialog.svelte';
 	import CompareTray from '$lib/components/CompareTray.svelte';
 	import { LightRays } from '$lib/components/magic/light-rays';
@@ -27,17 +30,70 @@
 	});
 
 	let scenario = $state('');
-	let selectedModel = $state<GoModel | null>(null);
+	let selectedRow = $state<CatalogRow | null>(null);
 	let drawerOpen = $state(false);
 
-	function openDrawer(model: GoModel) {
-		selectedModel = model;
+	/** Every row opens a drawer; Go rows use the full model panel, the rest share one. */
+	function openDrawer(row: CatalogRow) {
+		selectedRow = row;
 		drawerOpen = true;
 	}
 
-	const modelsPromise = getModels();
+	/**
+	 * The row the Go drawer shows. That panel carries burn, quota windows and the
+	 * scatter graph, which only exist on OpenCode Go, so a shared row uses it only
+	 * while the table is on the Go view. Under a Zed/Copilot filter the plan drawer
+	 * shows that plan's prices instead.
+	 */
+	let goDrawerRow = $derived(
+		selectedRow?.go && (params.plan === '' || params.plan === 'go') ? selectedRow.go : null
+	);
 
-	let needSpec = $derived(findNeed(params.need) ?? null);
+	/** Switching to a static plan clears the Go-only need/scenario ranking. */
+	function setPlan(value: PlanFilter) {
+		params.plan = value;
+		if (value === 'zed' || value === 'copilot') {
+			params.need = '';
+			scenario = '';
+		}
+	}
+
+	/** Rows a plan filter carries — the count badge follows the table's dataset. */
+	function planRows(rows: CatalogRow[], plan: PlanFilter): CatalogRow[] {
+		return rows.filter((row) => matchesCatalogPlan(row, plan));
+	}
+
+	/** "1 model" / "2 models" — the badge pluralises both its counts. */
+	function plural(count: number, singular: string): string {
+		return `${count} ${singular}${count === 1 ? '' : 's'}`;
+	}
+
+	/** How many plans the catalog actually spans, for "across N plans". */
+	function distinctPlanCount(rows: CatalogRow[]): number {
+		return new Set(rows.flatMap((row) => row.plans.map((entry) => entry.plan))).size;
+	}
+
+	/** The Go models a need ranking runs over (rankings never see static plans). */
+	function goModelsFromRows(rows: CatalogRow[]): GoModel[] {
+		return rows.flatMap((row) => (row.go ? [row.go] : []));
+	}
+
+	const modelsPromise = getModels();
+	const stackPlansPromise = getStackPlans();
+	const catalogPromise = getCatalogRows();
+
+	/**
+	 * The calculator only models OpenCode Go's request windows. Zed Pro and
+	 * Copilot Pro get a scope panel instead, labelled with the active plan.
+	 */
+	let calculatorScopeLabel = $derived(
+		params.plan === 'zed' || params.plan === 'copilot' ? PLAN_LABEL[params.plan] : null
+	);
+
+	// A deep link cannot leave a hidden ranking active for a static plan.
+	let needSpec = $derived(
+		params.plan === 'zed' || params.plan === 'copilot' ? null : (findNeed(params.need) ?? null)
+	);
 	/** Task label when both a need and a scenario are active (blended ranking). */
 	let weightLabel = $derived(needSpec && scenario ? scenarioLabel(scenario) : null);
 	/** Blend options for the banner ranking — same shape the table uses. */
@@ -57,6 +113,30 @@
 		content="Stop wasting your AI budget on the wrong model. ZenPick lines up every model in your plan with live benchmarks, price, and quota burn, so you pick the one that fits before the money runs out."
 	/>
 </svelte:head>
+
+{#snippet calculatorScopePanel(label: string)}
+	<div class="rounded-2xl border border-border bg-card p-5 sm:p-6">
+		<p
+			class="font-mono text-xs font-semibold tracking-[0.16em] text-primary uppercase dark:text-primary-strong"
+		>
+			Quota planning
+		</p>
+		<h2 class="mt-2 text-lg font-semibold tracking-tight text-foreground">
+			The quota calculator is OpenCode Go only
+		</h2>
+		<p class="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+			{label} includes a monthly token allowance, not OpenCode Go's 5-hour and weekly request windows.
+			Use the agent stack panel to estimate the pair's monthly requests, or switch the plan filter to
+			OpenCode Go.
+		</p>
+		<a
+			href="#agent-stack"
+			class="mt-4 inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+		>
+			Plan an agent stack
+		</a>
+	</div>
+{/snippet}
 
 <section class="relative">
 	<!-- Animated light rays washing down over the whole homepage -->
@@ -108,6 +188,13 @@
 						Estimate quota
 						<ArrowRight class="size-4" />
 					</a>
+					<a
+						href="#agent-stack"
+						class="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+					>
+						Build my agent stack
+						<ArrowRight class="size-4" />
+					</a>
 				</div>
 
 				<!-- Status strip -->
@@ -116,8 +203,8 @@
 				>
 					<span class="inline-flex items-center gap-1.5">
 						<Server class="size-3" />
-						{#await modelsPromise then models}
-							{models.length} models
+						{#await catalogPromise then rows}
+							{rows.length} models across plans
 						{/await}
 					</span>
 					<span class="inline-flex items-center gap-1.5">
@@ -135,34 +222,65 @@
 
 	<!-- Main content -->
 	<div class="mx-auto max-w-6xl px-4 pb-16">
-		<!-- Calculator -->
-		<section id="quota-calculator" class="signal-board-enter motion-delay-100 mb-12">
-			{#await modelsPromise then models}
-				<QuotaCalculator {models} {params} />
-			{/await}
-		</section>
-
-		<!-- Model Table -->
-		<section id="compare-models" class="signal-board-enter motion-delay-200">
-			{#await modelsPromise}
+		<!-- Agent stack -->
+		<section id="agent-stack" class="signal-board-enter motion-delay-100 mb-12">
+			{#await stackPlansPromise}
 				<div class="space-y-3">
 					<div class="h-10 animate-pulse rounded-lg bg-muted"></div>
 					<div class="h-64 animate-pulse rounded-xl bg-muted"></div>
 				</div>
-			{:then models}
+			{:then plans}
+				<AgentStack {plans} {params} id="agent-stack-panel" />
+			{:catch err}
+				<div
+					role="alert"
+					class="rounded-xl border border-destructive/20 bg-destructive/5 p-8 text-center"
+				>
+					<div class="text-destructive">Failed to load plan data</div>
+					<div class="mt-1 text-sm text-destructive/70">
+						{(err as Error).message}
+					</div>
+				</div>
+			{/await}
+		</section>
+
+		<!-- Calculator -->
+		<section id="quota-calculator" class="signal-board-enter motion-delay-100 mb-12">
+			{#if calculatorScopeLabel}
+				{@render calculatorScopePanel(calculatorScopeLabel)}
+			{:else}
+				{#await modelsPromise then models}
+					<QuotaCalculator {models} {params} />
+				{/await}
+			{/if}
+		</section>
+
+		<!-- Model Table -->
+		<section id="compare-models" class="signal-board-enter motion-delay-200">
+			{#await catalogPromise}
+				<div class="space-y-3">
+					<div class="h-10 animate-pulse rounded-lg bg-muted"></div>
+					<div class="h-64 animate-pulse rounded-xl bg-muted"></div>
+				</div>
+			{:then rows}
 				<div class="mb-4 flex items-center justify-between">
 					<div class="flex items-center gap-3">
 						<h2 class="text-lg font-semibold text-foreground">Compare Models</h2>
 						<span
 							class="inline-flex items-center rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
 						>
-							{models.length} models
+							{plural(planRows(rows, params.plan).length, 'model')}
+							{#if params.plan === ''}
+								across {plural(distinctPlanCount(rows), 'plan')}
+							{:else}
+								on {PLAN_LABEL[params.plan]}
+							{/if}
 						</span>
 						<ScenarioHelpDialog />
 					</div>
 				</div>
 				{#if needSpec}
-					{@const entries = rankNeed(needSpec, models, blendOpts)}
+					{@const entries = rankNeed(needSpec, goModelsFromRows(rows), blendOpts)}
 					{@const Icon = needSpec.icon}
 					<div
 						class="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
@@ -172,7 +290,9 @@
 						</div>
 						<div class="min-w-0 flex-1">
 							<div class="flex flex-wrap items-center gap-2">
-								<h3 class="text-sm font-semibold text-foreground">{needSpec.title}</h3>
+								<h3 class="text-sm font-semibold text-foreground">
+									{needSpec.title}
+								</h3>
 								{#if weightLabel}
 									<span
 										class="inline-flex items-center rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground"
@@ -182,7 +302,9 @@
 								{/if}
 							</div>
 							<p class="text-xs leading-relaxed text-muted-foreground">
-								{needAnswer(needSpec, entries, { weightLabel: weightLabel ?? undefined })}
+								{needAnswer(needSpec, entries, {
+									weightLabel: weightLabel ?? undefined
+								})}
 							</p>
 						</div>
 						<button
@@ -201,30 +323,48 @@
 						bind:filter={() => params.q, (v) => (params.q = v)}
 						bind:scenario
 						bind:need={() => params.need, (v) => (params.need = v)}
+						bind:plan={() => params.plan, setPlan}
 					/>
 				</div>
 				<ModelTable
-					{models}
+					{rows}
 					filter={params.q}
 					{scenario}
+					planFilter={params.plan}
 					need={needSpec}
 					onExitNeed={() => (params.need = '')}
-					selectedModelId={selectedModel?.id}
+					selectedModelId={selectedRow?.id}
 					onSelectModel={openDrawer}
 					selectedIds={compare.selection}
 					onToggleCompare={compare.toggle}
 				/>
 			{:catch err}
-				<div class="rounded-xl border border-red-500/20 bg-red-500/5 p-8 text-center">
-					<div class="text-red-400">Failed to load model data</div>
-					<div class="mt-1 text-sm text-red-400/60">{(err as Error).message}</div>
+				<div
+					role="alert"
+					class="rounded-xl border border-destructive/20 bg-destructive/5 p-8 text-center"
+				>
+					<div class="text-destructive">Failed to load model data</div>
+					<div class="mt-1 text-sm text-destructive/70">
+						{(err as Error).message}
+					</div>
 				</div>
 			{/await}
 		</section>
 
+		<!-- Two guards, one drawer: the Go panel only for Go-view rows, the plan
+		     drawer for everything else (see `goDrawerRow`). -->
 		{#await modelsPromise then models}
-			<ModelDrawer {models} model={selectedModel} bind:open={drawerOpen} />
-			<CompareTray {models} />
+			{#if goDrawerRow}
+				<ModelDrawer {models} model={goDrawerRow} bind:open={drawerOpen} />
+			{/if}
+		{/await}
+
+		{#if selectedRow && !goDrawerRow}
+			<PlanModelDrawer row={selectedRow} activePlan={params.plan} bind:open={drawerOpen} />
+		{/if}
+
+		{#await catalogPromise then rows}
+			<CompareTray {rows} />
 		{/await}
 
 		<!-- Burn vs Performance — the chart that carries the argument -->

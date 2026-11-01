@@ -57,6 +57,12 @@ maxCrap = 800.0
 reason = "Need-type answer router with per-need branches"
 
 [[health.thresholdOverrides]]
+files = ["src/lib/catalog.ts"]
+functions = ["buildCatalogRows"]
+maxCognitive = 17
+reason = "Catalog merge: Go-first pass, static-plan merge and the fill-only-when-null rule; pinned at current score"
+
+[[health.thresholdOverrides]]
 files = ["src/lib/components/ModelTable.svelte"]
 functions = ["compareByKey"]
 maxCrap = 800.0
@@ -112,6 +118,18 @@ maxCrap = 510.0
 reason = "Model detail drawer with pricing/benchmark sections + closed-source note"
 
 [[health.thresholdOverrides]]
+files = ["src/lib/components/AgentStack/AgentStack.svelte"]
+functions = ["<template>"]
+maxCognitive = 17
+reason = "Agent stack panel: plan tabs, role pickers, economics states and the pair link; pinned at current score"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/components/AgentStack/RolePicker.svelte"]
+functions = ["<template>"]
+maxCognitive = 16
+reason = "Role picker: chosen and auto pick states, economics line and plan badges; pinned at current score"
+
+[[health.thresholdOverrides]]
 files = ["src/lib/components/Site/SiteHeader.svelte"]
 functions = ["<template>"]
 maxCyclomatic = 15
@@ -128,12 +146,11 @@ maxCrap = 400.0
 reason = "Long-form story page with narrative sections"
 
 [[health.thresholdOverrides]]
-files = ["src/routes/compare/+page.svelte"]
+files = ["src/routes/+page.svelte"]
 functions = ["<template>"]
-maxCyclomatic = 29
-maxCognitive = 46
-maxCrap = 2200.0
-reason = "Compare workspace: model picker + per-metric compare grid; pinned at current score"
+maxCyclomatic = 25
+maxCognitive = 30
+reason = "Home orchestrator: agent stack, plan-aware table, need ranking, the two drawer guards and the calculator scope panel; pinned at current score"
 
 [[health.thresholdOverrides]]
 files = ["src/lib/components/debug/BurnTable.svelte"]

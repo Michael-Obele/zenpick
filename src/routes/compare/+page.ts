@@ -1,5 +1,5 @@
 import { browser } from '$app/environment';
-import { getModels } from '$lib/remote/models.remote';
+import { getCatalogRows } from '$lib/remote/models.remote';
 import { validateSearchParams } from 'runed/kit';
 import { compare } from '$lib/stores/compare.svelte';
 import { compareSearchSchema } from '$lib/compare-search';
@@ -13,6 +13,11 @@ import type { PageLoad } from './$types';
  * client uses, and the load function only re-runs when the schema-defined
  * `models` parameter changes (fine-grained reactivity, per runed docs).
  *
+ * The URL holds `plan:id` compare keys (`go:deepseek-v4.1-flash`,
+ * `zed:claude-sonnet-5.5`); resolution against the catalog happens on the
+ * page, so one load serves every selection. Keys that no longer resolve are
+ * simply skipped when the page renders.
+ *
  * On CLIENT navigations (back/forward between share links, in-app
  * navigation back to this route), this load re-runs — so we also sync the
  * shared store from the validated URL, keeping the homepage compare tray
@@ -20,14 +25,14 @@ import type { PageLoad } from './$types';
  */
 export const load: PageLoad = async ({ url }) => {
 	const { data } = validateSearchParams(url, compareSearchSchema);
-	const models = await getModels();
+	const rows = await getCatalogRows();
 	if (browser && data.models) {
-		const valid = data.models
-			.split(',')
-			.map((s) => s.trim())
-			.filter(Boolean)
-			.filter((id) => models.some((m) => m.id === id));
-		if (valid.length) compare.selection = valid;
+		compare.set(
+			data.models
+				.split(',')
+				.map((s) => s.trim())
+				.filter(Boolean)
+		);
 	}
-	return { models };
+	return { rows };
 };

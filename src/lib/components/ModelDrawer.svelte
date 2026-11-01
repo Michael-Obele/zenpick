@@ -4,6 +4,7 @@
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import { ExternalLink, Copy, Check, Info, GitCompare, LockKeyhole } from '@lucide/svelte';
 	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
+	import { compareKey } from '$lib/compare-selection';
 	import { compare, MAX_COMPARE } from '$lib/stores/compare.svelte';
 	import BurnBadge from './BurnBadge.svelte';
 	import DeprecatedBadge from './DeprecatedBadge.svelte';
@@ -26,7 +27,9 @@
 	let { models, model, open = $bindable(false) }: Props = $props();
 
 	let copied = $state(false);
-	let isCompared = $derived(model ? compare.selection.includes(model.id) : false);
+	// This drawer only renders Go rows, so the compare key is always the Go key.
+	let compareId = $derived(model ? compareKey('go', model.id) : '');
+	let isCompared = $derived(compare.has(compareId));
 	let compareFull = $derived(compare.selection.length >= MAX_COMPARE);
 
 	function copyModelId() {
@@ -280,7 +283,7 @@
 								size: 'sm'
 							})}
 							disabled={!isCompared && compareFull}
-							onclick={() => compare.toggle(model.id)}
+							onclick={() => compare.toggle(compareId)}
 						>
 							<GitCompare class="size-3.5" />
 							{isCompared ? 'In comparison' : 'Add to compare'}
