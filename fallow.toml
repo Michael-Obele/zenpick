@@ -35,6 +35,12 @@ maxCrap = 2000.0
 reason = "Catalog parser/rewriter — branching is data-driven, coverage-blind"
 
 [[health.thresholdOverrides]]
+files = ["src/lib/server/frontier.ts"]
+functions = ["buildPlanFrontierCandidates"]
+maxCognitive = 18
+reason = "Plan frontier builder: per-plan model loop, open-weight filter and benchmark guard; pinned at current score"
+
+[[health.thresholdOverrides]]
 files = ["src/lib/server/go-docs.ts"]
 functions = ["refreshGoDocsData"]
 maxCyclomatic = 26

@@ -1,27 +1,32 @@
-// `server/catalog.ts` reaches the real cache and single-flight logic, but its
-// two collaborators pull in the SvelteKit virtual modules vitest does not shim.
+// `server/catalog.ts` delegates to the two cached loaders; the merge itself is
+// pure. These tests cover the wiring and the staleness bug it used to have.
 const mocks = vi.hoisted(() => ({
 	loadModels: vi.fn(),
 	loadStackPlans: vi.fn()
 }));
 
 import { describe, it, expect, beforeEach, vi } from 'vite-plus/test';
-import { cacheKeysMatching, DEGRADED_STACK_TTL, MODELS_TTL } from '$lib/cache';
 import { loadCatalogRows } from '$lib/server/catalog';
+import { makeGoModel, makePricing } from '$lib/test/fixtures';
 import type { StackModel, StackPlan } from '$lib/stack/plans';
 
-/** One Zed model, scored when modelgrep answered and scoreless when it did not. */
-function staticPlan(scored: boolean): StackPlan {
-	const model: StackModel = {
-		id: 'claude-sonnet-5.5',
-		name: 'Claude Sonnet 5.5',
+function stackModel(id: string, name: string, inputPricePerM: number): StackModel {
+	return {
+		id,
+		name,
 		provider: 'Anthropic',
-		pricing: { inputPricePerM: 2.2, outputPricePerM: 11, cachedReadPerM: 0.22 },
+		pricing: {
+			inputPricePerM,
+			outputPricePerM: inputPricePerM * 5,
+			cachedReadPerM: null
+		},
 		contextWindow: 1_000_000,
-		intelligence: scored ? 61 : null,
-		coding: scored ? 59 : null
+		intelligence: 60,
+		coding: 58
 	};
+}
 
+function staticPlan(models: StackModel[]): StackPlan {
 	return {
 		id: 'zed',
 		name: 'Zed Pro',
@@ -31,13 +36,12 @@ function staticPlan(scored: boolean): StackPlan {
 		caveat: '',
 		sources: [],
 		verifiedOn: null,
-		models: [model]
+		models
 	};
 }
 
 vi.mock('$lib/server/models', () => ({
-	loadModels: mocks.loadModels,
-	fnv1a: () => 'test'
+	loadModels: mocks.loadModels
 }));
 
 vi.mock('$lib/server/stack', () => ({
@@ -46,66 +50,59 @@ vi.mock('$lib/server/stack', () => ({
 
 describe('loadCatalogRows', () => {
 	beforeEach(() => {
-		// Drop every cached entry so each test starts cold; the plan-catalog key
-		// is content-addressed and cannot be named here.
-		cacheKeysMatching('plan-catalog', () => false);
 		mocks.loadModels.mockReset();
 		mocks.loadStackPlans.mockReset();
 	});
 
-	it('shares one rebuild between concurrent cold requests', async () => {
-		let releaseModels!: () => void;
-		const modelsGate = new Promise<void>((resolve) => (releaseModels = resolve));
-		mocks.loadModels.mockImplementation(async () => {
-			await modelsGate;
-			return [];
+	it('re-reads the model cache so updated hints reach the catalog', async () => {
+		const base = makeGoModel({
+			id: 'hy3',
+			name: 'Hy3',
+			migrationHints: [{ model: 'Old Candidate', reason: 'old' }]
 		});
+		mocks.loadModels.mockResolvedValue([base]);
 		mocks.loadStackPlans.mockResolvedValue([]);
 
-		const first = loadCatalogRows();
-		const second = loadCatalogRows();
-		releaseModels();
-		const [a, b] = await Promise.all([first, second]);
+		const first = await loadCatalogRows();
+		expect(first[0].go?.migrationHints).toEqual([{ model: 'Old Candidate', reason: 'old' }]);
 
-		expect(mocks.loadModels).toHaveBeenCalledTimes(1);
-		expect(mocks.loadStackPlans).toHaveBeenCalledTimes(1);
-		expect(a).toBe(b);
+		mocks.loadModels.mockResolvedValue([
+			{ ...base, migrationHints: [{ model: 'New Candidate', reason: 'new' }] }
+		]);
+		const second = await loadCatalogRows();
+
+		expect(second[0].go?.migrationHints).toEqual([{ model: 'New Candidate', reason: 'new' }]);
+		expect(mocks.loadModels).toHaveBeenCalledTimes(2);
 	});
 
-	it('caches the merged rows for the model TTL', async () => {
+	it('merges a Go row and a static-plan row into one row per model', async () => {
+		mocks.loadModels.mockResolvedValue([
+			makeGoModel({
+				id: 'shared',
+				name: 'Shared',
+				pricing: makePricing({ inputPricePerM: 2 })
+			})
+		]);
+		mocks.loadStackPlans.mockResolvedValue([
+			staticPlan([stackModel('shared', 'Shared', 2.2), stackModel('zed-only', 'Zed Only', 3)])
+		]);
+
+		const rows = await loadCatalogRows();
+
+		expect(rows.map((row) => row.id).sort()).toEqual(['shared', 'zed-only']);
+		const shared = rows.find((row) => row.id === 'shared');
+		expect(shared?.plans.map((entry) => entry.plan)).toEqual(['go', 'zed']);
+		expect(shared?.plans.map((entry) => entry.pricing.inputPricePerM)).toEqual([2, 2.2]);
+	});
+
+	it('calls both loaders on every request instead of caching a second copy', async () => {
 		mocks.loadModels.mockResolvedValue([]);
 		mocks.loadStackPlans.mockResolvedValue([]);
 
 		await loadCatalogRows();
-
-		const [entry] = cacheKeysMatching('plan-catalog');
-		expect(entry?.ttl).toBe(MODELS_TTL);
-
-		await loadCatalogRows();
-		expect(mocks.loadModels).toHaveBeenCalledTimes(1);
-		expect(mocks.loadStackPlans).toHaveBeenCalledTimes(1);
-	});
-
-	it('caches a modelgrep-less build for the short degraded TTL', async () => {
-		// Every static model is scoreless, which is what a modelgrep outage looks
-		// like. Pinning that for `MODELS_TTL` would hold null scores for 6 hours.
-		mocks.loadModels.mockResolvedValue([]);
-		mocks.loadStackPlans.mockResolvedValue([staticPlan(false)]);
-
 		await loadCatalogRows();
 
-		const [entry] = cacheKeysMatching('plan-catalog');
-		expect(entry?.ttl).toBe(DEGRADED_STACK_TTL);
-		expect(entry?.ttl).toBeLessThan(MODELS_TTL);
-	});
-
-	it('caches a scored build for the model TTL', async () => {
-		mocks.loadModels.mockResolvedValue([]);
-		mocks.loadStackPlans.mockResolvedValue([staticPlan(true)]);
-
-		await loadCatalogRows();
-
-		const [entry] = cacheKeysMatching('plan-catalog');
-		expect(entry?.ttl).toBe(MODELS_TTL);
+		expect(mocks.loadModels).toHaveBeenCalledTimes(2);
+		expect(mocks.loadStackPlans).toHaveBeenCalledTimes(2);
 	});
 });

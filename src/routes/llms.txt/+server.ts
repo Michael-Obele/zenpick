@@ -106,7 +106,7 @@ function render(models: GoModel[], origin: string, params: TableSearchParams): s
 		'- **Burn** — how fast a model consumes the Go quota (`Excellent` is quota-friendly, `Extreme` burns fastest).',
 		'- **Req/mo** — estimated requests per month at the $60 Go tier.',
 		'- **Coding / Agentic** — task-fit score, 0–100 (algorithmic, not a benchmark).',
-		'- **Replaces** — closed-source frontier models this Go model substitutes.',
+		'- **Replaces** — closed-source models this Go model is benchmark-comparable to on at least two categories.',
 		'- **Source** — LLM Stats page for the model.',
 		''
 	);

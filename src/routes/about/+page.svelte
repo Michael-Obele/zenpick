@@ -506,10 +506,12 @@
 				you switch to those plans, so a ranking never hides models the data cannot score.
 			</p>
 			<p>
-				Go tags, migration hints and thermal burn rates are inferred from upstream data. Plan facts
-				are different: prices, allowances, caveats and model lists are hand-checked against the
-				vendor pages, and every card carries the date it was checked. If an upstream value changes,
-				the page changes; if a vendor page changes, the plan card waits for a code update.
+				Go tags and thermal burn rates are inferred from upstream data. Migration hints compare
+				blended benchmarks against closed-source models from LLM Stats when it is available, plus
+				the current Zed Pro and Copilot Pro pages. Plan facts are different: prices, allowances,
+				caveats and model lists are hand-checked against the vendor pages, and every card carries
+				the date it was checked. If an upstream value changes, the page changes; if a vendor page
+				changes, the plan card waits for a code update.
 			</p>
 		</div>
 

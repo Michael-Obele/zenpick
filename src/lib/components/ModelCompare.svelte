@@ -689,7 +689,7 @@
 			<!-- Migration hints -->
 			<div
 				class="sticky left-0 z-10 border-t border-border/60 bg-muted px-2 py-2.5 text-sm font-medium text-muted-foreground sm:px-3"
-				title="Open-weight alternatives to these closed-source models"
+				title="Closed-source models this open-weight model is comparable to on at least two benchmarks"
 			>
 				Replaces
 			</div>

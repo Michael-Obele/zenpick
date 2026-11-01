@@ -34,7 +34,8 @@ import { computeScenarioScores } from './scoring';
 import { computeTags } from './tags';
 import { blendBenchmarks } from './blend';
 import { buildCapabilities } from '$lib/capabilities';
-import { MIGRATION_BAND } from '$lib/migration';
+import { MIGRATION_BAND, MIGRATION_MAX_DEFICIT, MIGRATION_MAX_HINTS } from '$lib/migration';
+import { isSameFrontierModel } from '$lib/frontier';
 
 /** One plan tier's inputs: the scraped usage (if any) and the score anchors. */
 export interface QuotaTierInput {
@@ -128,7 +129,12 @@ export function inferModel(
 	const speed = extractModelgrepSpeed(mgModel);
 	const tags = computeTags(benchmarks, burnDetails, speed, mgModel, lsModel);
 	const migrationHints = inferMigrationHints(
-		lsModel ?? null,
+		{
+			id: goId,
+			name,
+			modelgrepId: mgModel?.id ?? null,
+			llmStatsId: lsModel?.id ?? null
+		},
 		openWeight,
 		benchmarks,
 		frontierCandidates
@@ -158,7 +164,11 @@ export function inferModel(
 		burnRate,
 		burnDetails,
 		plus: plus
-			? { quota: plus.quota, burnDetails: plus.burnDetails, burnRate: plus.burnRate }
+			? {
+					quota: plus.quota,
+					burnDetails: plus.burnDetails,
+					burnRate: plus.burnRate
+				}
 			: null,
 		tags,
 		benchmarks,
@@ -195,15 +205,26 @@ function extractModelgrepSpeed(mgModel: ModelgrepModelData | null): ModelSpeed |
 // ─── Migration Hints ─────────────────────────────────────────────────────
 
 /**
+ * A single matched category is not enough to call a model a replacement: a
+ * budget flash model can land within the band on coding while being far off
+ * on math and reasoning. Requiring two categories keeps the claim bounded to
+ * "comparable on the metrics both sides publish".
+ */
+const MIN_MATCHING_CATEGORIES = 2;
+
+/**
  * Data-driven "replaces" hints.
  *
- * For each capability category we compare the Go model's BLENDED benchmark
- * score (modelgrep-primary, outlier-guarded — see blend.ts) against every
- * closed-source frontier candidate's blended score, finding the nearest
- * neighbor. A model is only claimed as a "replacement" when the gap is
- * within MIGRATION_BAND — so we never assert a match that isn't backed by
- * the live data. Hints are grouped by the frontier model they replace and
- * the categories they match on.
+ * For each closed-source candidate we compare its blended benchmarks
+ * (modelgrep-primary, outlier-guarded — see blend.ts) against the Go model's,
+ * category by category. A candidate must be within MIGRATION_BAND on at least
+ * two categories and the Go model may not trail it by more than
+ * MIGRATION_MAX_DEFICIT on either, so a single strong metric or a model that
+ * is far stronger overall cannot claim a replacement.
+ *
+ * Candidates come from LLM Stats when it is available, plus the current
+ * Zed Pro / Copilot Pro plan pages (see server/frontier.ts), so the hints no
+ * longer disappear when the LLM Stats key is missing.
  *
  * Why blended scores and not raw llm-stats top_scores: the raw values are
  * quantized to tens (60, 70, 80) and sometimes on a broken scale (365.2,
@@ -214,57 +235,71 @@ function extractModelgrepSpeed(mgModel: ModelgrepModelData | null): ModelSpeed |
  * Closed-source Go models (e.g. grok-4.5, gpt-5.6-luna) are themselves
  * "replaced" targets, not open alternatives — they get no hints.
  */
+export interface MigrationSubject {
+	/** Go model id (e.g. "hy3"). */
+	id: string;
+	/** Display name, used to exclude the same model under another source's spelling. */
+	name: string;
+	modelgrepId: string | null;
+	llmStatsId: string | null;
+}
+
 /**
  * Compute "replaces" hints for one Go model.
  * Exported so the content-addressed models cache key (models.remote.ts)
  * covers it — editing the reason text must invalidate cached models.
  */
 export function inferMigrationHints(
-	lsModel: LlmStatsModel | null,
+	subject: MigrationSubject,
 	openWeight: boolean,
 	goBenchmarks: ModelBenchmarks,
 	frontierCandidates: FrontierCandidate[]
 ): MigrationHint[] {
 	// Only open-weight Go models can be "open alternatives" to closed models.
-	if (!lsModel || !openWeight || frontierCandidates.length === 0) return [];
+	if (!openWeight || frontierCandidates.length === 0) return [];
 
-	const cats: { key: 'coding' | 'reasoning' | 'math'; label: string }[] = [
+	const categories: { key: 'coding' | 'reasoning' | 'math'; label: string }[] = [
 		{ key: 'coding', label: 'coding' },
 		{ key: 'reasoning', label: 'reasoning' },
 		{ key: 'math', label: 'math' }
 	];
 
-	// Group by the frontier model we'd replace, combining the categories it matches on.
-	const byModel = new Map<string, { name: string; cats: string[]; worstGap: number }>();
+	// Score every candidate independently. Picking the nearest candidate per
+	// category would let one candidate own a category exclusively, which
+	// makes a second "two-match" candidate impossible to surface.
+	const hints: { name: string; cats: string[]; worstGap: number }[] = [];
 
-	for (const { key, label } of cats) {
-		const ours = goBenchmarks[key];
-		if (ours == null) continue;
+	for (const fm of frontierCandidates) {
+		// Skip the Go model itself. Plan candidates carry the modelgrep id,
+		// LLM Stats candidates carry their own id, and the display name
+		// catches the remaining spelling differences.
+		if (isSameFrontierModel(fm, subject)) continue;
 
-		let best: { name: string; gap: number } | null = null;
-		for (const fm of frontierCandidates) {
-			// Skip the Go model itself — a closed model served by the Go API
-			// (e.g. grok-4.5) is also a frontier candidate, and comparing it to
-			// itself would claim "replaces grok-4.5".
-			if (fm.id === lsModel.id) continue;
+		const cats: string[] = [];
+		let worstGap = 0;
+		for (const { key, label } of categories) {
+			const ours = goBenchmarks[key];
 			const theirs = fm.benchmarks[key];
-			if (theirs == null) continue;
+			if (ours == null || theirs == null) continue;
 			const gap = Math.abs(ours - theirs);
-			if (best == null || gap < best.gap) best = { name: fm.name, gap };
+			if (gap <= MIGRATION_BAND && ours >= theirs - MIGRATION_MAX_DEFICIT) {
+				cats.push(label);
+				worstGap = Math.max(worstGap, gap);
+			}
 		}
 
-		if (best && best.gap <= MIGRATION_BAND) {
-			const entry = byModel.get(best.name) ?? { name: best.name, cats: [], worstGap: 0 };
-			entry.cats.push(label);
-			entry.worstGap = Math.max(entry.worstGap, best.gap);
-			byModel.set(best.name, entry);
+		if (cats.length >= MIN_MATCHING_CATEGORIES) {
+			hints.push({ name: fm.name, cats, worstGap });
 		}
 	}
 
-	return [...byModel.values()].map((e) => ({
-		model: e.name,
-		reason: `Comparable on ${e.cats.join(' & ')}`
-	}));
+	return hints
+		.sort((a, b) => b.cats.length - a.cats.length || a.worstGap - b.worstGap)
+		.slice(0, MIGRATION_MAX_HINTS)
+		.map((hint) => ({
+			model: hint.name,
+			reason: `Comparable on ${hint.cats.join(' & ')}`
+		}));
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────

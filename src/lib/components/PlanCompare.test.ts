@@ -127,6 +127,8 @@ describe('PlanCompare', () => {
 	});
 
 	it('explains what the cross-plan view leaves to the Go comparison', () => {
-		expect(markup()).toContain('Burn and OpenCode Go quotas appear on the Go comparison.');
+		expect(markup()).toContain(
+			'Burn, OpenCode Go quotas and replaces hints appear on the Go comparison.'
+		);
 	});
 });

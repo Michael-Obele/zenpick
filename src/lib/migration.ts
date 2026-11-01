@@ -11,6 +11,18 @@
 export const MIGRATION_BAND = 12;
 
 /**
+ * How far BELOW a candidate the Go model may sit on a matched category.
+ * The symmetric band above also accepts a model 12 points stronger than the
+ * Go model; for a "replaces" claim that reads as an overstatement. The
+ * compare row only lists candidates the Go model matches or beats within this
+ * deficit, while the debug view still shows the full band relation.
+ */
+export const MIGRATION_MAX_DEFICIT = 5;
+
+/** How many hints the compare row surfaces; the debug table shows every candidate. */
+export const MIGRATION_MAX_HINTS = 4;
+
+/**
  * Gap bands used to describe the relation between a Go model and a
  * frontier model, on the 0–100 blended scale.
  * - on par:        |gap| <= MIGRATION_BAND (within the replaceable window)

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { MIGRATION_MAX_DEFICIT } from '$lib/migration';
 	import type { GoModel } from '$lib/types/models';
 
 	interface Props {
@@ -11,8 +12,10 @@
 <h2 class="mb-4 text-lg font-semibold text-foreground">Migration Report</h2>
 <p class="mb-4 text-sm text-muted-foreground">
 	What each Go model claims to replace, against its blended benchmark scores. Hints are computed
-	from blended benchmarks (modelgrep-primary, llm-stats fallback) compared to frontier candidates on
-	the same scale.
+	from blended benchmarks (modelgrep-primary, llm-stats fallback) compared to closed-source
+	candidates from LLM Stats when available, plus the current Zed Pro / Copilot Pro pages. A hint
+	needs at least two matching categories, and the Go model may trail a candidate by at most
+	{MIGRATION_MAX_DEFICIT} points on either.
 </p>
 <div class="overflow-x-auto">
 	<table class="w-full text-left text-sm">

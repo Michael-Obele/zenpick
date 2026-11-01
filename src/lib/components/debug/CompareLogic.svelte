@@ -1,5 +1,11 @@
 <script lang="ts">
-	import { MIGRATION_BAND, GAP_BANDS } from '$lib/migration';
+	import {
+		MIGRATION_BAND,
+		MIGRATION_MAX_DEFICIT,
+		MIGRATION_MAX_HINTS,
+		GAP_BANDS
+	} from '$lib/migration';
+	import { isSameFrontierModel } from '$lib/frontier';
 	import type { GoModel, FrontierCandidate } from '$lib/types/models';
 
 	interface Props {
@@ -86,11 +92,17 @@
 		for (const fm of frontier) {
 			// Same model as the selected Go model — it is a "replaced" target,
 			// not a peer; the algorithm skips it too.
-			if (fm.id === selected.llmStatsId) continue;
+			if (isSameFrontierModel(fm, selected)) continue;
 			const cats = CATS.map((c) => {
 				const go = selected.benchmarks[c.key];
 				const theirs = fm.benchmarks[c.key];
-				return { key: c.key, label: c.label, go, theirs, rel: relation(go, theirs) };
+				return {
+					key: c.key,
+					label: c.label,
+					go,
+					theirs,
+					rel: relation(go, theirs)
+				};
 			});
 			const comparable = cats
 				.filter(
@@ -167,8 +179,10 @@
 <h2 class="mb-4 text-lg font-semibold text-foreground">Compare Logic</h2>
 <p class="mb-4 text-sm text-muted-foreground">
 	Pick a Go model and see how it stacks against every recent closed-source frontier model, per
-	capability, on the blended 0–100 scale. The "Comparable" column mirrors the Replaces algorithm —
-	categories whose scores fall within the {MIGRATION_BAND}-point band.
+	capability, on the blended 0–100 scale. The "Comparable" column marks each category within the
+	{MIGRATION_BAND}-point band; the Replaces hint requires at least two matching categories, the Go
+	model no more than {MIGRATION_MAX_DEFICIT} points below on either, and is capped at
+	{MIGRATION_MAX_HINTS} candidates.
 </p>
 
 <div class="mb-4 flex flex-wrap items-center gap-3">
@@ -185,9 +199,10 @@
 		{/each}
 	</select>
 	<span class="text-xs text-muted-foreground">
-		Recency window: only models released after
+		Recency window: LLM Stats candidates released after
 		<span class="font-medium text-foreground">{cutoffLabel}</span> are compared — older generations are
-		excluded so the matchups stay peer-to-peer.
+		excluded so the matchups stay peer-to-peer. Plan-derived candidates have no release date and come
+		from the current Zed Pro and Copilot Pro pages.
 	</span>
 </div>
 
@@ -216,7 +231,9 @@
 		</div>
 		{#if selected.migrationHints.length}
 			<div class="text-xs text-muted-foreground">
-				<span class="font-medium text-foreground">Currently replaces:</span>
+				<span class="font-medium text-foreground"
+					>Currently replaces (top {MIGRATION_MAX_HINTS}):</span
+				>
 				{selected.migrationHints.map((h) => `${h.model} (${h.reason})`).join(' · ')}
 			</div>
 		{:else if !selected.openWeight}
@@ -226,8 +243,9 @@
 			</div>
 		{:else}
 			<div class="text-xs text-muted-foreground">
-				<span class="font-medium text-foreground">Currently replaces:</span> nothing — no frontier
-				model is within the {MIGRATION_BAND}-point band.
+				<span class="font-medium text-foreground">Currently replaces:</span>
+				nothing — no closed model is within the {MIGRATION_BAND}-point band and no more than {MIGRATION_MAX_DEFICIT}
+				points above the Go model on at least two categories.
 			</div>
 		{/if}
 	</div>

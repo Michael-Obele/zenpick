@@ -23,6 +23,9 @@ import {
 	FRONTIER_MAX_AGE_DAYS
 } from '$lib/server/llm-stats';
 import { inferModel, inferMigrationHints } from '$lib/server/inference';
+import { buildPlanFrontierCandidates } from '$lib/server/frontier';
+import { mergeFrontierCandidates } from '$lib/frontier';
+import { COPILOT_PLAN, ZED_PLAN } from '$lib/stack/plans';
 import {
 	fetchModelsDevCatalog,
 	emptyModelsDevCatalog,
@@ -382,7 +385,10 @@ async function buildModelLifecycle(): Promise<CachedBuild<ModelLifecycleReport>>
 		ttl: catalogTtl(mdCatalog),
 		data: {
 			rows: [...entries.values()]
-				.map((l) => ({ ...l, benchmarkCount: index.byModel.get(l.id)?.length ?? 0 }))
+				.map((l) => ({
+					...l,
+					benchmarkCount: index.byModel.get(l.id)?.length ?? 0
+				}))
 				.sort(
 					(a, b) =>
 						STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status) ||
@@ -417,7 +423,10 @@ function resolveCanonicalIds(
 function toIndexInput(
 	canonicalByModel: Map<string, string | null>
 ): { id: string; canonicalId: string | null }[] {
-	return [...canonicalByModel].map(([id, canonicalId]) => ({ id, canonicalId }));
+	return [...canonicalByModel].map(([id, canonicalId]) => ({
+		id,
+		canonicalId
+	}));
 }
 
 function flattenBenchmarks(
@@ -510,7 +519,7 @@ async function refreshCache(): Promise<GoModel[]> {
 	// modelgrep blending is restricted to EXACT name matches (similarity 1):
 	// a containment match (0.85) like "gpt-5.5-instant" → "gpt-5.5" would
 	// silently mix two different models' benchmark data into the comparison.
-	const frontierCandidates: FrontierCandidate[] = frontierLs.map((fm) => {
+	const lsFrontierCandidates: FrontierCandidate[] = frontierLs.map((fm) => {
 		const mg = fuzzyMatchModelgrep(fm.id, mgResult.all, 1);
 		const { benchmarks } = blendBenchmarks(mg, fm);
 		return {
@@ -521,6 +530,16 @@ async function refreshCache(): Promise<GoModel[]> {
 			benchmarks
 		};
 	});
+
+	// LLM Stats now requires an API key. Without it, the frontier list is
+	// empty and every open-weight Go model shows a dash under Replaces. The
+	// current plan pages already enumerate the closed models a Go user is
+	// choosing between, so they fill the gap with modelgrep benchmarks.
+	const planFrontierCandidates = buildPlanFrontierCandidates(
+		[ZED_PLAN, COPILOT_PLAN],
+		mgResult.byId
+	);
+	const frontierCandidates = mergeFrontierCandidates(lsFrontierCandidates, planFrontierCandidates);
 
 	const frontierSnapshot: FrontierSnapshot = {
 		frontier: frontierCandidates,
@@ -543,7 +562,7 @@ async function refreshCache(): Promise<GoModel[]> {
 	// empty — and the catalog gets the short TTL below.
 	const degraded = isModelsDevDegraded(mdCatalog);
 	console.log(
-		`[refreshCache] goModels=${goModels.length} official=${officialModels.length} modelgrepModels=${mgResult.byId.size} docsModels=${Object.keys(docsPricing).length} llmStats=${lsModels.length} frontier=${frontierLs.length} modelsDevGo=${mdCatalog.byId.size} modelsDevZen=${mdCatalog.zenById.size} modelsDevDegraded=${degraded}`
+		`[refreshCache] goModels=${goModels.length} official=${officialModels.length} modelgrepModels=${mgResult.byId.size} docsModels=${Object.keys(docsPricing).length} llmStats=${lsModels.length} frontier=${frontierCandidates.length} (llm-stats=${lsFrontierCandidates.length} plans=${planFrontierCandidates.length}) modelsDevGo=${mdCatalog.byId.size} modelsDevZen=${mdCatalog.zenById.size} modelsDevDegraded=${degraded}`
 	);
 
 	// Pre-match each Go model to its llm-stats counterpart against the FULL
@@ -639,6 +658,8 @@ const CACHE_KEY = `go-models-enriched:${fnv1a(
 		inferBurnDetails,
 		deriveBurnScale,
 		refreshCache,
+		buildPlanFrontierCandidates,
+		mergeFrontierCandidates,
 		inferMigrationHints
 	]
 		.map((fn) => fn.toString())
@@ -650,7 +671,14 @@ const CACHE_KEY = `go-models-enriched:${fnv1a(
  * functions so it rebuilds in lockstep with the models cache.
  */
 const FRONTIER_CACHE_KEY = `frontier-snapshot:${fnv1a(
-	[fetchLlmStatsModels, filterFrontierModels, fuzzyMatchModelgrep, blendBenchmarks]
+	[
+		fetchLlmStatsModels,
+		filterFrontierModels,
+		fuzzyMatchModelgrep,
+		blendBenchmarks,
+		buildPlanFrontierCandidates,
+		mergeFrontierCandidates
+	]
 		.map((fn) => fn.toString())
 		.join('\n')
 )}`;

@@ -193,6 +193,6 @@
 	</Table.Root>
 </div>
 <p class="mt-2 text-xs text-muted-foreground">
-	Plan comparison shows the metrics every plan publishes. Burn and OpenCode Go quotas appear on the
-	Go comparison.
+	Plan comparison shows the metrics every plan publishes. Burn, OpenCode Go quotas and replaces
+	hints appear on the Go comparison.
 </p>
