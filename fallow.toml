@@ -43,6 +43,13 @@ maxCrap = 1000.0
 reason = "HTML scraping pipeline with per-page fallback paths + per-plan tier tables"
 
 [[health.thresholdOverrides]]
+files = ["src/lib/server/go-docs.ts"]
+functions = ["parseGoDocsTables"]
+maxCyclomatic = 22
+maxCognitive = 44
+reason = "Go docs HTML table parser: pricing, tier and usage rows per plan; pinned at the pre-existing score"
+
+[[health.thresholdOverrides]]
 files = ["src/lib/server/blend.ts"]
 functions = ["blendBenchmarks"]
 maxCyclomatic = 25
@@ -140,10 +147,17 @@ reason = "Nav with per-link active states and mobile menu"
 [[health.thresholdOverrides]]
 files = ["src/routes/about/+page.svelte"]
 functions = ["<template>"]
-maxCyclomatic = 18
+maxCyclomatic = 24
 maxCognitive = 30
 maxCrap = 400.0
-reason = "Long-form story page with narrative sections"
+reason = "Long-form story page: narrative sections, plan cards, stack preview and Go-only charts; pinned at current score"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/components/About/PricePerformanceScatter.svelte"]
+functions = ["<template>"]
+maxCyclomatic = 25
+maxCognitive = 61
+reason = "Price-performance scatter: axis mode, burn-band filter, series styling and annotated quadrants; pinned at current score"
 
 [[health.thresholdOverrides]]
 files = ["src/routes/+page.svelte"]

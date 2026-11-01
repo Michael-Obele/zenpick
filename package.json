@@ -39,7 +39,7 @@
 		"build": "vp build",
 		"preview": "vp preview",
 		"prepare": "svelte-kit sync || echo ''",
-		"check": "vpr check",
+		"check": "vpr tscheck",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "vp test run",
 		"test:watch": "vp test",
