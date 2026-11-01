@@ -7,18 +7,17 @@
 	import {
 		BURN_BAND_COLOR,
 		BURN_BAND_LABEL,
-		BURN_BAND_ORDER,
 		pricePerformanceStats,
 		type PricePerfPoint,
 		type XMode
 	} from '$lib/price-performance';
+	import BurnBandLegend from '$lib/components/About/BurnBandLegend.svelte';
 	import { readableTicks, type PositionScale } from '$lib/components/chart-ticks';
 	import * as Chart from '$lib/components/ui/chart/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { Flame, DollarSign } from '@lucide/svelte';
-	import { cn } from '$lib/utils';
 
 	type ChartAnnotations = NonNullable<ComponentProps<typeof ScatterChart>['annotations']>;
 
@@ -167,13 +166,25 @@
 				type: 'line',
 				x: medianX,
 				label: '',
-				props: { line: { stroke: 'var(--border)', 'stroke-dasharray': '4 4', strokeWidth: 1 } }
+				props: {
+					line: {
+						stroke: 'var(--border)',
+						'stroke-dasharray': '4 4',
+						strokeWidth: 1
+					}
+				}
 			},
 			{
 				type: 'line',
 				y: stats.medianScore,
 				label: '',
-				props: { line: { stroke: 'var(--border)', 'stroke-dasharray': '4 4', strokeWidth: 1 } }
+				props: {
+					line: {
+						stroke: 'var(--border)',
+						'stroke-dasharray': '4 4',
+						strokeWidth: 1
+					}
+				}
 			},
 			// Sweet spot — top-left: cheap/efficient + capable
 			{
@@ -332,50 +343,12 @@
 		</div>
 	</Card.Header>
 	<Card.Content>
-		<!-- The legend doubles as a filter: one click isolates a burn band. -->
-		<div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-			<span
-				class="font-mono text-[10px] font-medium tracking-[0.16em] text-muted-foreground uppercase"
-			>
-				Burn band
-			</span>
-			<div class="flex flex-wrap items-center gap-1.5">
-				{#each BURN_BAND_ORDER as band (band)}
-					{@const count = bandCounts[band] ?? 0}
-					{#if count > 0}
-						<button
-							type="button"
-							title="Show only {BURN_BAND_LABEL[band]} models"
-							aria-pressed={focusBand === band}
-							onclick={() => (focusBand = focusBand === band ? null : band)}
-							class={cn(
-								'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs transition-colors',
-								focusBand === band
-									? 'border-primary/50 bg-primary/10 text-foreground'
-									: 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground',
-								focusBand !== null && focusBand !== band && 'opacity-50'
-							)}
-						>
-							<span
-								class="size-2 shrink-0 rounded-full"
-								style="background-color: {BAND_COLOR[band]}"
-								aria-hidden="true"
-							></span>
-							{BURN_BAND_LABEL[band]}
-							<span class="font-mono tabular-nums opacity-70">{count}</span>
-						</button>
-					{/if}
-				{/each}
-			</div>
-			{#if focusBand}
-				<button
-					type="button"
-					class="text-xs text-primary underline-offset-4 hover:underline dark:text-primary-strong"
-					onclick={() => (focusBand = null)}
-				>
-					Show all
-				</button>
-			{/if}
+		<div class="mb-3">
+			<BurnBandLegend
+				counts={bandCounts}
+				focus={focusBand}
+				onfocus={(band) => (focusBand = band)}
+			/>
 		</div>
 
 		<!-- `aspect-auto` drops the container's default 16:9 ratio so the
