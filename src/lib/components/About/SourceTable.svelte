@@ -35,10 +35,34 @@
 			href: 'https://models.dev',
 			license: 'Open source (MIT)',
 			use: 'First-party OpenCode catalog metadata and the Go model lifecycle history'
+		},
+		{
+			provider: 'zed.dev · hosted models',
+			href: 'https://zed.dev/docs/account/zed-hosted-models',
+			license: 'Per Zed docs',
+			use: 'Zed Pro model list and list prices'
+		},
+		{
+			provider: 'zed.dev · plans & pricing',
+			href: 'https://zed.dev/docs/account/plans-and-pricing',
+			license: 'Per Zed docs',
+			use: 'Zed Pro monthly price, included token credit and 10% markup'
+		},
+		{
+			provider: 'GitHub · supported models',
+			href: 'https://docs.github.com/en/copilot/reference/ai-models/supported-models',
+			license: 'Per GitHub docs',
+			use: 'Copilot Pro model list'
+		},
+		{
+			provider: 'GitHub · models & pricing',
+			href: 'https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing',
+			license: 'Per GitHub docs',
+			use: 'Copilot Pro prices and credit rates'
 		}
 	];
 
-	/** Two of the four are advisory (Go docs, models.dev); only two require it. */
+	/** Only modelgrep and LLM Stats require attribution; the other six are advisory. */
 	const attributionCount = sources.filter((source) => source.required).length;
 </script>
 

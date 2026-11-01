@@ -5,21 +5,45 @@
 	// Drawn as an engineering block diagram with dimension lines and callouts.
 
 	const sources = [
-		{ id: 'modelgrep', label: 'modelgrep.com API', sublabel: 'benchmarks · pricing · speed' },
-		{ id: 'llm-stats', label: 'llm-stats.com API', sublabel: 'rankings · scores · pricing' },
-		{ id: 'opencode', label: 'OpenCode Go', sublabel: 'models · endpoints' }
+		{
+			id: 'benchmarks',
+			label: 'modelgrep + LLM Stats',
+			sublabel: 'benchmarks · pricing'
+		},
+		{
+			id: 'go',
+			label: 'OpenCode Go + models.dev',
+			sublabel: 'catalog · lifecycle'
+		},
+		{
+			id: 'plans',
+			label: 'Zed + Copilot docs',
+			sublabel: 'plan models · prices'
+		}
 	];
 
 	const engineBlocks = [
 		{ id: 'fetch', label: 'FETCH', sublabel: 'HTTP · auth', icon: Database },
 		{ id: 'cache', label: 'CACHE', sublabel: '6h TTL · SWR', icon: Database },
-		{ id: 'infer', label: 'INFER', sublabel: 'tag · score · rank', icon: Sigma }
+		{
+			id: 'infer',
+			label: 'INFER',
+			sublabel: 'tag · score · rank',
+			icon: Sigma
+		},
+		{
+			id: 'plan',
+			label: 'PLAN',
+			sublabel: 'merge · price · stack',
+			icon: Sigma
+		}
 	];
 
 	const surfaces = [
-		{ id: 'table', label: 'Model Table', sublabel: 'sortable · filterable' },
-		{ id: 'calc', label: 'Quota Calculator', sublabel: 'token → request' },
-		{ id: 'drawer', label: 'Model Drawer', sublabel: 'detail · copy · compare' }
+		{ id: 'table', label: 'Model Table', sublabel: 'all plans · filterable' },
+		{ id: 'stack', label: 'Agent Stack', sublabel: 'main · sub · cost' },
+		{ id: 'compare', label: 'Compare', sublabel: 'plan:id · mixed plans' },
+		{ id: 'calc', label: 'Quota Calculator', sublabel: 'Go · token → request' }
 	];
 </script>
 
@@ -40,7 +64,9 @@
 			{#each sources as s (s.id)}
 				<div class="rounded-md border border-border bg-background/60 px-3 py-2.5 font-mono text-xs">
 					<div class="font-medium text-foreground">{s.label}</div>
-					<div class="mt-0.5 text-[10px] text-muted-foreground">{s.sublabel}</div>
+					<div class="mt-0.5 text-[10px] text-muted-foreground">
+						{s.sublabel}
+					</div>
 				</div>
 			{/each}
 		</div>
@@ -71,7 +97,9 @@
 						<b.icon class="size-3.5 shrink-0 text-cyan-700 dark:text-cyan-300" />
 						<div class="font-mono text-xs">
 							<div class="font-medium text-foreground">{b.label}</div>
-							<div class="mt-0.5 text-[10px] text-muted-foreground">{b.sublabel}</div>
+							<div class="mt-0.5 text-[10px] text-muted-foreground">
+								{b.sublabel}
+							</div>
 						</div>
 					</div>
 				{/each}
@@ -97,7 +125,9 @@
 			{#each surfaces as s (s.id)}
 				<div class="rounded-md border border-border bg-background/60 px-3 py-2.5 font-mono text-xs">
 					<div class="font-medium text-foreground">{s.label}</div>
-					<div class="mt-0.5 text-[10px] text-muted-foreground">{s.sublabel}</div>
+					<div class="mt-0.5 text-[10px] text-muted-foreground">
+						{s.sublabel}
+					</div>
 				</div>
 			{/each}
 		</div>
@@ -109,7 +139,7 @@
 	>
 		<div class="flex flex-col gap-1">
 			<span class="text-cyan-900 dark:text-cyan-200">scale</span>
-			<span class="text-foreground">324 models upstream</span>
+			<span class="text-foreground">3 plans · one table</span>
 		</div>
 		<div class="flex flex-col gap-1">
 			<span class="text-cyan-900 dark:text-cyan-200">latency</span>
@@ -117,7 +147,7 @@
 		</div>
 		<div class="flex flex-col gap-1">
 			<span class="text-cyan-900 dark:text-cyan-200">refresh</span>
-			<span class="text-foreground">6h · stale-while-revalidate</span>
+			<span class="text-foreground">6h live · plans hand-checked</span>
 		</div>
 	</div>
 

@@ -3,9 +3,18 @@
 
 	interface Props {
 		modelCount?: number | null;
+		planCount?: number | null;
 	}
 
-	let { modelCount = null }: Props = $props();
+	let { modelCount = null, planCount = null }: Props = $props();
+
+	const switchedTo = $derived(
+		modelCount == null
+			? 'every model'
+			: planCount == null
+				? `${modelCount} models`
+				: `${modelCount} models across ${planCount} plans`
+	);
 
 	const today = new Date().toLocaleDateString('en-US', {
 		month: 'short',
@@ -16,7 +25,7 @@
 
 <figure
 	class="receipt-shadow mx-auto max-w-md overflow-hidden rounded-sm border border-border/60 bg-card font-mono text-sm sm:text-base"
-	aria-label="A thermal receipt representing the decision to switch AI plans"
+	aria-label="A thermal receipt representing the decision to compare AI plans"
 >
 	<!-- receipt sprocket holes -->
 	<div class="flex justify-between px-3 py-2" aria-hidden="true">
@@ -57,18 +66,21 @@
 				<span class="text-foreground">Model overlap</span>
 				<span class="text-muted-foreground tabular-nums">confusing</span>
 			</div>
-			<div class="flex justify-between">
-				<span class="text-foreground">OpenCode Go</span>
-				<span class="text-emerald-800 tabular-nums dark:text-emerald-300">$10/mo</span>
+			<div>
+				<div class="flex justify-between">
+					<span class="text-foreground">Three AI plans</span>
+					<span class="text-emerald-800 tabular-nums dark:text-emerald-300">$10/mo each</span>
+				</div>
+				<div class="mt-1 text-[11px] text-muted-foreground">
+					OpenCode Go · Zed Pro · Copilot Pro
+				</div>
 			</div>
 			<div class="flex justify-between font-medium text-foreground">
 				<span class="inline-flex items-center gap-1.5">
 					<ArrowRightLeft class="size-3.5 text-primary dark:text-primary-strong" />
 					Switched to
 				</span>
-				<span class="text-primary tabular-nums dark:text-primary-strong"
-					>{modelCount != null ? `${modelCount} models` : '13+ models'}</span
-				>
+				<span class="text-primary tabular-nums dark:text-primary-strong">{switchedTo}</span>
 			</div>
 		</div>
 
@@ -77,7 +89,7 @@
 		<div class="flex items-start justify-between gap-4">
 			<span class="text-foreground">Problem left unsolved</span>
 			<span class="max-w-[55%] text-right text-xs leading-snug text-muted-foreground">
-				Which open model fits which task? How fast does each burn the quota?
+				Which plan, which model, and which pair of agents fits the task?
 			</span>
 		</div>
 	</div>
@@ -91,7 +103,8 @@
 			>
 		</div>
 		<div class="mt-2 text-xs leading-relaxed text-muted-foreground">
-			A comparison layer for OpenCode Go: benchmarks, burn rates, and fit scores in one page.
+			A comparison layer for the plans you already pay for: plan prices, benchmarks, burn rates and
+			main/sub stacks.
 		</div>
 		<div class="mt-4 text-center text-xs font-medium text-primary dark:text-primary-strong">
 			verified by real usage

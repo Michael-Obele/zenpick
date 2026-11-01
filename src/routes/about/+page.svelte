@@ -9,7 +9,10 @@
 	import ModelBurnChart from '$lib/components/About/ModelBurnChart.svelte';
 	import ScenarioRadarChart from '$lib/components/About/ScenarioRadarChart.svelte';
 	import PricePerformanceScatter from '$lib/components/About/PricePerformanceScatter.svelte';
-	import { getModels } from '$lib/remote/models.remote';
+	import PlanCards from '$lib/components/About/PlanCards.svelte';
+	import StackPreview from '$lib/components/About/StackPreview.svelte';
+	import { getCatalogRows, getModels, getStackPlans } from '$lib/remote/models.remote';
+	import type { CatalogRow } from '$lib/catalog';
 	import {
 		ArrowRight,
 		ChevronLeft,
@@ -23,20 +26,34 @@
 
 	let mounted = $state(false);
 	const modelsPromise = getModels();
+	const stackPlansPromise = getStackPlans();
+	const catalogPromise = getCatalogRows();
 	onMount(() => {
 		mounted = true;
 	});
 
+	/** Distinct plans that carry at least one model. */
+	function planCount(rows: CatalogRow[]): number {
+		return new Set(rows.flatMap((row) => row.plans.map((entry) => entry.plan))).size;
+	}
+
+	/** Plan listings across all rows: a model on two plans counts twice. */
+	function planListingCount(rows: CatalogRow[]): number {
+		return rows.reduce((total, row) => total + row.plans.length, 0);
+	}
+
 	/**
 	 * The jump list under the header.
 	 *
-	 * The page is seven sections long and the headline chart sat in the
+	 * The page is nine sections long and the headline chart sat in the
 	 * middle of one of them, so nothing pointed a reader at it. The chart
 	 * gets its own entry (and its own highlight) because it is the one
 	 * visual that carries the whole argument.
 	 */
 	const pageSections = [
 		{ id: 'product', label: 'What it does' },
+		{ id: 'plans', label: 'Plans' },
+		{ id: 'agent-stacks', label: 'Agent stacks' },
 		{ id: 'numbers', label: 'The numbers' },
 		{ id: 'price-performance', label: 'Burn vs. performance', featured: true },
 		{ id: 'methodology', label: 'Methodology' },
@@ -102,19 +119,13 @@
 	<title>About — ZenPick</title>
 	<meta
 		name="description"
-		content="Why I built ZenPick: a free tool that lines up every model in your plan so you stop wasting your AI budget on the wrong one. Live benchmarks, price, and quota burn."
+		content="Why I built ZenPick: a free comparison layer for OpenCode Go, Zed Pro and GitHub Copilot Pro. Live benchmarks, plan-scoped prices, burn rates and main/sub agent stacks."
 	/>
 </svelte:head>
 
 <LightRays class="rays-quiet" count={3} blur={26} speed={46} length="55%" />
 
 <main class="relative mx-auto max-w-6xl px-4 py-12 sm:py-16">
-	<!-- subtle receipt paper texture background -->
-	<div
-		class="pointer-events-none absolute inset-x-0 top-0 h-[60vh] bg-linear-to-b from-primary/3 to-transparent"
-		aria-hidden="true"
-	></div>
-
 	<!-- Document header -->
 	<header
 		class="relative mb-16 grid gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)] lg:items-center lg:gap-16"
@@ -140,8 +151,9 @@
 			<p class="max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
 				The price was never the problem. I pay a fixed amount each month and then spend it model by
 				model, often on the wrong one. A cheap model can carry a full day of work; an expensive one
-				empties the same window in an afternoon. ZenPick lines the models up against the task you
-				actually have, so the budget you already pay for goes further.
+				empties the same window in an afternoon. ZenPick puts OpenCode Go, Zed Pro and GitHub
+				Copilot Pro models on one table, shows what each plan charges, and builds a main agent plus
+				a cheaper sub-agent, so the budget you already pay for goes further.
 			</p>
 
 			<p class="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
@@ -198,10 +210,10 @@
 						</div>
 						<Thermometer class="size-5 text-primary dark:text-primary-strong" />
 					</div>
-					{#await modelsPromise}
+					{#await catalogPromise}
 						<ReceiptBlock />
-					{:then models}
-						<ReceiptBlock modelCount={models.length} />
+					{:then rows}
+						<ReceiptBlock modelCount={rows.length} planCount={planCount(rows)} />
 					{/await}
 					<p class="mt-4 border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground">
 						Check cost and burn before the session starts, not after the quota is gone.
@@ -250,21 +262,108 @@
 
 		<div class="space-y-4 text-base leading-relaxed text-foreground">
 			<p>
-				Three things on one page: a sortable table of every model with live benchmark scores, a
-				quota calculator that turns a token estimate into requests per window, and a detail drawer
-				that names the closed-source model each one replaces. Together they answer one question:
-				which model gives you the most for the budget you already have.
+				One table covers OpenCode Go, Zed Pro and GitHub Copilot Pro. Filter to one plan and every
+				price is that plan's price. Leave it on all plans and each row shows the cheapest input rate
+				plus the plans that carry the model.
 			</p>
 			<p>
-				Everything runs on a stale-while-revalidate cache, so revisits are instant and the page
-				never fetches the same data twice within six hours.
+				The agent stack picks a main agent and a cheaper sub-agent. It shows what the pair costs per
+				100 requests, how much that saves against sending everything to the main model, and how many
+				requests the monthly allowance covers. In <code class="font-mono text-sm">/compare</code>,
+				picks are <code class="font-mono text-sm">plan:id</code> keys, so one selection can hold models
+				from different plans.
+			</p>
+			<p>
+				OpenCode Go keeps the tools that depend on its request windows: the quota calculator,
+				thermal burn bands and the burn chart. Zed Pro and Copilot Pro use monthly token allowances,
+				so their rows carry plan prices, intelligence, coding score and context instead.
+			</p>
+			<p>
+				Everything runs on a stale-while-revalidate cache, so revisits are instant and live data is
+				not fetched again within six hours. A build that ran without upstream data expires after 15
+				minutes instead of holding nulls for six hours.
 			</p>
 		</div>
 
 		<Schematic />
 	</section>
 
-	<!-- 02 THE NUMBERS -->
+	<!-- 02 PLANS -->
+	<section class="mb-20" aria-labelledby="plans">
+		<div class="mb-6 flex items-baseline gap-3">
+			<span
+				class="section-number font-mono text-xs font-medium tracking-wider text-primary uppercase dark:text-primary-strong"
+				aria-hidden="true"
+			></span>
+			<h2 id="plans" class="scroll-mt-24 text-2xl font-semibold tracking-tight text-foreground">
+				Three plans, one table
+			</h2>
+			<div class="ml-auto hidden h-px flex-1 bg-border sm:block" aria-hidden="true"></div>
+		</div>
+
+		<p class="mb-6 max-w-3xl text-base leading-relaxed text-foreground">
+			All three plans cost $10 a month. What differs is what the $10 buys: request windows on
+			OpenCode Go, a token credit on Zed Pro and GitHub Copilot Pro. The cards read the same plan
+			data as the app, so this page cannot drift from the table.
+		</p>
+
+		{#await stackPlansPromise}
+			<div class="h-64 animate-pulse rounded-xl bg-muted"></div>
+		{:then plans}
+			<PlanCards {plans} />
+		{/await}
+
+		<Callout variant="amber" label="plan data">
+			Zed Pro and Copilot Pro facts were checked against the vendor pages on the dates shown on each
+			card. Prices and allowances change; open the linked page before you rely on a number. OpenCode
+			Go models are live from its catalog; its plan terms come from the Go docs.
+		</Callout>
+	</section>
+
+	<!-- 03 AGENT STACKS -->
+	<section class="mb-20" aria-labelledby="agent-stacks">
+		<div class="mb-6 flex items-baseline gap-3">
+			<span
+				class="section-number font-mono text-xs font-medium tracking-wider text-primary uppercase dark:text-primary-strong"
+				aria-hidden="true"
+			></span>
+			<h2
+				id="agent-stacks"
+				class="scroll-mt-24 text-2xl font-semibold tracking-tight text-foreground"
+			>
+				Main agent, cheaper sub-agent
+			</h2>
+			<div class="ml-auto hidden h-px flex-1 bg-border sm:block" aria-hidden="true"></div>
+		</div>
+
+		<p class="mb-6 max-w-3xl text-base leading-relaxed text-foreground">
+			The main agent plans, decides and writes the hard parts. Sub-agents implement, review and fix.
+			Send most requests to a cheaper model and the same allowance stretches further.
+		</p>
+
+		{#await stackPlansPromise}
+			<div class="h-64 animate-pulse rounded-xl bg-muted"></div>
+		{:then plans}
+			<StackPreview {plans} />
+		{/await}
+
+		<p class="mt-6 max-w-3xl text-base leading-relaxed text-foreground">
+			Nothing joins your comparison until you press <strong>Compare this pair</strong>. The link
+			carries both keys (<code class="font-mono text-sm">?models=plan:id,plan:id</code>), so it
+			reopens the pair on the compare page and you can add more models there.
+		</p>
+
+		<div class="mt-6">
+			<a
+				href="/#agent-stack"
+				class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+			>
+				Build your own pair
+			</a>
+		</div>
+	</section>
+
+	<!-- 04 THE NUMBERS -->
 	<section class="mb-20" aria-labelledby="numbers">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
@@ -279,31 +378,40 @@
 
 		<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
 			<StatCard
-				figure="10"
+				figure="$10"
 				unit="/mo"
-				label="subscription"
-				footnote="The budget you are already spending."
+				label="per plan"
+				footnote="OpenCode Go, Zed Pro and GitHub Copilot Pro each cost the same."
 			/>
-			{#await modelsPromise}
+			{#await catalogPromise}
 				<StatCard figure="—" label="models tracked" footnote="Loading…" />
-			{:then models}
+				<StatCard figure="—" label="plan listings" footnote="Loading…" />
+			{:then rows}
 				<StatCard
-					figure={String(models.length)}
-					unit={models.length === 1 ? '' : '+'}
+					figure={String(rows.length)}
 					label="models tracked"
-					footnote="Across {new Set(models.map((m) => m.provider)).size} providers."
+					footnote="One row per model, whichever plans carry it."
+				/>
+				<StatCard
+					figure={String(planListingCount(rows))}
+					label="plan listings"
+					footnote="A model on two plans counts twice."
 				/>
 			{/await}
-			<StatCard figure="6" unit="h" label="cache TTL" footnote="Stale-while-revalidate." />
 			<StatCard
-				figure="324"
-				label="upstream models"
-				footnote="Cross-referenced via modelgrep + LLM Stats."
+				figure="6"
+				unit="h"
+				label="cache TTL"
+				footnote="Stale-while-revalidate; 15 minutes when an upstream build is partial."
 			/>
 			<StatCard figure="Free" label="to use" footnote="No account, no paywall, open source." />
 		</div>
 
 		<div class="mt-10">
+			<p class="mb-3 text-xs leading-relaxed text-muted-foreground">
+				OpenCode Go only. Burn bands come from its published request windows; Zed Pro and Copilot
+				Pro use monthly token credits.
+			</p>
 			{#if mounted}
 				<div in:fade={{ duration: 500, delay: 200 }}>
 					<ModelBurnChart />
@@ -318,10 +426,11 @@
 			<div class="mb-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
 				<p class="max-w-2xl text-base leading-relaxed text-foreground">
 					Every model is one dot. The shaded corner is the sweet spot — scoring above the median
-					while costing less than it — and the ringed dot is the strongest model in there.
+					while costing less than it — and the ringed dot is the strongest model in there. Zed Pro
+					and Copilot Pro rows are not plotted because they have no burn band.
 				</p>
 				<div class="flex items-center gap-3 text-xs text-muted-foreground">
-					<span>Live, from upstream data.</span>
+					<span>Live, OpenCode Go only.</span>
 					<a
 						href="/#compare-models"
 						class="text-primary underline-offset-4 hover:underline dark:text-primary-strong"
@@ -343,30 +452,30 @@
 
 		<Callout variant="cyan" label="methodology note">
 			"Upstream" refers to the data aggregated at modelgrep.com (OpenRouter pricing + Artificial
-			Analysis benchmarks) and llm-stats.com (benchmark scores, rankings, and pricing), which tracks
-			every model we cross-check against.
+			Analysis benchmarks) and llm-stats.com (benchmark scores, rankings, and pricing). Plan facts
+			are not upstream: Zed and Copilot prices are checked by hand against their docs.
 		</Callout>
 
 		<div class="mt-8 text-center">
-			{#await modelsPromise}
+			{#await catalogPromise}
 				<a
 					href="/#compare-models"
 					class="inline-flex items-center rounded-full border border-border/60 bg-background px-4 py-2 text-sm text-foreground underline-offset-12 hover:underline"
 				>
 					See all models ranked
 				</a>
-			{:then models}
+			{:then rows}
 				<a
 					href="/#compare-models"
 					class="inline-flex items-center rounded-full border border-border/60 bg-background px-4 py-2 text-sm text-foreground underline-offset-12 hover:underline"
 				>
-					See all {models.length}+ models ranked
+					See all {rows.length} models ranked
 				</a>
 			{/await}
 		</div>
 	</section>
 
-	<!-- 03 METHODOLOGY -->
+	<!-- 05 METHODOLOGY -->
 	<section class="mb-20" aria-labelledby="methodology">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
@@ -384,20 +493,31 @@
 
 		<div class="space-y-4 text-base leading-relaxed text-foreground">
 			<p>
-				Every model gets a 0 to 100 fit score for five scenarios:
-				<em>Brainstorming</em>, <em>Coding</em>, <em>Agentic</em>, <em>Budget</em>, and
-				<em>Frontend</em>. Scores are normalized across the current model population, so the
-				ordering is always meaningful and always non-empty. The table sorts by the active scenario;
-				with none active, it sorts by raw coding benchmark.
+				OpenCode Go models get a 0 to 100 fit score for five scenarios:
+				<em>Brainstorming</em>, <em>Coding</em>, <em>Agentic</em>,
+				<em>Budget</em>, and
+				<em>Frontend</em>. Scores are normalized across the current Go population, so the ordering
+				is always meaningful and always non-empty. The table sorts by the active scenario; with none
+				active, it sorts by raw coding benchmark.
 			</p>
 			<p>
-				Tags, migration hints, and thermal burn rates are inferred. Nothing on the page is
-				hand-curated. If the upstream data changes, the page changes.
+				Zed Pro and Copilot Pro rows skip the scenario score. They show the plan's price, Artificial
+				Analysis intelligence, coding score and context window instead. Scenario filters clear when
+				you switch to those plans, so a ranking never hides models the data cannot score.
+			</p>
+			<p>
+				Go tags, migration hints and thermal burn rates are inferred from upstream data. Plan facts
+				are different: prices, allowances, caveats and model lists are hand-checked against the
+				vendor pages, and every card carries the date it was checked. If an upstream value changes,
+				the page changes; if a vendor page changes, the plan card waits for a code update.
 			</p>
 		</div>
 
 		<!-- Radar visualization -->
 		<div class="my-6">
+			<p class="mb-3 text-xs leading-relaxed text-muted-foreground">
+				OpenCode Go only. The radar runs on scenario fit scores, which the static plans do not have.
+			</p>
 			{#await modelsPromise}
 				<div class="h-64 animate-pulse rounded-xl bg-muted"></div>
 			{:then models}
@@ -410,7 +530,7 @@
 		</div>
 	</section>
 
-	<!-- 04 DATA & ATTRIBUTION -->
+	<!-- 06 DATA & ATTRIBUTION -->
 	<section class="mb-20" aria-labelledby="attribution">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
@@ -448,30 +568,23 @@
 					llm-stats.com
 					<ExternalLink class="size-3" />
 				</a>
-				(benchmark scores, rankings, and pricing), and used with attribution. The model list, endpoint
-				types, and quota windows come from the
-				<a
-					href="https://opencode.ai/v2/docs/console/go"
-					target="_blank"
-					rel="noopener noreferrer"
-					class="inline-flex items-center gap-0.5 text-primary underline-offset-4 hover:underline dark:text-primary-strong"
-				>
-					OpenCode Go documentation
-					<ExternalLink class="size-3" />
-				</a>.
+				(benchmark scores, rankings, and pricing), and used with attribution. The OpenCode Go catalog
+				comes from its docs and models.dev. Zed Pro and Copilot Pro plan facts come from the vendor pages
+				in the table below.
 			</p>
 			<p class="text-muted-foreground">
 				Everything ZenPick computes on top (scenario fit scores, burn rate tiers, migration hints)
-				is derived from those sources, in the schematic above. The data and the attribution are kept
-				close on purpose.
+				is derived from those sources, in the schematic above. Plan facts are hand-checked, not
+				inferred. The data and the attribution are kept close on purpose.
 			</p>
 		</div>
 
 		<SourceTable />
 
 		<Callout variant="amber" label="freshness">
-			The 6-hour cache is the longest ZenPick will let any number go without re-fetching. A red
-			indicator appears on the comparison page if upstream data is unreachable.
+			Live numbers are cached for six hours; a partial upstream build expires after 15 minutes
+			instead of pinning nulls. Plan facts carry their check date and do not refresh until the code
+			is updated.
 		</Callout>
 
 		<div class="mt-10 flex justify-center">
@@ -485,7 +598,7 @@
 		</div>
 	</section>
 
-	<!-- 05 LLMS.TXT — MACHINE-READABLE CATALOG -->
+	<!-- 07 LLMS.TXT — MACHINE-READABLE CATALOG -->
 	<section class="mb-20 scroll-mt-24" aria-labelledby="llms-txt" id="llms-txt">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
@@ -507,6 +620,11 @@
 				>ZenPick's <code class="font-mono text-sm">/llms.txt</code></a
 			> is the same live catalog as plain markdown — regenerated on every request from the server-side
 			cache (at most ~6 hours stale), no browser and no API key required.
+		</p>
+		<p class="mb-4 text-base leading-relaxed text-foreground">
+			The file is OpenCode Go only. Zed Pro and Copilot Pro prices live in the app, where each row
+			shows that plan's price (and a note when the vendor has one). They are not in
+			<code class="font-mono text-sm">llms.txt</code> yet.
 		</p>
 		<p class="mb-6 text-base leading-relaxed text-muted-foreground">
 			One fetch answers "which OpenCode Go model should I use" without running the app. Quick
@@ -543,7 +661,10 @@
 					<li>
 						<span class="text-muted-foreground">Compare (browser)</span><br />
 						<code class="break-all text-foreground"
-							>/compare?models=deepseek-v4.1-flash,claude-sonnet-4</code
+							>/compare?models=go:deepseek-v4.1-flash,zed:claude-sonnet-5.5</code
+						>
+						<span class="text-muted-foreground"
+							>— plan:id keys; mixed plans work, and bare Go ids still resolve</span
 						>
 					</li>
 					<li>
@@ -553,10 +674,11 @@
 					</li>
 				</ul>
 				<p class="mt-4 text-xs leading-relaxed text-muted-foreground">
-					Quote the <code class="font-mono text-foreground">ID</code> column, not the display name —
-					IDs are the stable keys for compare URLs. Link
-					<code class="font-mono text-foreground">/llms.txt</code> and the
-					<code class="font-mono text-foreground">Data as of</code> timestamp when citing a number.
+					Quote the <code class="font-mono text-foreground">ID</code> column for models, and the
+					<code class="font-mono text-foreground">plan:id</code>
+					key for compare URLs. IDs are the stable keys; names are display text and change. Link
+					<code class="font-mono text-foreground">/llms.txt</code>
+					and the <code class="font-mono text-foreground">Data as of</code> timestamp when citing a number.
 				</p>
 			</div>
 
@@ -569,9 +691,9 @@
 					</p>
 					<pre
 						class="overflow-x-auto rounded-lg bg-foreground px-3 py-2.5 font-mono text-xs leading-relaxed text-background"><code
-							>curl https://zenpick.dev/llms.txt | head -n 40
-curl "https://zenpick.dev/llms.txt?need=coding&q=vision"
-curl https://zenpick.dev/debug/export?section=models&format=json | jq .</code
+							>curl https://zp.svelte-apps.me/llms.txt | head -n 40
+curl "https://zp.svelte-apps.me/llms.txt?need=coding&q=vision"
+curl https://zp.svelte-apps.me/debug/export?section=models&format=json | jq .</code
 						></pre>
 					<div class="mt-3 flex flex-wrap gap-2">
 						<a
@@ -593,13 +715,15 @@ curl https://zenpick.dev/debug/export?section=models&format=json | jq .</code
 					Input/output modalities, tool calling, structured output, and reasoning flags are not
 					columns in <code class="font-mono">llms.txt</code>. Follow the
 					<code class="font-mono">Source</code> link per model (LLM Stats) or fetch the raw slice
-					for full <code class="font-mono">capabilities</code>.
+					for full
+					<code class="font-mono">capabilities</code>. Zed Pro and Copilot Pro prices and plan notes
+					are not in the table either; open the plan in the app or fetch the raw model slice.
 				</Callout>
 			</div>
 		</div>
 	</section>
 
-	<!-- 06 THERMAL KEY -->
+	<!-- 08 THERMAL KEY -->
 	<section class="mb-16" aria-labelledby="key">
 		<div class="mb-6 flex items-baseline gap-3">
 			<span
@@ -613,9 +737,10 @@ curl https://zenpick.dev/debug/export?section=models&format=json | jq .</code
 		</div>
 
 		<p class="mb-6 text-base leading-relaxed text-muted-foreground">
-			Every model gets a thermal burn band, built from OpenCode's published request counts per $12
-			window. It tells you how fast that model drains your quota: a cold band lasts the window, a
-			hot one empties it in an afternoon.
+			On OpenCode Go, every model gets a thermal burn band, built from OpenCode's published request
+			counts per $12 window. It tells you how fast that model drains your quota: a cold band lasts
+			the window, a hot one empties it in an afternoon. Zed Pro and Copilot Pro are billed against
+			monthly token credits, so their rows show a dash for burn and quota.
 		</p>
 
 		<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -626,8 +751,12 @@ curl https://zenpick.dev/debug/export?section=models&format=json | jq .</code
 						<span class="inline-block h-2 w-2 rounded-full bg-current" aria-hidden="true"></span>
 						<span class="font-mono text-[10px] tracking-[0.2em] uppercase">{tier.name}</span>
 					</div>
-					<div class="font-mono text-2xl text-foreground tabular-nums">{tier.range}</div>
-					<div class="mt-1 text-xs text-muted-foreground">{tier.description}</div>
+					<div class="font-mono text-2xl text-foreground tabular-nums">
+						{tier.range}
+					</div>
+					<div class="mt-1 text-xs text-muted-foreground">
+						{tier.description}
+					</div>
 				</div>
 			{/each}
 		</div>
@@ -642,17 +771,18 @@ curl https://zenpick.dev/debug/export?section=models&format=json | jq .</code
 		</div>
 	</section>
 
-	<!-- 06 TRY IT -->
+	<!-- 09 TRY IT -->
 	<section class="mb-16" aria-labelledby="try-it">
 		<div class="rounded-2xl border border-border bg-card/40 p-6 sm:p-10">
 			<div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
 				<div>
 					<h2 id="try-it" class="mb-2 text-2xl font-semibold tracking-tight text-foreground">
-						Your $12 quota window is ticking.
+						You already pay for a plan. Make it last.
 					</h2>
 					<p class="max-w-xl text-muted-foreground">
-						Every model burns quota at a different rate. Pick the right one and the window lasts.
-						Pick the wrong one and it empties in minutes.
+						OpenCode Go, Zed Pro and GitHub Copilot Pro all cost $10 a month. ZenPick shows what
+						each plan charges for the models they share, what a main and sub-agent pair costs per
+						100 requests, and how fast a Go model drains its window.
 					</p>
 					<p class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
 						<span class="inline-flex items-center gap-1.5">
@@ -661,17 +791,26 @@ curl https://zenpick.dev/debug/export?section=models&format=json | jq .</code
 						</span>
 						<span class="inline-flex items-center gap-1.5">
 							<CircleCheck class="size-3.5 text-emerald-700 dark:text-emerald-300" />
-							Live data from 3 upstream sources
+							Live Go data and hand-checked plan pages
 						</span>
 					</p>
 				</div>
-				<a
-					href="/#compare-models"
-					class="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 dark:bg-primary-strong dark:text-background dark:hover:bg-primary-strong/90"
-				>
-					<Timer class="size-4" />
-					Find my model before my next session
-				</a>
+				<div class="flex flex-wrap gap-3">
+					<a
+						href="/#compare-models"
+						class="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 dark:bg-primary-strong dark:text-background dark:hover:bg-primary-strong/90"
+					>
+						<Timer class="size-4" />
+						Find my model
+					</a>
+					<a
+						href="/#agent-stack"
+						class="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+					>
+						<ArrowRight class="size-4" />
+						Build my agent stack
+					</a>
+				</div>
 			</div>
 		</div>
 	</section>
@@ -707,7 +846,7 @@ curl https://zenpick.dev/debug/export?section=models&format=json | jq .</code
 <style>
 	/*
 	 * Section numbers are derived from document order via CSS counters, so the
-	 * "01"–"05" prefixes never need manual renumbering — add or remove a
+	 * "01"–"09" prefixes never need manual renumbering — add or remove a
 	 * `.section-number` span and the rest reflow automatically.
 	 */
 	main {
