@@ -4,9 +4,10 @@ import { homeSearchSchema } from '$lib/table-search';
 
 /**
  * `?plan=` is the model table's plan filter: one of the plan ids, or `''` for
- * every plan. The key is merged into the homepage schema through the
- * `tableSearchSchema` spread, so these assertions go through the merged schema
- * a page actually uses.
+ * every plan. It defaults to `go`, so a fresh visit reads the OpenCode Go
+ * catalog the site is built around. The key is merged into the homepage schema
+ * through the `tableSearchSchema` spread, so these assertions go through the
+ * merged schema a page actually uses.
  */
 describe('tableSearchSchema plan key', () => {
 	function planFrom(input: Record<string, unknown>): string | null {
@@ -18,11 +19,15 @@ describe('tableSearchSchema plan key', () => {
 		expect(planFrom({ plan: 'zed' })).toBe('zed');
 	});
 
-	it('falls back to all plans for an unknown plan id', () => {
-		expect(planFrom({ plan: 'bogus' })).toBe('');
+	it('falls back to OpenCode Go for an unknown plan id', () => {
+		expect(planFrom({ plan: 'bogus' })).toBe('go');
 	});
 
-	it('defaults a missing plan to all plans', () => {
-		expect(planFrom({})).toBe('');
+	it('defaults a missing plan to OpenCode Go', () => {
+		expect(planFrom({})).toBe('go');
+	});
+
+	it('keeps an explicit empty plan as all plans', () => {
+		expect(planFrom({ plan: '' })).toBe('');
 	});
 });

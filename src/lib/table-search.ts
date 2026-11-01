@@ -17,7 +17,7 @@ import { stackSearchSchema } from '$lib/stack/search';
  * Keys:
  *   q    — free-text search (model name, provider, tags, capabilities)
  *   need — a NEEDS leaderboard slug, e.g. `cheapest`, `coding`, `vision`
- *   plan — a plan id, or `''` for every plan (`go`, `zed`, `copilot`)
+ *   plan — a plan id, defaulting to `go` (OpenCode Go); `''` shows every plan
  *
  * Invalid or missing values fall back to the defaults, and default values are
  * omitted from the URL (`showDefaults` is off), so clearing the search leaves
@@ -43,8 +43,8 @@ export const tableSearchSchema = v.object({
 	q: v.optional(v.fallback(v.string(), ''), ''),
 	need: v.optional(v.fallback(needSchema, ''), ''),
 	plan: v.optional(
-		v.fallback(v.union([v.literal(''), v.picklist(PLAN_IDS as [PlanId, ...PlanId[]])]), ''),
-		''
+		v.fallback(v.union([v.literal(''), v.picklist(PLAN_IDS as [PlanId, ...PlanId[]])]), 'go'),
+		'go'
 	)
 });
 
@@ -53,7 +53,7 @@ export type TableSearchParams = v.InferOutput<typeof tableSearchSchema>;
 export const DEFAULT_TABLE_PARAMS: TableSearchParams = {
 	q: '',
 	need: '',
-	plan: ''
+	plan: 'go'
 };
 
 /** Everything the homepage keeps in the URL: the table's keys + the calculator's. */
