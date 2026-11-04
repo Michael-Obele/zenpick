@@ -1,5 +1,5 @@
 import type { CompareEntry } from '$lib/compare-selection';
-import type { PlanId, StackPricing } from '$lib/stack/plans';
+import type { PlanId, StackModel, StackPricing } from '$lib/stack/plans';
 import type {
 	GoModel,
 	ModelBenchmarks,
@@ -39,6 +39,10 @@ export interface CompareModel {
 	llmStatsId: string | null;
 	pricing: StackPricing;
 	contextWindow: number | null;
+	/** Plan's included monthly token budget (Go $60, Zed $5, Copilot $15). */
+	includedUsd?: number | null;
+	/** Plan's monthly subscription price. */
+	monthlyPriceUsd?: number | null;
 	benchmarks: ModelBenchmarks;
 	capabilities: ModelCapabilities | null;
 	/** True/false when a source proves it; null when no source can tell. */
@@ -85,6 +89,8 @@ export function toCompareModel(entry: CompareEntry): CompareModel {
 		llmStatsId: firstDefined(go?.llmStatsId, row.llmStatsId),
 		pricing: plan.pricing,
 		contextWindow: row.contextWindow,
+		includedUsd: plan.includedUsd ?? null,
+		monthlyPriceUsd: plan.monthlyPriceUsd ?? null,
 		benchmarks: firstDefined(row.benchmarks, go?.benchmarks) ?? EMPTY_BENCHMARKS,
 		capabilities: firstDefined(go?.capabilities, row.capabilities),
 		openWeight: firstDefined(go?.openWeight, row.openWeight),
@@ -97,4 +103,30 @@ export function toCompareModel(entry: CompareEntry): CompareModel {
 /** Flatten an ordered selection; keeps URL order and plan identity. */
 export function toCompareModels(entries: CompareEntry[]): CompareModel[] {
 	return entries.map(toCompareModel);
+}
+
+/**
+ * Project a compare column back to the plan-local model shape the stack tools
+ * (`resolveStack`, `stackEconomics`, the pair builder) already speak. Pricing
+ * is the plan's own rate, so the economics stay plan-correct.
+ */
+export function toStackModel(m: CompareModel): StackModel {
+	return {
+		id: m.id,
+		name: m.name,
+		provider: m.provider,
+		pricing: m.pricing,
+		contextWindow: m.contextWindow,
+		intelligence: m.benchmarks.reasoning,
+		coding: m.benchmarks.coding,
+		note: m.note ?? undefined,
+		description: m.description ?? undefined,
+		modelgrepId: m.modelgrepId,
+		benchmarks: m.benchmarks,
+		capabilities: m.capabilities,
+		openWeight: m.openWeight,
+		speed: m.speed,
+		tags: m.tags,
+		llmStatsId: m.llmStatsId
+	};
 }

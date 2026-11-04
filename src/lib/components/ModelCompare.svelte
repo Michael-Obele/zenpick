@@ -2,6 +2,9 @@
 	import type { CompareModel } from '$lib/compare-model';
 	import type { ModelBenchmarks, ScenarioScores } from '$lib/types/models';
 	import { PLAN_LABEL } from '$lib/catalog';
+	import { planModelEconomics } from '$lib/stack/allowance';
+	import { DEFAULT_WORKLOAD } from '$lib/stack/logic';
+	import { burnLabel } from '$lib/burn';
 	import { quotaFor, burnFor } from '$lib/plan';
 	import { plan } from '$lib/stores/plan.svelte';
 	import BurnBadge from './BurnBadge.svelte';
@@ -112,6 +115,27 @@
 		if (!m.go) return null;
 		const score = burnFor(m.go, plan.tier).score;
 		return score == null ? null : 100 - score;
+	}
+
+	/** Plan-level economics every plan can answer, not just Go's published windows. */
+	function economicsFor(m: CompareModel) {
+		return planModelEconomics(m, m.includedUsd ?? null, DEFAULT_WORKLOAD);
+	}
+
+	/** Go shows its published monthly limit; static plans estimate from the included budget. */
+	function monthlyRequests(m: CompareModel): number | null {
+		if (m.go) {
+			const q = quotaFor(m.go, plan.tier);
+			return q.unlimited ? Infinity : q.requestsPerMonth;
+		}
+		return economicsFor(m).includedRequests;
+	}
+
+	/** Numeric rank for the best-cell highlight: free < slow < medium < fast. */
+	function burnRank(m: CompareModel): number | null {
+		const rate = economicsFor(m).burnRate;
+		if (rate == null) return null;
+		return { free: 0, slow: 1, medium: 2, fast: 3 }[rate];
 	}
 
 	function fmtPrice(n: number | null): string {
@@ -569,6 +593,72 @@
 				{#snippet format(value, isBest)}
 					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
 						>{fmtTokens(value)}</span
+					>
+				{/snippet}
+			</CompareRow>
+
+			<!-- Plan economics — the same questions for every plan, not just Go's
+           published request windows. Cost/100 and the allowance share come from
+           the plan's own marked-up pricing; the monthly request count uses Go's
+           published limit when it has one, otherwise the included-budget estimate. -->
+			<CompareRow
+				label="Cost / 100"
+				{models}
+				getValue={(m) => economicsFor(m).costPer100}
+				higherIsBetter={false}
+				tieDecimals={2}
+				hint="reference request"
+			>
+				{#snippet format(value, isBest)}
+					<span
+						class="tabular-nums {isBest
+							? 'font-semibold text-emerald-800 dark:text-emerald-300'
+							: 'text-foreground'}">{value === 0 ? 'Free' : fmtPrice(value)}</span
+					>
+				{/snippet}
+			</CompareRow>
+
+			<CompareRow
+				label="Allowance / 100"
+				{models}
+				getValue={(m) => economicsFor(m).budgetPer100Pct}
+				higherIsBetter={false}
+				tieDecimals={0}
+				hint="% of included"
+			>
+				{#snippet format(value, isBest)}
+					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
+						>{value == null ? '—' : `${Math.round(value)}%`}</span
+					>
+				{/snippet}
+			</CompareRow>
+
+			<CompareRow
+				label="Requests / month"
+				{models}
+				getValue={(m) => monthlyRequests(m)}
+				tieDecimals={0}
+				hint="Go: published; plans: estimated"
+			>
+				{#snippet format(value, isBest)}
+					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
+						>{value == null ? '—' : value === Infinity ? 'Unlimited' : formatCompact(value)}</span
+					>
+				{/snippet}
+			</CompareRow>
+
+			<CompareRow
+				label="Price burn"
+				{models}
+				getValue={(m) => burnRank(m)}
+				higherIsBetter={false}
+				tieDecimals={0}
+				hint="lower better"
+			>
+				{#snippet format(value, isBest, m)}
+					{@const rate = economicsFor(m).burnRate}
+					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
+						>{rate ? burnLabel(rate) : '—'}</span
 					>
 				{/snippet}
 			</CompareRow>

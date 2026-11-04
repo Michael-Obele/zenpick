@@ -143,6 +143,18 @@ maxCognitive = 16
 reason = "Role picker: chosen and auto pick states, economics line and plan badges; pinned at current score"
 
 [[health.thresholdOverrides]]
+files = ["src/lib/components/AgentStack/AgentPairBuilder.svelte"]
+functions = ["<template>"]
+maxCognitive = 18
+reason = "Compare-route pair builder: empty/lone-plan/ready states, plan select, two role pickers, split slider, economics tiles and the strengths/warnings lists; pinned at current score"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/stack/pairing.ts"]
+functions = ["suggestPair"]
+maxCognitive = 16
+reason = "Pairwise search over the selected set: sensible-role filter, savings pool, score sort and the no-cheaper-sub fallback; pinned at current score"
+
+[[health.thresholdOverrides]]
 files = ["src/lib/components/Site/SiteHeader.svelte"]
 functions = ["<template>"]
 maxCyclomatic = 15

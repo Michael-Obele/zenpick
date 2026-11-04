@@ -32,7 +32,7 @@ ZenPick answers three questions:
 - **🗂️ Detail drawer for every row**: Go rows keep the full model panel with quota and burn detail. Zed and Copilot rows open a plan drawer with that plan's prices, intelligence, coding, math and SciCode scores plus context, and links to modelgrep and llm-stats.
 - **🔥 Thermal burn badges**: Quota-friendly (cyan), moderate (amber), burns fast (red). Burn, quota windows and the price versus performance scatter graph stay OpenCode Go only, and non-Go rows show a dash for those cells.
 - **🧩 Agent stack**: Choose a main agent and cheaper sub-agents for OpenCode Go, Zed Pro or GitHub Copilot Pro. The panel shows cost per 100 requests, the saving against an all-main setup, and the monthly requests the pair covers. Nothing joins the comparison until you click **Compare this pair**.
-- **🧭 Compact compare workspace**: `/compare` has a plan-filtered searchable picker, a single task-focus row and a collapsed **Build an agent pair** panel. A pair link carries both keys (`?models=plan:id,plan:id`). Every plan renders the same full comparison grid — benchmarks, pricing, context, capabilities, verdict and sources — and the LLM Stats side-by-side link plus Ask AI prompt work for Zed and Copilot columns too.
+- **🧭 Compact compare workspace**: `/compare` has a plan-filtered searchable picker, a single task-focus row and a collapsed **Build an agent pair** panel that only offers the models already selected. It recommends main/sub from benchmark quality, cost per request and sub quality retention, and calls out bad pairings (a sub that costs more than the main, a big context drop, a plan price cliff). A pair link carries both keys (`?models=plan:id,plan:id`). Every plan renders the same full comparison grid — benchmarks, pricing, context, capabilities, verdict and sources — plus cost / 100, allowance consumed per 100, estimated monthly requests and price burn; the LLM Stats side-by-side link and Ask AI prompt work for Zed and Copilot columns too.
 - **🧮 Quota calculator (OpenCode Go only)**: A slider estimates token usage and cost per request against your Go subscription. Zed Pro and Copilot Pro use a monthly allowance, so those plans show a short scope panel that points you to the agent stack instead.
 - **⚡ Live data**: Fetches from [modelgrep](https://modelgrep.com) (OpenRouter pricing + Artificial Analysis benchmarks) and [OpenCode Go](https://opencode.ai/v2/docs/console/go). Closed-source plan models fall back to the keyless [llm-stats](https://llm-stats.com) leaderboard indexes when modelgrep leaves a benchmark blank. Cached for 6 hours with stale-while-revalidate.
 
@@ -107,6 +107,8 @@ src/
     stack/
       plans.ts                — OpenCode Go, Zed Pro and Copilot Pro plan data
       logic.ts                — Stack resolution, cost and recommendations
+      allowance.ts            — Price-based allowance/burn math for static plans
+      pairing.ts              — Selection-scoped main/sub pair evaluation and ranking
       build.ts                — Builds plans from the catalog and modelgrep
       search.ts               — Shared stack URL state
     remote/

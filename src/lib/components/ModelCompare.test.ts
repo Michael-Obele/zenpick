@@ -113,6 +113,21 @@ describe('ModelCompare', () => {
 		expect(body).toContain('100');
 	});
 
+	it('renders plan economics for a static-plan column', () => {
+		const body = markup();
+
+		// Zed's $5 allowance: $17.03 per 100 requests, 341% of the allowance,
+		// about 29 requests/month, and a fast price burn (3 + 15 per 1M).
+		expect(body).toContain('Cost / 100');
+		expect(body).toContain('Allowance / 100');
+		expect(body).toContain('Requests / month');
+		expect(body).toContain('Price burn');
+		expect(body).toContain('$17.03');
+		expect(body).toContain('341%');
+		expect(body).toContain('29');
+		expect(body).toContain('Fast burn');
+	});
+
 	it('labels remove and reorder controls with the model and its plan', () => {
 		const body = markup();
 

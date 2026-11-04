@@ -754,6 +754,7 @@
 						{#if plans.length}
 							<AgentPairBuilder
 								{plans}
+								models={compareModels}
 								{params}
 								selectedKeys={entries.map((e) => e.key)}
 								onUse={usePair}

@@ -1,6 +1,7 @@
 import { matchesModelSearch } from '$lib/model-search';
 import { modelKey } from '$lib/stack/logic';
 import type { PlanId, StackModel, StackPlan, StackPricing } from '$lib/stack/plans';
+import { GO_PLAN_META } from '$lib/stack/plans';
 import type {
 	GoModel,
 	ModelBenchmarks,
@@ -51,6 +52,10 @@ export interface CatalogPlanEntry {
 	note?: string;
 	/** modelgrep id for this plan's model, when one is known. */
 	modelgrepId?: string | null;
+	/** Plan's included monthly token budget in USD (Go $60, Zed $5, Copilot $15). */
+	includedUsd?: number | null;
+	/** Plan's monthly subscription price. */
+	monthlyPriceUsd?: number | null;
 }
 
 export interface CatalogRow {
@@ -93,6 +98,8 @@ function goEntry(go: GoModel): CatalogPlanEntry {
 		plan: 'go',
 		id: go.id,
 		modelgrepId: go.modelgrepId,
+		includedUsd: GO_PLAN_META.includedUsd,
+		monthlyPriceUsd: GO_PLAN_META.monthlyPriceUsd,
 		pricing: {
 			inputPricePerM: go.pricing.inputPricePerM,
 			outputPricePerM: go.pricing.outputPricePerM,
@@ -101,12 +108,14 @@ function goEntry(go: GoModel): CatalogPlanEntry {
 	};
 }
 
-function staticEntry(plan: PlanId, model: StackModel): CatalogPlanEntry {
+function staticEntry(plan: StackPlan, model: StackModel): CatalogPlanEntry {
 	return {
-		plan,
+		plan: plan.id,
 		id: model.id,
 		pricing: { ...model.pricing },
 		modelgrepId: model.modelgrepId ?? null,
+		includedUsd: plan.includedUsd,
+		monthlyPriceUsd: plan.monthlyPriceUsd,
 		...(model.note ? { note: model.note } : {})
 	};
 }
@@ -174,7 +183,7 @@ export function buildCatalogRows(goModels: GoModel[], plans: StackPlan[]): Catal
 
 		for (const model of plan.models) {
 			const existing = byKey.get(modelKey(model.id));
-			const entry = staticEntry(plan.id, model);
+			const entry = staticEntry(plan, model);
 
 			if (existing) {
 				existing.plans.push(entry);
