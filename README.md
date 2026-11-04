@@ -29,12 +29,12 @@ ZenPick answers three questions:
 - **🎯 Scenario filters**: OpenCode Go models get a 0 to 100 fit score per scenario. No empty tables, no brittle tag matching.
 - **📊 Plan-scoped Compare Models table**: One row per model, with filters for All plans, OpenCode Go, Zed Pro and Copilot Pro (`?plan=go|zed|copilot`). A specific plan shows that plan's price; All plans shows the cheapest input price and the plan badges.
 - **🔎 Search across plans**: Search matches model names and plan names, so `zed` or `copilot` finds those rows.
-- **🗂️ Detail drawer for every row**: Go rows keep the full model panel with quota and burn detail. Zed and Copilot rows open a plan drawer with that plan's prices, intelligence, coding score and context, plus links to modelgrep and llm-stats.
+- **🗂️ Detail drawer for every row**: Go rows keep the full model panel with quota and burn detail. Zed and Copilot rows open a plan drawer with that plan's prices, intelligence, coding, math and SciCode scores plus context, and links to modelgrep and llm-stats.
 - **🔥 Thermal burn badges**: Quota-friendly (cyan), moderate (amber), burns fast (red). Burn, quota windows and the price versus performance scatter graph stay OpenCode Go only, and non-Go rows show a dash for those cells.
 - **🧩 Agent stack**: Choose a main agent and cheaper sub-agents for OpenCode Go, Zed Pro or GitHub Copilot Pro. The panel shows cost per 100 requests, the saving against an all-main setup, and the monthly requests the pair covers. Nothing joins the comparison until you click **Compare this pair**.
-- **🧭 Compact compare workspace**: `/compare` has a plan-filtered searchable picker, a single task-focus row and a collapsed **Build an agent pair** panel. A pair link carries both keys (`?models=plan:id,plan:id`), and a mixed selection renders the cross-plan comparison table instead of the Go-only grid.
+- **🧭 Compact compare workspace**: `/compare` has a plan-filtered searchable picker, a single task-focus row and a collapsed **Build an agent pair** panel. A pair link carries both keys (`?models=plan:id,plan:id`). Every plan renders the same full comparison grid — benchmarks, pricing, context, capabilities, verdict and sources — and the LLM Stats side-by-side link plus Ask AI prompt work for Zed and Copilot columns too.
 - **🧮 Quota calculator (OpenCode Go only)**: A slider estimates token usage and cost per request against your Go subscription. Zed Pro and Copilot Pro use a monthly allowance, so those plans show a short scope panel that points you to the agent stack instead.
-- **⚡ Live data**: Fetches from [modelgrep](https://modelgrep.com) (OpenRouter pricing + Artificial Analysis benchmarks) and [OpenCode Go](https://opencode.ai/v2/docs/console/go). Cached for 6 hours with stale-while-revalidate.
+- **⚡ Live data**: Fetches from [modelgrep](https://modelgrep.com) (OpenRouter pricing + Artificial Analysis benchmarks) and [OpenCode Go](https://opencode.ai/v2/docs/console/go). Closed-source plan models fall back to the keyless [llm-stats](https://llm-stats.com) leaderboard indexes when modelgrep leaves a benchmark blank. Cached for 6 hours with stale-while-revalidate.
 
 ---
 
@@ -52,15 +52,15 @@ Prices and allowances change. Treat the numbers in the app as a snapshot and che
 
 ## Tech Stack
 
-| Layer      | Technology                                                                  |
-| ---------- | --------------------------------------------------------------------------- |
-| Framework  | [Svelte 5](https://svelte.dev) + [SvelteKit](https://kit.svelte.dev)        |
-| Styling    | [Tailwind CSS v4](https://tailwindcss.com)                                  |
-| Components | [shadcn-svelte](https://shadcn-svelte.com) + [Bits UI](https://bits-ui.com) |
-| Icons      | [Lucide](https://lucide.dev)                                                |
-| Data       | modelgrep API + OpenCode Go `/models` endpoint + static plan data           |
-| Runtime    | [Bun](https://bun.sh)                                                       |
-| Deployment | [Netlify](https://netlify.com)                                              |
+| Layer      | Technology                                                                                   |
+| ---------- | -------------------------------------------------------------------------------------------- |
+| Framework  | [Svelte 5](https://svelte.dev) + [SvelteKit](https://kit.svelte.dev)                         |
+| Styling    | [Tailwind CSS v4](https://tailwindcss.com)                                                   |
+| Components | [shadcn-svelte](https://shadcn-svelte.com) + [Bits UI](https://bits-ui.com)                  |
+| Icons      | [Lucide](https://lucide.dev)                                                                 |
+| Data       | modelgrep API + llm-stats public indexes + OpenCode Go `/models` endpoint + static plan data |
+| Runtime    | [Bun](https://bun.sh)                                                                        |
+| Deployment | [Netlify](https://netlify.com)                                                               |
 
 ---
 
@@ -94,6 +94,8 @@ src/
     types/models.ts           — Shared type definitions
     server/
       modelgrep.ts            — modelgrep API client
+      llm-stats.ts            — keyed llm-stats API client
+      llm-stats-public.ts     — keyless llm-stats leaderboard index (benchmark fallback)
       opencode-go.ts          — OpenCode Go /models endpoint
       inference.ts            — Algorithmic tag & scenario scoring
       stack.ts                — Plan data loader with single-flight cache
@@ -115,7 +117,7 @@ src/
       ModelDrawer.svelte      — Go detail panel with migration hints
       PlanModelDrawer.svelte  — Detail drawer for Zed and Copilot rows
       PlanBadges.svelte       — Plan badges for a catalog row
-      PlanCompare.svelte      — Cross-plan comparison table
+      ModelCompare.svelte     — Full comparison grid for every plan
       QuotaCalculator.svelte  — Token → quota estimator (OpenCode Go)
       AgentStack/
         AgentStack.svelte     — Main-agent and sub-agent picker

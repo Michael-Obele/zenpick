@@ -1,7 +1,13 @@
 import { matchesModelSearch } from '$lib/model-search';
 import { modelKey } from '$lib/stack/logic';
 import type { PlanId, StackModel, StackPlan, StackPricing } from '$lib/stack/plans';
-import type { GoModel } from '$lib/types/models';
+import type {
+	GoModel,
+	ModelBenchmarks,
+	ModelCapabilities,
+	ModelSpeed,
+	ModelTag
+} from '$lib/types/models';
 
 /**
  * Cross-plan catalog: ONE row per model, whatever plans carry it.
@@ -59,6 +65,19 @@ export interface CatalogRow {
 	intelligence: number | null;
 	/** Artificial Analysis coding score (0-100), null when unpublished. */
 	coding: number | null;
+	/**
+	 * Blended benchmark fields for the compare views (modelgrep primary,
+	 * llm-stats fallback). Go rows carry the Go model's own object; plan-only
+	 * rows carry the static plan's resolved benchmarks.
+	 */
+	benchmarks?: ModelBenchmarks | null;
+	/** Fact sheet for plan-only rows; Go rows read these off `go`. */
+	capabilities?: ModelCapabilities | null;
+	openWeight?: boolean | null;
+	speed?: ModelSpeed | null;
+	tags?: ModelTag[];
+	/** llm-stats slug for this plan entry, when a source matched it. */
+	llmStatsId?: string | null;
 	/** One-line description for the detail drawer; null when no source has one. */
 	description: string | null;
 	/** modelgrep id for the model page; null when no source has one. */
@@ -92,6 +111,47 @@ function staticEntry(plan: PlanId, model: StackModel): CatalogPlanEntry {
 	};
 }
 
+/** A row built from a Go model (it always carries the Go entry). */
+function goRow(go: GoModel): CatalogRow {
+	return {
+		key: modelKey(go.id),
+		id: go.id,
+		name: go.displayName ?? go.name,
+		provider: go.provider,
+		contextWindow: go.contextWindow,
+		intelligence: go.benchmarks.reasoning,
+		coding: go.benchmarks.coding,
+		benchmarks: go.benchmarks,
+		description: go.description || null,
+		modelgrepId: go.modelgrepId,
+		plans: [goEntry(go)],
+		go
+	};
+}
+
+/** A row for a model only a static plan carries. */
+function staticRow(model: StackModel, entry: CatalogPlanEntry): CatalogRow {
+	return {
+		key: modelKey(model.id),
+		id: model.id,
+		name: model.name,
+		provider: model.provider,
+		contextWindow: model.contextWindow,
+		intelligence: model.intelligence,
+		coding: model.coding ?? null,
+		benchmarks: model.benchmarks ?? null,
+		capabilities: model.capabilities ?? null,
+		openWeight: model.openWeight ?? null,
+		speed: model.speed ?? null,
+		tags: model.tags ?? [],
+		llmStatsId: model.llmStatsId ?? null,
+		description: model.description ?? null,
+		modelgrepId: model.modelgrepId ?? null,
+		plans: [entry],
+		go: null
+	};
+}
+
 /**
  * Merge the Go catalog and the static plans into one row per model.
  *
@@ -103,54 +163,28 @@ export function buildCatalogRows(goModels: GoModel[], plans: StackPlan[]): Catal
 	const byKey = new Map<string, CatalogRow>();
 
 	for (const go of goModels) {
-		const key = modelKey(go.id);
-		const row: CatalogRow = {
-			key,
-			id: go.id,
-			name: go.displayName ?? go.name,
-			provider: go.provider,
-			contextWindow: go.contextWindow,
-			intelligence: go.benchmarks.reasoning,
-			coding: go.benchmarks.coding,
-			description: go.description || null,
-			modelgrepId: go.modelgrepId,
-			plans: [goEntry(go)],
-			go
-		};
+		const row = goRow(go);
 		rows.push(row);
 		// A duplicate Go id keeps the first row as the merge target.
-		if (!byKey.has(key)) byKey.set(key, row);
+		if (!byKey.has(row.key)) byKey.set(row.key, row);
 	}
 
 	for (const plan of plans) {
 		if (plan.id === 'go') continue;
 
 		for (const model of plan.models) {
-			const key = modelKey(model.id);
-			const existing = byKey.get(key);
+			const existing = byKey.get(modelKey(model.id));
 			const entry = staticEntry(plan.id, model);
 
-			if (!existing) {
-				const row: CatalogRow = {
-					key,
-					id: model.id,
-					name: model.name,
-					provider: model.provider,
-					contextWindow: model.contextWindow,
-					intelligence: model.intelligence,
-					coding: model.coding ?? null,
-					description: model.description ?? null,
-					modelgrepId: model.modelgrepId ?? null,
-					plans: [entry],
-					go: null
-				};
-				rows.push(row);
-				byKey.set(key, row);
+			if (existing) {
+				existing.plans.push(entry);
+				fillFactsFromStatic(existing, model);
 				continue;
 			}
 
-			existing.plans.push(entry);
-			fillFactsFromStatic(existing, model);
+			const row = staticRow(model, entry);
+			rows.push(row);
+			byKey.set(row.key, row);
 		}
 	}
 
@@ -161,13 +195,29 @@ export function buildCatalogRows(goModels: GoModel[], plans: StackPlan[]): Catal
 	return rows;
 }
 
-/** Fill a Go row's missing facts from a static plan; Go values always win. */
-function fillFactsFromStatic(row: CatalogRow, model: StackModel): void {
+/** Fill a Go row's missing scalar facts from a static plan; Go values always win. */
+function fillModelFacts(row: CatalogRow, model: StackModel): void {
 	if (row.contextWindow == null) row.contextWindow = model.contextWindow;
 	if (row.intelligence == null) row.intelligence = model.intelligence;
 	if (row.coding == null) row.coding = model.coding ?? null;
 	if (row.description == null) row.description = model.description ?? null;
 	if (row.modelgrepId == null) row.modelgrepId = model.modelgrepId ?? null;
+}
+
+/** Fill the optional fact-sheet fields the static-plan builder resolved. */
+function fillPlanFacts(row: CatalogRow, model: StackModel): void {
+	if (row.benchmarks == null) row.benchmarks = model.benchmarks ?? null;
+	if (row.capabilities == null) row.capabilities = model.capabilities ?? null;
+	if (row.openWeight == null) row.openWeight = model.openWeight ?? null;
+	if (row.speed == null) row.speed = model.speed ?? null;
+	if (row.tags == null || row.tags.length === 0) row.tags = model.tags ?? [];
+	if (row.llmStatsId == null) row.llmStatsId = model.llmStatsId ?? null;
+}
+
+/** Fill a Go row's missing facts from a static plan; Go values always win. */
+function fillFactsFromStatic(row: CatalogRow, model: StackModel): void {
+	fillModelFacts(row, model);
+	fillPlanFacts(row, model);
 }
 
 /** Nulls sort last, so "cheapest known price" never loses to an unknown one. */

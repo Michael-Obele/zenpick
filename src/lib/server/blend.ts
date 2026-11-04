@@ -26,11 +26,25 @@ import type {
 	ModelBenchmarks
 } from '$lib/types/models';
 import type { ModelgrepModelData } from '$lib/types/models';
-import type { LlmStatsModel } from '$lib/types/models';
 import { normalizeTopScore } from './llm-stats';
 
+/**
+ * The only llm-stats field the blend reads.
+ *
+ * Narrowed on purpose: the public leaderboard index and the keyed llm-stats API
+ * both supply `top_scores`, but they are different payload shapes. Requiring the
+ * whole `LlmStatsModel` here would force synthetic objects for every source.
+ */
+export interface LlmStatsBenchmarkSource {
+	top_scores?: Partial<Record<string, number>>;
+}
+
 /** A resolved benchmark value plus where it came from. */
-type Resolved = { value: number | null; source: BenchmarkSource; field?: string };
+type Resolved = {
+	value: number | null;
+	source: BenchmarkSource;
+	field?: string;
+};
 
 /** Convert a 0-1 accuracy field to the 0-100 display scale (or null). */
 function asPercent(v: number | null | undefined): number | null {
@@ -93,7 +107,11 @@ function resolveCoding(aa: AaBlock | undefined, lsCode: number | null): Resolved
 	if (lcb != null) return { value: lcb, source: 'modelgrep', field: 'livecodebench' };
 
 	if (aa?.scicode != null) {
-		return { value: asPercent(aa.scicode), source: 'modelgrep', field: 'scicode' };
+		return {
+			value: asPercent(aa.scicode),
+			source: 'modelgrep',
+			field: 'scicode'
+		};
 	}
 	if (aa?.gpqa != null) return { value: asPercent(aa.gpqa), source: 'modelgrep', field: 'gpqa' };
 
@@ -112,11 +130,14 @@ function resolveMath(
 	gpqa: number | null,
 	lsMath: number | null
 ): Resolved {
-	const blended = blendMath(gpqa, lsMath);
+	const ls = lsOutlierSafe(lsMath);
+	const blended = blendMath(gpqa, ls);
 	if (blended != null) {
-		const source: BenchmarkSource =
-			gpqa != null && lsMath != null ? 'blended' : gpqa != null ? 'modelgrep' : 'llm-stats';
-		return { value: blended, source };
+		if (gpqa != null && ls != null) return { value: blended, source: 'blended' };
+		// GPQA is the only input — label it, so a Math column reading "93" is
+		// not mistaken for a real math benchmark.
+		if (gpqa != null) return { value: blended, source: 'modelgrep', field: 'gpqa' };
+		return { value: blended, source: 'llm-stats' };
 	}
 
 	if (aa?.math != null) return { value: aa.math, source: 'modelgrep', field: 'math' };
@@ -140,7 +161,7 @@ function metaOf(r: Resolved): BenchmarkSourceMeta {
  */
 export function blendBenchmarks(
 	mgModel: ModelgrepModelData | null,
-	lsModel: LlmStatsModel | null
+	lsModel: LlmStatsBenchmarkSource | null
 ): { benchmarks: ModelBenchmarks; meta: BenchmarkMeta } {
 	const aa = mgModel?.benchmarks?.artificial_analysis;
 	const lsScores = lsModel?.top_scores;

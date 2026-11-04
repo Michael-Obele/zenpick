@@ -1,4 +1,10 @@
-import type { ModelPricing } from '$lib/types/models';
+import type {
+	ModelBenchmarks,
+	ModelCapabilities,
+	ModelPricing,
+	ModelSpeed,
+	ModelTag
+} from '$lib/types/models';
 
 /** The plans a stack can be built on. Order here is the tab order in the UI. */
 export type PlanId = 'zed' | 'copilot' | 'go';
@@ -22,6 +28,20 @@ export interface StackModel {
 	intelligence: number | null;
 	/** Artificial Analysis coding score (0-100) when modelgrep publishes it. */
 	coding?: number | null;
+	/**
+	 * Blended benchmark fields (modelgrep primary, llm-stats fallback). The
+	 * scalar `intelligence` / `coding` fields above are the two columns every
+	 * consumer already reads; this carries the rest (math, SciCode, source
+	 * metadata) so plan views can show the same benchmark set as Go views.
+	 */
+	benchmarks?: ModelBenchmarks;
+	capabilities?: ModelCapabilities | null;
+	/** Open-weight evidence; null when no source can tell. */
+	openWeight?: boolean | null;
+	speed?: ModelSpeed | null;
+	tags?: ModelTag[];
+	/** llm-stats slug for links and the side-by-side compare URL. */
+	llmStatsId?: string | null;
 	/** Plan-specific gotcha worth showing next to the model. */
 	note?: string;
 	/** One-line model description; null/absent when the source has none. */

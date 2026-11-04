@@ -45,7 +45,10 @@ describe('blendBenchmarks', () => {
 				null
 			);
 			expect(benchmarks.coding).toBe(41);
-			expect(meta.coding).toEqual({ source: 'modelgrep', field: 'livecodebench' });
+			expect(meta.coding).toEqual({
+				source: 'modelgrep',
+				field: 'livecodebench'
+			});
 		});
 
 		it('falls back to SciCode when LiveCodeBench is missing', () => {
@@ -91,7 +94,7 @@ describe('blendBenchmarks', () => {
 		it('uses GPQA alone when llm-stats math is missing', () => {
 			const { benchmarks, meta } = blendBenchmarks(makeModelgrep(makeAa({ gpqa: 0.62 })), null);
 			expect(benchmarks.math).toBe(62);
-			expect(meta.math).toEqual({ source: 'modelgrep' });
+			expect(meta.math).toEqual({ source: 'modelgrep', field: 'gpqa' });
 		});
 
 		it('uses llm-stats math alone when GPQA is missing', () => {
@@ -134,6 +137,15 @@ describe('blendBenchmarks', () => {
 			);
 			expect(benchmarks.math).toBe(60);
 			expect(meta.math).toEqual({ source: 'modelgrep', field: 'aime' });
+		});
+
+		it('labels GPQA as the source when llm-stats math is on a broken scale', () => {
+			const { benchmarks, meta } = blendBenchmarks(
+				makeModelgrep(makeAa({ gpqa: 0.75 })),
+				makeLlmStats({ math: 868.1 })
+			);
+			expect(benchmarks.math).toBe(75);
+			expect(meta.math).toEqual({ source: 'modelgrep', field: 'gpqa' });
 		});
 	});
 

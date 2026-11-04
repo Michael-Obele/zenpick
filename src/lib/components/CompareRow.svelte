@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { GoModel } from '$lib/types/models';
+	import type { CompareModel } from '$lib/compare-model';
 	import { Crown, Equal } from '@lucide/svelte';
 	import type { Snippet } from 'svelte';
 	import { tieRound } from '$lib/utils';
@@ -7,9 +7,9 @@
 
 	interface Props {
 		label: string;
-		models: GoModel[];
+		models: CompareModel[];
 		/** Returns the numeric value used to detect the "best" cell. */
-		getValue: (m: GoModel) => number | null;
+		getValue: (m: CompareModel) => number | null;
 		/** When true, the highest value wins; when false, the lowest wins. */
 		higherIsBetter?: boolean;
 		/**
@@ -24,7 +24,7 @@
 		 * Custom cell renderer. Receives the value, whether this cell is the
 		 * winner, and the model itself (so a cell can read source metadata).
 		 */
-		format?: Snippet<[number | null, boolean, GoModel]>;
+		format?: Snippet<[number | null, boolean, CompareModel]>;
 	}
 
 	let {
@@ -82,7 +82,7 @@
 			<span class="text-[10px] font-normal text-muted-foreground">{hint}</span>
 		{/if}
 	</div>
-	{#each models as m, i (m.id)}
+	{#each models as m, i (m.key)}
 		{@const isBest = bestSet.has(i)}
 		<div
 			class="relative border-t border-l border-border/60 px-3 py-2.5 text-sm {isBest

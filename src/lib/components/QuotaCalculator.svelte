@@ -503,7 +503,7 @@
 					</div>
 				{/if}
 
-				<div class="flex flex-wrap items-center gap-2">
+				<!-- <div class="flex flex-wrap items-center gap-2">
 					<Button
 						href="https://opencode.ai/go?ref=ST810621HY"
 						target="_blank"
@@ -521,7 +521,7 @@
 							Share recommendation
 						{/if}
 					</Button>
-				</div>
+				</div> -->
 
 				<!-- Compare another model (searchable combobox) -->
 				<div class="space-y-2 border-t border-border/60 pt-3">

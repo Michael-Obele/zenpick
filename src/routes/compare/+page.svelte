@@ -7,7 +7,6 @@
 	import { cn } from '$lib/utils';
 	import { getStackPlans } from '$lib/remote/models.remote';
 	import ModelCompare from '$lib/components/ModelCompare.svelte';
-	import PlanCompare from '$lib/components/PlanCompare.svelte';
 	import AgentPairBuilder from '$lib/components/AgentStack/AgentPairBuilder.svelte';
 	import AskAiMenu from '$lib/components/AskAiMenu.svelte';
 	import { compare, MAX_COMPARE } from '$lib/stores/compare.svelte';
@@ -30,6 +29,7 @@
 	import { formatIntelligence } from '$lib/stack/format';
 	import { buildLlmStatsCompareUrl } from '$lib/utils/llm-stats-url';
 	import { compareSearchSchema, COMPARE_SCENARIO_VALUES } from '$lib/compare-search';
+	import { toCompareModels } from '$lib/compare-model';
 	import { recommendModel, REFERENCE_TOKENS, REFERENCE_CACHED_PCT } from '$lib/recommendation';
 	import { plan } from '$lib/stores/plan.svelte';
 	import {
@@ -107,14 +107,16 @@
 	// One entry per resolved key, in URL order. Unknown keys are skipped here,
 	// so the page never renders a model the catalog no longer carries.
 	let entries = $derived(resolveCompareEntries(rows, urlKeys));
+	/** Full-grid columns: plan-agnostic, so Zed and Copilot get the same table as Go. */
+	let compareModels = $derived(toCompareModels(entries));
 	let selectedModels = $derived(
 		entries.flatMap((entry) => (entry.plan.plan === 'go' && entry.row.go ? [entry.row.go] : []))
 	);
 
 	/**
-	 * `ModelCompare` reads Go-only fields (burn, quota, scenario fit), so it
-	 * stays reserved for a selection that is entirely Go. Anything mixed or
-	 * static-plan renders `PlanCompare` instead.
+	 * The full grid renders for every plan. `allGo` only gates the Go-specific
+	 * extras that need the recommendation engine (the scenario crown and the
+	 * task-focus row), because fit/capacity are not published for Zed/Copilot.
 	 */
 	let allGo = $derived(
 		entries.length > 0 &&
@@ -122,17 +124,20 @@
 	);
 
 	let atMax = $derived(entries.length >= MAX_COMPARE);
-	let llmStatsCompareUrl = $derived(allGo ? buildLlmStatsCompareUrl(selectedModels) : null);
+	// LLM Stats accepts 2–4 models. The URL resolver prefers each entry's
+	// verified llm-stats slug, so plan-only models link to the right page too.
+	let llmStatsCompareUrl = $derived(buildLlmStatsCompareUrl(compareModels));
 
 	// Catalog-wide anchor roles — computed from ALL Go models so the chips stay
 	// truthful even when the user swaps models in or out of the comparison.
-	// Anchors are a Go-only signal, so they only reach the all-Go view.
+	// Anchors are a Go-only signal; they are keyed by the Go compare key, so a
+	// Zed/Copilot column simply has no anchor chip.
 	let anchors = $derived.by(() => {
 		const map: Record<string, 'quality' | 'value'> = {};
 		const quality = catalogQualityAnchor(goModels);
 		const value = catalogValueAnchor(goModels);
-		if (quality) map[quality.id] = 'quality';
-		if (value) map[value.id] = 'value';
+		if (quality) map[compareKey('go', quality.id)] = 'quality';
+		if (value) map[compareKey('go', value.id)] = 'value';
 		return map;
 	});
 
@@ -398,47 +403,41 @@
 {#snippet headerActions()}
 	<div class="flex flex-wrap items-center gap-2 lg:max-w-xs lg:justify-end">
 		{#if entries.length > 0}
-			{#if allGo}
-				{#if llmStatsCompareUrl}
-					<a
-						href={llmStatsCompareUrl}
-						target="_blank"
-						rel="noopener noreferrer"
-						class={buttonVariants({
-							variant: 'outline',
-							size: 'default'
-						})}
-					>
-						<ExternalLink class="size-4" />
-						Compare on LLM Stats
-					</a>
-					<button
-						type="button"
-						onclick={copyLlmStats}
-						aria-label="Copy LLM Stats compare link"
-						class={buttonVariants({ variant: 'outline', size: 'icon' })}
-					>
-						{#if copied}
-							<Check class="size-4 text-emerald-700 dark:text-emerald-300" />
-						{:else}
-							<Copy class="size-4" />
-						{/if}
-					</button>
-				{:else}
-					<span
-						class="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground"
-						title="LLM Stats compare needs 2–4 models"
-					>
-						<ExternalLink class="size-3.5" />
-						LLM Stats: add tracked models
-					</span>
-				{/if}
-				<AskAiMenu models={selectedModels} />
-			{:else}
-				<span class="text-xs text-muted-foreground"
-					>LLM Stats and Ask AI need an all-OpenCode-Go selection.</span
+			{#if llmStatsCompareUrl}
+				<a
+					href={llmStatsCompareUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					class={buttonVariants({
+						variant: 'outline',
+						size: 'default'
+					})}
 				>
+					<ExternalLink class="size-4" />
+					Compare on LLM Stats
+				</a>
+				<button
+					type="button"
+					onclick={copyLlmStats}
+					aria-label="Copy LLM Stats compare link"
+					class={buttonVariants({ variant: 'outline', size: 'icon' })}
+				>
+					{#if copied}
+						<Check class="size-4 text-emerald-700 dark:text-emerald-300" />
+					{:else}
+						<Copy class="size-4" />
+					{/if}
+				</button>
+			{:else}
+				<span
+					class="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground"
+					title="LLM Stats compare needs 2–4 models"
+				>
+					<ExternalLink class="size-3.5" />
+					LLM Stats: select 2–4 models
+				</span>
 			{/if}
+			<AskAiMenu models={compareModels} />
 			<button class={buttonVariants({ variant: 'ghost', size: 'default' })} onclick={clearAll}>
 				<X class="size-4" />
 				Clear all
@@ -780,8 +779,9 @@
 					<GitCompare class="size-10 text-muted-foreground" aria-hidden="true" />
 					<p class="text-sm font-medium text-foreground">No models selected yet</p>
 					<p class="max-w-sm text-sm text-muted-foreground">
-						Start with a fresh suggested pair — randomized from the top of the catalog each visit —
-						or choose your own from the <span class="font-medium">Add model…</span> menu above.
+						Start with a fresh suggested pair from the top of the OpenCode Go catalog — randomized
+						each visit — or choose your own from the <span class="font-medium">Add model…</span> menu
+						above.
 					</p>
 					{#if goModels.length}
 						<button
@@ -794,19 +794,13 @@
 						</button>
 					{/if}
 				</div>
-			{:else if allGo}
+			{:else}
 				<ModelCompare
-					models={selectedModels}
+					models={compareModels}
 					onRemove={removeModel}
 					onMove={reorderable ? moveModel : undefined}
 					{anchors}
-					scenario={scenarioValue}
-				/>
-			{:else}
-				<PlanCompare
-					{entries}
-					onRemove={removeModel}
-					onMove={reorderable ? moveModel : undefined}
+					scenario={allGo ? scenarioValue : ''}
 				/>
 			{/if}
 		</div>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { makeAa, makeBenchmarks, makeGoModel, makeModelgrep } from '$lib/test/fixtures';
 import type { GoModel, ModelgrepModelData } from '$lib/types/models';
+import { buildLlmStatsBenchmarkIndex } from '$lib/server/llm-stats-public';
 import { buildStackPlans } from './build';
 
 function modelgrepModel(
@@ -74,8 +75,14 @@ describe('buildStackPlans', () => {
 			}),
 			makeGoModel({ id: 'z-null', name: 'Zulu' }),
 			makeGoModel({ id: 'a-null', name: 'Able' }),
-			makeGoModel({ id: 'no-input', pricing: { ...makeGoModel().pricing, inputPricePerM: null } }),
-			makeGoModel({ id: 'no-output', pricing: { ...makeGoModel().pricing, outputPricePerM: null } })
+			makeGoModel({
+				id: 'no-input',
+				pricing: { ...makeGoModel().pricing, inputPricePerM: null }
+			}),
+			makeGoModel({
+				id: 'no-output',
+				pricing: { ...makeGoModel().pricing, outputPricePerM: null }
+			})
 		];
 		const plans = buildStackPlans(goModels, []);
 		const models = plans[2].models;
@@ -97,5 +104,90 @@ describe('buildStackPlans', () => {
 		]) as unknown as ModelgrepModelData[];
 
 		expect(() => buildStackPlans(goModels, modelgrep)).not.toThrow();
+	});
+
+	it('blends static-plan benchmarks through the same pipeline as Go models', () => {
+		const modelgrep = {
+			...makeModelgrep(makeAa({ gpqa: 0.9, scicode: 0.5 })),
+			id: 'anthropic/claude-sonnet-5.5'
+		};
+		const llmStats = buildLlmStatsBenchmarkIndex({
+			code: {
+				models: [
+					{
+						model_id: 'claude-sonnet-5-5',
+						model_name: 'Claude Sonnet 5.5',
+						conservative: 40
+					}
+				]
+			},
+			reasoning: {
+				models: [
+					{
+						model_id: 'claude-sonnet-5-5',
+						model_name: 'Claude Sonnet 5.5',
+						conservative: 55
+					}
+				]
+			},
+			math: {
+				models: [
+					{
+						model_id: 'claude-sonnet-5-5',
+						model_name: 'Claude Sonnet 5.5',
+						conservative: 30
+					}
+				]
+			}
+		});
+
+		const plans = buildStackPlans([], [modelgrep], llmStats);
+		const sonnet = plans[0].models.find((model) => model.id === 'claude-sonnet-5.5')!;
+
+		// The llm-stats category index fills the headline metrics modelgrep
+		// leaves null; modelgrep's AA fallbacks still supply SciCode.
+		expect(sonnet.intelligence).toBe(55);
+		expect(sonnet.coding).toBe(40);
+		expect(sonnet.benchmarks?.math).toBe(66);
+		expect(sonnet.benchmarks?.sweBenchVerified).toBe(0.5);
+		expect(sonnet.benchmarks?._meta?.coding.source).toBe('llm-stats');
+		expect(sonnet.llmStatsId).toBe('claude-sonnet-5-5');
+	});
+
+	it('keeps modelgrep AA fallbacks when llm-stats has no row', () => {
+		const modelgrep = {
+			...makeModelgrep(makeAa({ gpqa: 0.9, scicode: 0.5 })),
+			id: 'anthropic/claude-sonnet-5.5'
+		};
+
+		const plans = buildStackPlans([], [modelgrep], buildLlmStatsBenchmarkIndex({}));
+		const sonnet = plans[0].models.find((model) => model.id === 'claude-sonnet-5.5')!;
+
+		expect(sonnet.intelligence).toBeNull();
+		expect(sonnet.coding).toBe(50);
+		expect(sonnet.benchmarks?._meta?.coding.field).toBe('scicode');
+	});
+
+	it('never borrows a sibling model scores on a prefix match', () => {
+		const llmStats = buildLlmStatsBenchmarkIndex({
+			code: {
+				models: [{ model_id: 'gpt-5-5', model_name: 'GPT-5.5', conservative: 40 }]
+			},
+			reasoning: {
+				models: [{ model_id: 'gpt-5-5', model_name: 'GPT-5.5', conservative: 55 }]
+			},
+			math: {
+				models: [{ model_id: 'gpt-5-5', model_name: 'GPT-5.5', conservative: 30 }]
+			}
+		});
+
+		const plans = buildStackPlans([], [], llmStats);
+		const pro = plans[0].models.find((model) => model.id === 'gpt-5.5-pro')!;
+		const base = plans[0].models.find((model) => model.id === 'gpt-5.5')!;
+
+		expect(pro.intelligence).toBeNull();
+		expect(pro.coding).toBeNull();
+		expect(base.intelligence).toBe(55);
+		expect(base.coding).toBe(40);
 	});
 });

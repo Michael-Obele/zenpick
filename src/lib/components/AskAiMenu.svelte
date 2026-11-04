@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { DropdownMenu } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
-	import type { GoModel } from '$lib/types/models';
+	import type { CompareModel } from '$lib/compare-model';
 	import { AI_PROVIDERS, buildComparePrompt } from '$lib/utils/ask-ai';
 	import { buttonVariants } from '$lib/components/ui/button/index.js';
 	import { ExternalLink, Copy } from '@lucide/svelte';
 	import type { ButtonVariant, ButtonSize } from '$lib/components/ui/button/index.js';
 
 	interface Props {
-		models: GoModel[];
+		models: CompareModel[];
 		variant?: ButtonVariant;
 		size?: ButtonSize;
 		class?: string;

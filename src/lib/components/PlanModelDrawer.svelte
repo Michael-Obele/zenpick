@@ -9,6 +9,7 @@
 	import { selectedKeyForRow } from '$lib/compare-selection';
 	import { planPriceRows, type PlanPriceRow } from '$lib/plan-prices';
 	import { formatIntelligence } from '$lib/stack/format';
+	import { benchmarkToPercent, benchmarkSourceNote } from '$lib/compare-defaults';
 	import { formatCompact } from '$lib/utils';
 	import { llmStatsModelUrl } from '$lib/utils/llm-stats-url';
 	import PlanBadges from './PlanBadges.svelte';
@@ -31,7 +32,16 @@
 	let isCompared = $derived(compareKey ? compare.has(compareKey) : false);
 	let compareFull = $derived(compare.selection.length >= MAX_COMPARE);
 	let prices = $derived(planPriceRows(row, activePlan));
-	let llmStatsUrl = $derived(llmStatsModelUrl({ id: row.id, llmStatsId: null }));
+	let llmStatsUrl = $derived(
+		llmStatsModelUrl({
+			id: row.id,
+			llmStatsId: row.llmStatsId ?? row.go?.llmStatsId ?? null
+		})
+	);
+	let math = $derived(row.benchmarks?.math ?? null);
+	let sciCode = $derived(benchmarkToPercent(row.benchmarks?.sweBenchVerified, 'sweBenchVerified'));
+	let codingNote = $derived(benchmarkSourceNote(row.benchmarks?._meta?.coding));
+	let mathNote = $derived(benchmarkSourceNote(row.benchmarks?._meta?.math));
 
 	function copyModelId() {
 		navigator.clipboard.writeText(row.id);
@@ -40,27 +50,27 @@
 	}
 </script>
 
+{#snippet stat(label: string, value: string, note: string | null = null)}
+	<div class="rounded-lg border border-border p-3 text-center">
+		<div class="text-xs text-muted-foreground">{label}</div>
+		<div class="text-lg font-medium text-foreground tabular-nums">{value}</div>
+		{#if note}
+			<div class="text-[10px] text-muted-foreground/70">via {note}</div>
+		{/if}
+	</div>
+{/snippet}
+
 {#snippet statTiles()}
-	<section class="grid grid-cols-3 gap-2 text-sm">
-		<div class="rounded-lg border border-border p-3 text-center">
-			<div class="text-xs text-muted-foreground">Intelligence</div>
-			<div class="text-lg font-medium text-foreground tabular-nums">
-				{formatIntelligence(row.intelligence)}
-			</div>
-		</div>
-		<div class="rounded-lg border border-border p-3 text-center">
-			<div class="text-xs text-muted-foreground">Coding</div>
-			<div class="text-lg font-medium text-foreground tabular-nums">
-				{row.coding != null ? row.coding.toFixed(1) : '—'}
-			</div>
-		</div>
-		<div class="rounded-lg border border-border p-3 text-center">
-			<div class="text-xs text-muted-foreground">Context</div>
-			<div class="text-lg font-medium text-foreground tabular-nums">
-				{formatCompact(row.contextWindow)}
-			</div>
-		</div>
+	<section class="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+		{@render stat('Intelligence', formatIntelligence(row.intelligence))}
+		{@render stat('Coding', row.coding != null ? row.coding.toFixed(1) : '—', codingNote)}
+		{@render stat('Math', math != null ? math.toFixed(1) : '—', mathNote)}
+		{@render stat('SciCode', sciCode != null ? sciCode.toFixed(1) : '—')}
+		{@render stat('Context', formatCompact(row.contextWindow))}
 	</section>
+	<p class="mt-2 text-xs text-muted-foreground">
+		Benchmarks blend modelgrep with llm-stats; a "via …" note marks a fallback metric.
+	</p>
 {/snippet}
 
 {#snippet priceCard(price: PlanPriceRow)}

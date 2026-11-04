@@ -109,10 +109,10 @@ reason = "Data-table template: sort/filter/need-ranked conditional rows"
 [[health.thresholdOverrides]]
 files = ["src/lib/components/ModelCompare.svelte"]
 functions = ["<template>"]
-maxCyclomatic = 46
-maxCognitive = 88
+maxCyclomatic = 52
+maxCognitive = 107
 maxCrap = 2200.0
-reason = "Comparison grid with per-metric verdict cells + closed-source note states"
+reason = "Full comparison grid shared by every plan: benchmark/pricing/context rows plus conditional Go-only quota, burn, scenario and migration rows; pinned at current score"
 
 [[health.thresholdOverrides]]
 files = ["src/lib/components/QuotaCalculator.svelte"]

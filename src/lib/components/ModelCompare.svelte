@@ -1,5 +1,7 @@
 <script lang="ts">
-	import type { GoModel } from '$lib/types/models';
+	import type { CompareModel } from '$lib/compare-model';
+	import type { ModelBenchmarks, ScenarioScores } from '$lib/types/models';
+	import { PLAN_LABEL } from '$lib/catalog';
 	import { quotaFor, burnFor } from '$lib/plan';
 	import { plan } from '$lib/stores/plan.svelte';
 	import BurnBadge from './BurnBadge.svelte';
@@ -36,21 +38,22 @@
 	};
 
 	interface Props {
-		models: GoModel[];
-		onRemove?: (id: string) => void;
+		models: CompareModel[];
+		onRemove?: (key: string) => void;
 		/**
 		 * Nudge a column one slot earlier (`-1`) or later (`+1`). Column order is
 		 * meaningful — it is the comparison order — so the header carries the same
 		 * reorder controls as the picker above it. Omit to render a fixed order.
 		 */
-		onMove?: (id: string, delta: number) => void;
-		/** Model id → anchor role, used to render a data-derived chip in the column header. */
+		onMove?: (key: string, delta: number) => void;
+		/** Compare key → anchor role, used to render a data-derived chip in the column header. */
 		anchors?: Record<string, AnchorRole>;
 		/**
 		 * Optional task focus ("scenario crown"): crowns the best model of the
 		 * comparison for this task using the recommendation funnel's blend of
 		 * fit, capacity, and quality at the reference workload. Empty means
-		 * the plain benchmark verdict.
+		 * the plain benchmark verdict. Only Go rows carry scenario fit, so the
+		 * page leaves this empty for a mixed or static-plan comparison.
 		 */
 		scenario?: RecommendationScenario | '';
 	}
@@ -89,18 +92,25 @@
 	 */
 	const boxWidth = $derived(`calc(var(--cmp-label) + ${models.length} * var(--cmp-col))`);
 
-	/** Request count for the selected plan tier; Infinity when that tier is unlimited. */
+	/** Anchor role for this column, accepting both canonical and legacy compare keys. */
+	function anchorOf(m: CompareModel): AnchorRole | undefined {
+		return anchors[m.key] ?? anchors[`${m.plan}:${m.id}`];
+	}
+
+	/** Request count for the selected plan tier; null when this is not a Go row. */
 	function reqValue(
-		m: GoModel,
+		m: CompareModel,
 		key: 'requestsPer5h' | 'requestsPerWeek' | 'requestsPerMonth'
-	): number {
-		const q = quotaFor(m, plan.tier);
+	): number | null {
+		if (!m.go) return null;
+		const q = quotaFor(m.go, plan.tier);
 		return q.unlimited ? Infinity : q[key];
 	}
 
-	/** Burn speed (higher = burns faster) for the selected plan tier. */
-	function burnValue(m: GoModel): number | null {
-		const score = burnFor(m, plan.tier).score;
+	/** Burn speed (higher = burns faster) for the selected plan tier; null for plan rows. */
+	function burnValue(m: CompareModel): number | null {
+		if (!m.go) return null;
+		const score = burnFor(m.go, plan.tier).score;
 		return score == null ? null : 100 - score;
 	}
 
@@ -115,44 +125,41 @@
 	}
 
 	// ─── Verdict ────────────────────────────────────────────────────────────
-	const benchKeys: (keyof GoModel['benchmarks'])[] = [
-		'coding',
-		'reasoning',
-		'math',
-		'sweBenchVerified'
-	];
+	const benchKeys: (keyof ModelBenchmarks)[] = ['coding', 'reasoning', 'math', 'sweBenchVerified'];
 	/** Tie precision per benchmark: sweBenchVerified is stored 0–1 (SciCode
 	 *  fraction), so 3 decimals there ≈ 1 display decimal on the 0–100 scale. */
-	const benchTieDecimals: Partial<Record<keyof GoModel['benchmarks'], number>> = {
+	const benchTieDecimals: Partial<Record<keyof ModelBenchmarks, number>> = {
 		sweBenchVerified: 3
 	};
 
 	let verdict = $derived(buildVerdict(models));
 
-	/** Wins per model id across the benchmark categories (draws count for nobody). */
-	function countBenchWins(ms: GoModel[]): Record<string, number> {
+	/** Wins per column across the benchmark categories (draws count for nobody). */
+	function countBenchWins(ms: CompareModel[]): Record<string, number> {
 		const wins: Record<string, number> = {};
-		ms.forEach((m) => (wins[m.id] = 0));
+		ms.forEach((m) => (wins[m.key] = 0));
 		for (const k of benchKeys) {
 			const decimals = benchTieDecimals[k] ?? 1;
 			const nums = ms
-				.map((m) => ({ id: m.id, v: m.benchmarks[k] as number | null }))
+				.map((m) => ({ key: m.key, v: m.benchmarks[k] as number | null }))
 				.filter((x) => x.v != null)
-				.map((x) => ({ id: x.id, v: tieRound(x.v as number, decimals) }));
+				.map((x) => ({ key: x.key, v: tieRound(x.v as number, decimals) }));
 			if (!nums.length) continue;
 			const max = Math.max(...nums.map((x) => x.v));
 			const leaders = nums.filter((x) => x.v === max);
 			// Draws count for nobody.
-			if (leaders.length === 1) wins[leaders[0].id]++;
+			if (leaders.length === 1) wins[leaders[0].key]++;
 		}
 		return wins;
 	}
 
 	/** "X leads on N of 4…" — names every leader when the verdict is a draw. */
-	function leaderSentence(ms: GoModel[], wins: Record<string, number>): string {
-		const ranked = [...ms].sort((a, b) => wins[b.id] - wins[a.id] || a.name.localeCompare(b.name));
-		const maxWins = wins[ranked[0].id];
-		const leaders = ranked.filter((m) => wins[m.id] === maxWins);
+	function leaderSentence(ms: CompareModel[], wins: Record<string, number>): string {
+		const ranked = [...ms].sort(
+			(a, b) => wins[b.key] - wins[a.key] || a.name.localeCompare(b.name)
+		);
+		const maxWins = wins[ranked[0].key];
+		const leaders = ranked.filter((m) => wins[m.key] === maxWins);
 		if (leaders.length === 1) {
 			return `${leaders[0].name} leads on ${maxWins} of ${benchKeys.length} benchmark categories.`;
 		}
@@ -163,7 +170,7 @@
 	}
 
 	/** Cheapest on input pricing, acknowledging price ties instead of breaking them. */
-	function priceSentence(ms: GoModel[]): string | null {
+	function priceSentence(ms: CompareModel[]): string | null {
 		const priced = ms.filter((m) => m.pricing.inputPricePerM != null);
 		if (!priced.length) return null;
 		const cheapestPrice = Math.min(...priced.map((m) => m.pricing.inputPricePerM as number));
@@ -178,7 +185,7 @@
 	}
 
 	/** Largest context window, acknowledging size ties instead of breaking them. */
-	function contextSentence(ms: GoModel[]): string | null {
+	function contextSentence(ms: CompareModel[]): string | null {
 		const withCtx = ms.filter((m) => m.contextWindow);
 		if (!withCtx.length) return null;
 		const largestCtx = Math.max(...withCtx.map((m) => m.contextWindow as number));
@@ -192,7 +199,7 @@
 		return `${who} (${fmtTokens(largestCtx)} tokens).`;
 	}
 
-	function buildVerdict(ms: GoModel[]): string {
+	function buildVerdict(ms: CompareModel[]): string {
 		if (ms.length < 2) return '';
 		const wins = countBenchWins(ms);
 		return [leaderSentence(ms, wins), priceSentence(ms), contextSentence(ms)]
@@ -203,10 +210,14 @@
 	// ─── Scenario crown ───────────────────────────────────────────────────
 	// When a task focus is active, the verdict row crowns the best model of
 	// the comparison using the same blend as the homepage funnel (45% fit,
-	// 30% capacity, 25% quality at the reference workload).
+	// 30% capacity, 25% quality at the reference workload). Only Go rows carry
+	// the fit/capacity inputs, so a mixed or plan-only selection has no crown.
+	let goModels = $derived(models.flatMap((m) => (m.go ? [m.go] : [])));
+	/** Whether any column has Go-only facts (burn, quota, scenario fit, replaces). */
+	let hasGo = $derived(goModels.length > 0);
 	let crown = $derived(
-		scenario
-			? recommendModel(models, {
+		scenario !== '' && goModels.length === models.length
+			? recommendModel(goModels, {
 					tokens: REFERENCE_TOKENS,
 					cachedPct: REFERENCE_CACHED_PCT,
 					scenario,
@@ -231,7 +242,7 @@
 	});
 
 	// ─── Scenario fit rows ─────────────────────────────────────────────────
-	const scenarioKeys: [keyof GoModel['scenarioScores'], string][] = [
+	const scenarioKeys: [keyof ScenarioScores, string][] = [
 		['coding', 'Coding'],
 		['agentic', 'Agentic'],
 		['brainstorming', 'Brainstorm'],
@@ -240,7 +251,7 @@
 	];
 
 	// ─── Open weights helper ───────────────────────────────────────────────
-	let openYes = $derived(models.map((m) => m.openWeight));
+	let openYes = $derived(models.map((m) => m.openWeight === true));
 
 	// ─── Horizontal scroll mirroring ───────────────────────────────────────
 	// The model header cannot live inside the horizontal scroll container and
@@ -295,11 +306,12 @@
 			>
 				Model
 			</div>
-			{#each models as m, i (m.id)}
+			{#each models as m, i (m.key)}
+				{@const anchor = anchorOf(m)}
 				<div
 					class={[
 						'border-l border-border px-2 py-2.5 sm:px-3 sm:py-3',
-						crownWinnerId === m.id && 'ring-1 ring-amber-500/40 ring-inset'
+						m.go?.id === crownWinnerId && 'ring-1 ring-amber-500/40 ring-inset'
 					]}
 				>
 					{#if onMove || onRemove}
@@ -309,9 +321,9 @@
 									variant="ghost"
 									size="icon-xs"
 									class={headerMoveBtn}
-									onclick={() => onMove(m.id, -1)}
+									onclick={() => onMove(m.key, -1)}
 									aria-disabled={i === 0}
-									aria-label={`Move ${m.name} one column left`}
+									aria-label={`Move ${m.name} (${PLAN_LABEL[m.plan]}) one column left`}
 									title="Move left"
 								>
 									<ChevronLeft class="size-3.5" />
@@ -320,9 +332,9 @@
 									variant="ghost"
 									size="icon-xs"
 									class={headerMoveBtn}
-									onclick={() => onMove(m.id, 1)}
+									onclick={() => onMove(m.key, 1)}
 									aria-disabled={i === models.length - 1}
-									aria-label={`Move ${m.name} one column right`}
+									aria-label={`Move ${m.name} (${PLAN_LABEL[m.plan]}) one column right`}
 									title="Move right"
 								>
 									<ChevronRight class="size-3.5" />
@@ -333,8 +345,8 @@
 									variant="ghost"
 									size="icon-xs"
 									class={headerBtn}
-									onclick={() => onRemove(m.id)}
-									aria-label={`Remove ${m.name} from comparison`}
+									onclick={() => onRemove(m.key)}
+									aria-label={`Remove ${m.name} (${PLAN_LABEL[m.plan]}) from comparison`}
 								>
 									<X class="size-3.5" />
 								</Button>
@@ -343,8 +355,11 @@
 					{/if}
 					<div class="text-sm font-semibold text-foreground">{m.name}</div>
 					<div class="text-xs text-muted-foreground">{m.provider}</div>
-					{#if anchors[m.id]}
-						{@const a = ANCHOR_META[anchors[m.id]]}
+					<div class="mt-1.5">
+						<Badge variant="outline">{PLAN_LABEL[m.plan]}</Badge>
+					</div>
+					{#if anchor}
+						{@const a = ANCHOR_META[anchor]}
 						{@const Icon = a.icon}
 						<Badge
 							variant="outline"
@@ -354,8 +369,8 @@
 							{a.label}
 						</Badge>
 					{/if}
-					{#if scenario}
-						{#if crownWinnerId === m.id}
+					{#if scenario && m.go}
+						{#if crownWinnerId === m.go.id}
 							<Badge
 								variant="outline"
 								class="mt-1.5 border-amber-500/40 bg-amber-500/10 text-amber-900 dark:border-amber-400/40 dark:bg-amber-500/10 dark:text-amber-100"
@@ -365,13 +380,16 @@
 							</Badge>
 						{:else}
 							<span class="mt-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground">
-								Fit <span class="font-semibold text-foreground">{m.scenarioScores[scenario]}</span>
+								Fit
+								<span class="font-semibold text-foreground">{m.go.scenarioScores[scenario]}</span>
 							</span>
 						{/if}
 					{/if}
-					<div class="mt-2">
-						<BurnBadge burnDetails={burnFor(m, plan.tier)} />
-					</div>
+					{#if m.go}
+						<div class="mt-2">
+							<BurnBadge burnDetails={burnFor(m.go, plan.tier)} />
+						</div>
+					{/if}
 				</div>
 			{/each}
 		</div>
@@ -429,7 +447,7 @@
 				>
 					{label}
 				</div>
-				{#each models as m (m.id)}
+				{#each models as m (m.key)}
 					<div class="border-t border-l border-border/60 px-3 py-2.5">
 						{#if m.capabilities}
 							<CapabilityBadges capabilities={m.capabilities} {kind} />
@@ -495,7 +513,7 @@
 			</CompareRow>
 
 			<CompareRow
-				label="SWE-Bench"
+				label="SciCode"
 				{models}
 				getValue={(m) => benchmarkToPercent(m.benchmarks.sweBenchVerified, 'sweBenchVerified')}
 				hint="0-100"
@@ -555,87 +573,94 @@
 				{/snippet}
 			</CompareRow>
 
-			<CompareRow
-				label="Req / 5h"
-				{models}
-				getValue={(m) => reqValue(m, 'requestsPer5h')}
-				tieDecimals={0}
-			>
-				{#snippet format(value, isBest)}
-					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-						>{value == null ? '—' : value === Infinity ? 'Unlimited' : formatCompact(value)}</span
-					>
-				{/snippet}
-			</CompareRow>
+			{#if hasGo}
+				<CompareRow
+					label="Req / 5h"
+					{models}
+					getValue={(m) => reqValue(m, 'requestsPer5h')}
+					tieDecimals={0}
+				>
+					{#snippet format(value, isBest)}
+						<span
+							class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
+							>{value == null ? '—' : value === Infinity ? 'Unlimited' : formatCompact(value)}</span
+						>
+					{/snippet}
+				</CompareRow>
 
-			<CompareRow
-				label="Req / week"
-				{models}
-				getValue={(m) => reqValue(m, 'requestsPerWeek')}
-				tieDecimals={0}
-			>
-				{#snippet format(value, isBest)}
-					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-						>{value == null ? '—' : value === Infinity ? 'Unlimited' : formatCompact(value)}</span
-					>
-				{/snippet}
-			</CompareRow>
+				<CompareRow
+					label="Req / week"
+					{models}
+					getValue={(m) => reqValue(m, 'requestsPerWeek')}
+					tieDecimals={0}
+				>
+					{#snippet format(value, isBest)}
+						<span
+							class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
+							>{value == null ? '—' : value === Infinity ? 'Unlimited' : formatCompact(value)}</span
+						>
+					{/snippet}
+				</CompareRow>
 
-			<CompareRow
-				label="Req / month"
-				{models}
-				getValue={(m) => reqValue(m, 'requestsPerMonth')}
-				tieDecimals={0}
-			>
-				{#snippet format(value, isBest)}
-					<span class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
-						>{value == null ? '—' : value === Infinity ? 'Unlimited' : formatCompact(value)}</span
-					>
-				{/snippet}
-			</CompareRow>
+				<CompareRow
+					label="Req / month"
+					{models}
+					getValue={(m) => reqValue(m, 'requestsPerMonth')}
+					tieDecimals={0}
+				>
+					{#snippet format(value, isBest)}
+						<span
+							class="tabular-nums {isBest ? 'font-semibold text-foreground' : 'text-foreground'}"
+							>{value == null ? '—' : value === Infinity ? 'Unlimited' : formatCompact(value)}</span
+						>
+					{/snippet}
+				</CompareRow>
 
-			<CompareRow
-				label="Burn"
-				{models}
-				getValue={(m) => burnValue(m)}
-				higherIsBetter={false}
-				hint="lower better"
-				tieDecimals={0}
-			>
-				{#snippet format(value, isBest)}
-					<span
-						class="tabular-nums {isBest
-							? 'font-semibold text-emerald-800 dark:text-emerald-300'
-							: 'text-foreground'}">{value == null ? '—' : value}</span
-					>
-				{/snippet}
-			</CompareRow>
+				<CompareRow
+					label="Burn"
+					{models}
+					getValue={(m) => burnValue(m)}
+					higherIsBetter={false}
+					hint="lower better"
+					tieDecimals={0}
+				>
+					{#snippet format(value, isBest)}
+						<span
+							class="tabular-nums {isBest
+								? 'font-semibold text-emerald-800 dark:text-emerald-300'
+								: 'text-foreground'}">{value == null ? '—' : value}</span
+						>
+					{/snippet}
+				</CompareRow>
+			{/if}
 
-			<!-- Scenario fit -->
-			<div
-				class="sticky left-0 z-10 border-t border-border/60 bg-muted px-2 py-2.5 text-sm font-medium text-muted-foreground sm:px-3"
-			>
-				Scenario fit
-			</div>
-			{#each models as m, i (m.id)}
-				<div class="border-t border-l border-border/60 px-3 py-2.5 text-sm">
-					<div class="space-y-1">
-						{#each scenarioKeys as [key, label] (key)}
-							{@const active = key === scenario}
-							<div class="flex items-center justify-between gap-2 text-xs">
-								<span class={active ? 'font-semibold text-foreground' : 'text-muted-foreground'}
-									>{label}</span
-								>
-								<span
-									class={active
-										? 'font-semibold text-primary dark:text-primary-strong'
-										: 'text-foreground tabular-nums'}>{m.scenarioScores[key]}</span
-								>
-							</div>
-						{/each}
-					</div>
+			{#if hasGo}
+				<!-- Scenario fit -->
+				<div
+					class="sticky left-0 z-10 border-t border-border/60 bg-muted px-2 py-2.5 text-sm font-medium text-muted-foreground sm:px-3"
+				>
+					Scenario fit
 				</div>
-			{/each}
+				{#each models as m (m.key)}
+					<div class="border-t border-l border-border/60 px-3 py-2.5 text-sm">
+						<div class="space-y-1">
+							{#each scenarioKeys as [key, label] (key)}
+								{@const active = m.go != null && key === scenario}
+								<div class="flex items-center justify-between gap-2 text-xs">
+									<span class={active ? 'font-semibold text-foreground' : 'text-muted-foreground'}
+										>{label}</span
+									>
+									<span
+										class={active
+											? 'font-semibold text-primary dark:text-primary-strong'
+											: 'text-foreground tabular-nums'}>{m.go?.scenarioScores[key] ?? '—'}</span
+									>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/each}
+			{/if}
 
 			<!-- Open weights -->
 			<div
@@ -643,22 +668,24 @@
 			>
 				Open weights
 			</div>
-			{#each models as m, i (m.id)}
+			{#each models as m, i (m.key)}
 				<div
 					class="border-t border-l border-border/60 px-3 py-2.5 text-sm {openYes[i]
 						? 'bg-primary/5 ring-1 ring-primary/20 ring-inset'
 						: ''}"
 				>
-					{#if m.openWeight}
+					{#if m.openWeight === true}
 						<span
 							class="inline-flex items-center gap-1 font-medium text-emerald-800 dark:text-emerald-300"
 						>
 							<Check class="size-3.5" /> Yes
 						</span>
-					{:else}
+					{:else if m.openWeight === false}
 						<span class="inline-flex items-center gap-1 text-muted-foreground">
 							<Minus class="size-3.5" /> No
 						</span>
+					{:else}
+						<span class="text-xs text-muted-foreground/40">—</span>
 					{/if}
 				</div>
 			{/each}
@@ -669,7 +696,7 @@
 			>
 				Tags
 			</div>
-			{#each models as m, i (m.id)}
+			{#each models as m (m.key)}
 				<div class="border-t border-l border-border/60 px-3 py-2.5">
 					<div class="flex flex-wrap gap-1">
 						{#each m.tags as tag (tag.label)}
@@ -686,37 +713,39 @@
 				</div>
 			{/each}
 
-			<!-- Migration hints -->
-			<div
-				class="sticky left-0 z-10 border-t border-border/60 bg-muted px-2 py-2.5 text-sm font-medium text-muted-foreground sm:px-3"
-				title="Closed-source models this open-weight model is comparable to on at least two benchmarks"
-			>
-				Replaces
-			</div>
-			{#each models as m, i (m.id)}
-				<div class="border-t border-l border-border/60 px-3 py-2.5 text-sm">
-					{#if m.migrationHints.length}
-						<ul class="space-y-1.5">
-							{#each m.migrationHints as hint (hint.model)}
-								<li class="flex items-start gap-1.5 text-xs">
-									<Replace class="mt-0.5 size-3 shrink-0 text-muted-foreground/60" />
-									<span class="leading-snug">
-										<span class="font-medium text-foreground">{hint.model}</span>
-										<span class="text-muted-foreground"> — {hint.reason}</span>
-									</span>
-								</li>
-							{/each}
-						</ul>
-					{:else if !m.openWeight}
-						<span class="inline-flex items-start gap-1.5 text-xs text-muted-foreground">
-							<LockKeyhole class="mt-0.5 size-3 shrink-0 text-muted-foreground/60" />
-							<span class="leading-snug">Closed-source — no open alternative to compare</span>
-						</span>
-					{:else}
-						<span class="text-xs text-muted-foreground/40">—</span>
-					{/if}
+			{#if hasGo}
+				<!-- Migration hints -->
+				<div
+					class="sticky left-0 z-10 border-t border-border/60 bg-muted px-2 py-2.5 text-sm font-medium text-muted-foreground sm:px-3"
+					title="Closed-source models this open-weight model is comparable to on at least two benchmarks"
+				>
+					Replaces
 				</div>
-			{/each}
+				{#each models as m (m.key)}
+					<div class="border-t border-l border-border/60 px-3 py-2.5 text-sm">
+						{#if m.go?.migrationHints.length}
+							<ul class="space-y-1.5">
+								{#each m.go.migrationHints as hint (hint.model)}
+									<li class="flex items-start gap-1.5 text-xs">
+										<Replace class="mt-0.5 size-3 shrink-0 text-muted-foreground/60" />
+										<span class="leading-snug">
+											<span class="font-medium text-foreground">{hint.model}</span>
+											<span class="text-muted-foreground"> — {hint.reason}</span>
+										</span>
+									</li>
+								{/each}
+							</ul>
+						{:else if m.go && !m.go.openWeight}
+							<span class="inline-flex items-start gap-1.5 text-xs text-muted-foreground">
+								<LockKeyhole class="mt-0.5 size-3 shrink-0 text-muted-foreground/60" />
+								<span class="leading-snug">Closed-source — no open alternative to compare</span>
+							</span>
+						{:else}
+							<span class="text-xs text-muted-foreground/40">—</span>
+						{/if}
+					</div>
+				{/each}
+			{/if}
 
 			<!-- Links -->
 			<div
@@ -724,7 +753,7 @@
 			>
 				Sources
 			</div>
-			{#each models as m, i (m.id)}
+			{#each models as m (m.key)}
 				<div class="flex flex-wrap gap-2 border-t border-l border-border/60 px-3 py-2.5">
 					{#if m.modelgrepId}
 						<a

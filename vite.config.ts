@@ -52,7 +52,7 @@ export default defineConfig({
 			vitePlugin: {
 				inspector: {
 					toggleKeyCombo: 'alt-x',
-					showToggleButton: 'always',
+					showToggleButton: 'active',
 					toggleButtonPos: 'bottom-right'
 				}
 			}

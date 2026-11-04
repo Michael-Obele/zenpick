@@ -3,11 +3,14 @@ import type { StackPlan } from '$lib/stack/plans';
 import { COPILOT_PLAN, GO_PLAN_META, ZED_PLAN } from '$lib/stack/plans';
 import { buildStackPlans } from '$lib/stack/build';
 import { fetchModelgrepModels } from '$lib/server/modelgrep';
+import { fetchLlmStatsBenchmarkIndex } from '$lib/server/llm-stats-public';
 import { loadModels, fnv1a } from '$lib/server/models';
 
 const STACK_PLANS_CACHE_KEY = `stack-plans:${fnv1a(
 	[
-		[buildStackPlans, loadStackPlans].map((fn) => fn.toString()).join('\n'),
+		[buildStackPlans, loadStackPlans, fetchLlmStatsBenchmarkIndex]
+			.map((fn) => fn.toString())
+			.join('\n'),
 		JSON.stringify([ZED_PLAN, COPILOT_PLAN, GO_PLAN_META])
 	].join('\n')
 )}`;
@@ -26,13 +29,17 @@ export async function loadStackPlans(): Promise<StackPlan[]> {
 
 	if (!stackPlansInflight) {
 		stackPlansInflight = (async () => {
-			const [goModels, modelgrepResult] = await Promise.all([loadModels(), fetchModelgrepModels()]);
-			const plans = buildStackPlans(goModels, modelgrepResult.all);
-			cacheSet(
-				STACK_PLANS_CACHE_KEY,
-				plans,
-				modelgrepResult.all.length === 0 ? DEGRADED_STACK_TTL : MODELS_TTL
-			);
+			const [goModels, modelgrepResult, llmStatsIndex] = await Promise.all([
+				loadModels(),
+				fetchModelgrepModels(),
+				fetchLlmStatsBenchmarkIndex()
+			]);
+			const plans = buildStackPlans(goModels, modelgrepResult.all, llmStatsIndex);
+			// A plan build that got no modelgrep data OR no llm-stats index has
+			// null benchmark cells pinned for the whole TTL otherwise. The short
+			// TTL lets the next request self-heal.
+			const degraded = modelgrepResult.all.length === 0 || llmStatsIndex.byId.size === 0;
+			cacheSet(STACK_PLANS_CACHE_KEY, plans, degraded ? DEGRADED_STACK_TTL : MODELS_TTL);
 			return plans;
 		})().finally(() => {
 			stackPlansInflight = null;
