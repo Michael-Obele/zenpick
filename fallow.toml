@@ -145,8 +145,31 @@ reason = "Role picker: chosen and auto pick states, economics line and plan badg
 [[health.thresholdOverrides]]
 files = ["src/lib/components/AgentStack/AgentPairBuilder.svelte"]
 functions = ["<template>"]
-maxCognitive = 18
-reason = "Compare-route pair builder: empty/lone-plan/ready states, plan select, two role pickers, split slider, economics tiles and the strengths/warnings lists; pinned at current score"
+# Re-measured after the Swap-roles control joined the pick row: branchy
+# attribute lists around it, scored 20 / 19 / 398, pinned exactly.
+maxCyclomatic = 20
+maxCognitive = 19
+reason = "Compare-route pair builder: empty/lone-plan/ready states, plan select, two role pickers, swap control, split slider, economics tiles and the strengths/warnings lists; pinned at current score"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/stack/pairing.ts"]
+functions = ["evaluatePair"]
+# Re-measured after the reciprocal Go burn basis joined the dollar economics
+# (credits both members of the pair before switching, guards 0/null windows):
+# scored 23 / 16 / 79, pinned exactly. Suggest extracting if it grows again.
+maxCyclomatic = 23
+maxCognitive = 16
+reason = "Pair evaluation over quality, warnings, strengths and scoring; every check is a plan-fact worth stating exactly once; pinned at current score"
+
+[[health.thresholdOverrides]]
+files = ["src/lib/stack/pairing.ts"]
+functions = ["strengthsFor"]
+# Re-measured after the Go burn basis split the cost strengths into a window-
+# share branch (docs requestsPer12 ratio) and the price ratio: 17 / 16 / 50,
+# pinned exactly. Suggest extracting if it grows again.
+maxCyclomatic = 17
+maxCognitive = 16
+reason = "Strength sentences for a pair: benchmark lead, retention share, savings, cost ratio per basis and allowance fit; each sentence is a standalone fact; pinned at current score"
 
 [[health.thresholdOverrides]]
 files = ["src/lib/stack/pairing.ts"]

@@ -1,5 +1,7 @@
 import type { CompareEntry } from '$lib/compare-selection';
 import type { PlanId, StackModel, StackPricing } from '$lib/stack/plans';
+import { burnFor } from '$lib/plan';
+import type { PlanTier } from '$lib/types/models';
 import type {
 	GoModel,
 	ModelBenchmarks,
@@ -108,9 +110,11 @@ export function toCompareModels(entries: CompareEntry[]): CompareModel[] {
 /**
  * Project a compare column back to the plan-local model shape the stack tools
  * (`resolveStack`, `stackEconomics`, the pair builder) already speak. Pricing
- * is the plan's own rate, so the economics stay plan-correct.
+ * is the plan's own rate, so the economics stay plan-correct, and Go burn
+ * details ride along (resolved for the selected plan tier) so pair cost
+ * judgements can use the docs request windows instead of list price.
  */
-export function toStackModel(m: CompareModel): StackModel {
+export function toStackModel(m: CompareModel, tier: PlanTier = 'go'): StackModel {
 	return {
 		id: m.id,
 		name: m.name,
@@ -127,6 +131,7 @@ export function toStackModel(m: CompareModel): StackModel {
 		openWeight: m.openWeight,
 		speed: m.speed,
 		tags: m.tags,
-		llmStatsId: m.llmStatsId
+		llmStatsId: m.llmStatsId,
+		burn: m.go ? burnFor(m.go, tier) : null
 	};
 }

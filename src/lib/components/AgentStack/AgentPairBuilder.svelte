@@ -8,6 +8,7 @@
 	import { PLAN_LABEL } from '$lib/catalog';
 	import { compareKey, parseCompareKey } from '$lib/compare-selection';
 	import { toStackModel, type CompareModel } from '$lib/compare-model';
+	import { plan as goPlanTier } from '$lib/stores/plan.svelte';
 	import { burnLabel } from '$lib/burn';
 	import { planModelEconomics } from '$lib/stack/allowance';
 	import { DEFAULT_WORKLOAD, findModel, modelKey, type StackWorkload } from '$lib/stack/logic';
@@ -61,7 +62,9 @@
 		const grouped = new Map<PlanId, StackModel[]>();
 		for (const model of models) {
 			const list = grouped.get(model.plan) ?? [];
-			list.push(toStackModel(model));
+			// Go burn details follow the plan-tier toggle, so a Go Plus subscriber
+			// judges sub cost by their own request windows.
+			list.push(toStackModel(model, goPlanTier.tier));
 			grouped.set(model.plan, list);
 		}
 		return grouped;
@@ -172,8 +175,11 @@
 
 	let savingsLabel = $derived.by(() => {
 		if (!verdict) return '—';
-		if (verdict.economics.savingsPct > 0) return `−${verdict.economics.savingsPct}%`;
-		if (verdict.economics.savingsPct < 0) return `+${Math.abs(verdict.economics.savingsPct)}% more`;
+		// The "Versus all-main" saving speaks the pair's cost basis: Go burn
+		// score when both models carry docs burn data, dollars otherwise.
+		const pct = verdict.costBasis.savingsPct;
+		if (pct > 0) return `−${pct}%`;
+		if (pct < 0) return `+${Math.abs(pct)}% more`;
 		return '—';
 	});
 

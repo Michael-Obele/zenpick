@@ -30,6 +30,22 @@ export interface PairVerdict {
 	sub: StackModel;
 	/** Cost, savings and included-requests economics for this pair. */
 	economics: StackEconomics;
+	/**
+	 * The basis this pair's "which is cheaper" verdicts were judged on. On
+	 * OpenCode Go the docs request windows (`requestsPer12`) are the ground
+	 * truth for how a model burns the allowance, so when both models carry burn
+	 * data cost means "share of the $12 window one request consumes"
+	 * (1/requestsPer12) — list price often disagrees. The dollar `economics`
+	 * above keep describing the price no matter which basis won.
+	 */
+	costBasis: {
+		usingBurn: boolean;
+		/** Per-request relative cost: window share (1/requestsPer12) or dollars. */
+		mainCost: number;
+		subCost: number;
+		/** Savings of this blended pair versus putting every request on `main`. */
+		savingsPct: number;
+	};
 	/** Composite benchmark score (0-100), or intelligence when benchmarks are absent. */
 	mainQuality: number | null;
 	subQuality: number | null;
@@ -63,6 +79,21 @@ function savingsLabel(pct: number): string {
 	if (pct > 0) return `Saves ${pct}% versus keeping every request on the main agent.`;
 	if (pct === 0) return 'Costs the same as keeping every request on the main agent.';
 	return `Costs ${Math.abs(pct)}% more than keeping every request on the main agent.`;
+}
+
+/**
+ * Per-request cost of one model in the pair's comparison basis: on Go, the
+ * share of the docs' $12 request window one request consumes (the reciprocal
+ * of `requestsPer12`, so HIGHER always means MORE expensive); the plan-priced
+ * dollar cost otherwise. Note `burn.score` runs the other way — it is an
+ * efficiency index where higher is better, so it is never used as a cost
+ * directly. Only meaningful when BOTH pair members use the same basis, which
+ * `evaluatePair` enforces by treating burn as available only for both.
+ */
+export function modelCostBasis(model: StackModel, w: StackWorkload): number | null {
+	const per12 = model.burn?.requestsPer12;
+	if (per12 != null && per12 > 0) return 1 / per12;
+	return costPerRequest(model.pricing, w.tokens, w.cachedPct);
 }
 
 function qualityWarnings(
@@ -107,17 +138,25 @@ function contextWarnings(main: StackModel, sub: StackModel): string[] {
 	];
 }
 
-function priceWarnings(
+function costWarnings(
 	main: StackModel,
 	sub: StackModel,
 	mainCost: number,
-	subCost: number
+	subCost: number,
+	usingBurn: boolean
 ): string[] {
 	const warnings: string[] = [];
 	if (subCost >= mainCost) {
-		warnings.push(`${sub.name} is not cheaper than ${main.name} — this pair saves nothing.`);
+		warnings.push(
+			usingBurn
+				? `${sub.name} does not burn the Go allowance slower than ${main.name} — this pair saves nothing.`
+				: `${sub.name} is not cheaper than ${main.name} — this pair saves nothing.`
+		);
 	}
+	// With burn data the docs request window already folds in the output rates,
+	// so the per-token output comparison would re-litigate a measured number.
 	if (
+		!usingBurn &&
 		sub.pricing.outputPricePerM != null &&
 		main.pricing.outputPricePerM != null &&
 		sub.pricing.outputPricePerM > main.pricing.outputPricePerM
@@ -143,9 +182,11 @@ function strengthsFor(
 	economics: StackEconomics,
 	mainCost: number,
 	subCost: number,
+	basisSavingsPct: number,
 	mainQuality: number | null,
 	subQuality: number | null,
-	retention: number | null
+	retention: number | null,
+	usingBurn: boolean
 ): string[] {
 	const strengths: string[] = [];
 
@@ -158,10 +199,22 @@ function strengthsFor(
 		const share = retention == null ? '' : ` — ${Math.round(retention)}% of the main`;
 		strengths.push(`${sub.name} holds ${subQuality.toFixed(1)} composite${share}.`);
 	}
-	if (economics.savingsPct > 0) strengths.push(savingsLabel(economics.savingsPct));
-	if (mainCost > 0 && subCost > 0) {
+	if (basisSavingsPct > 0) strengths.push(savingsLabel(basisSavingsPct));
+	if (usingBurn) {
+		const mainPer12 = main.burn?.requestsPer12;
+		const subPer12 = sub.burn?.requestsPer12;
+		if (mainPer12 != null && subPer12 != null && subPer12 > mainPer12 * 1.05) {
+			strengths.push(
+				`${sub.name} fits ${(subPer12 / mainPer12).toFixed(1)}× more requests into the same $12 window.`
+			);
+		} else if (subCost < mainCost) {
+			strengths.push(`${sub.name} burns less of the Go allowance per request.`);
+		}
+	} else if (mainCost > 0 && subCost > 0) {
 		const ratio = mainCost / subCost;
-		if (ratio > 1.05) strengths.push(`${sub.name} costs ${ratio.toFixed(1)}× less per request.`);
+		if (ratio > 1.05) {
+			strengths.push(`${sub.name} costs ${ratio.toFixed(1)}× less per request.`);
+		}
 	} else if (subCost === 0) {
 		strengths.push(`${sub.name} is free at this plan's rates.`);
 	}
@@ -187,9 +240,20 @@ export function evaluatePair(
 	if (main.id === sub.id) return null;
 
 	const economics = stackEconomics(plan, main, sub, w);
-	const mainCost = costPerRequest(main.pricing, w.tokens, w.cachedPct);
-	const subCost = costPerRequest(sub.pricing, w.tokens, w.cachedPct);
-	if (!economics || mainCost == null || subCost == null) return null;
+	const mainPrice = costPerRequest(main.pricing, w.tokens, w.cachedPct);
+	const subPrice = costPerRequest(sub.pricing, w.tokens, w.cachedPct);
+	if (!economics || mainPrice == null || subPrice == null) return null;
+
+	// Burn data is a one-sided record: comparing a burn figure against a price
+	// would be nonsense, so burn wins the basis only when BOTH models carry it.
+	// The cost is the window share one request consumes — 1/requestsPer12 —
+	// taken straight from the docs' published request counts. (`burn.score` is
+	// an efficiency index where HIGHER is better, so it is not a cost.)
+	const mainPer12 = main.burn?.requestsPer12 ?? null;
+	const subPer12 = sub.burn?.requestsPer12 ?? null;
+	const usingBurn = mainPer12 != null && mainPer12 > 0 && subPer12 != null && subPer12 > 0;
+	const mainCost = usingBurn ? 1 / mainPer12 : mainPrice;
+	const subCost = usingBurn ? 1 / subPer12 : subPrice;
 
 	const mainQuality = stackQuality(main);
 	const subQuality = stackQuality(sub);
@@ -199,7 +263,11 @@ export function evaluatePair(
 			: null;
 
 	const qualityScore = mainQuality ?? 0;
-	const savingsScore = Math.max(0, Math.min(100, economics.savingsPct));
+
+	const share = Math.min(100, Math.max(0, w.subShare)) / 100;
+	const blendedBasis = (1 - share) * mainCost + share * subCost;
+	const basisSavingsPct = mainCost === 0 ? 0 : Math.round((1 - blendedBasis / mainCost) * 100);
+	const savingsScore = Math.max(0, Math.min(100, basisSavingsPct));
 	const retentionScore = retention == null ? 40 : Math.max(0, Math.min(100, retention));
 
 	let score = qualityScore * 0.45 + savingsScore * 0.35 + retentionScore * 0.2;
@@ -208,7 +276,7 @@ export function evaluatePair(
 
 	const warnings = [
 		...qualityWarnings(main, sub, mainQuality, subQuality, retention),
-		...priceWarnings(main, sub, mainCost, subCost),
+		...costWarnings(main, sub, mainCost, subCost, usingBurn),
 		...contextWarnings(main, sub),
 		...noteWarnings(main, sub)
 	];
@@ -217,6 +285,12 @@ export function evaluatePair(
 		main,
 		sub,
 		economics,
+		costBasis: {
+			usingBurn,
+			mainCost,
+			subCost,
+			savingsPct: basisSavingsPct
+		},
 		mainQuality,
 		subQuality,
 		retention,
@@ -227,9 +301,11 @@ export function evaluatePair(
 			economics,
 			mainCost,
 			subCost,
+			basisSavingsPct,
 			mainQuality,
 			subQuality,
-			retention
+			retention,
+			usingBurn
 		),
 		warnings
 	};
@@ -268,7 +344,7 @@ export function suggestPair(
 	);
 	const base = sensible.length ? sensible : verdicts;
 
-	const cheaper = base.filter((verdict) => verdict.economics.savingsPct > 0);
+	const cheaper = base.filter((verdict) => verdict.costBasis.savingsPct > 0);
 	const pool = cheaper.length ? cheaper : base;
 	pool.sort(
 		(a, b) =>
@@ -283,9 +359,7 @@ export function suggestPair(
 			'No cheaper sub-agent in this comparison — every possible sub costs at least as much as its main.'
 		);
 		const cheapest = [...models].sort(
-			(a, b) =>
-				(costPerRequest(a.pricing, w.tokens, w.cachedPct) ?? Infinity) -
-				(costPerRequest(b.pricing, w.tokens, w.cachedPct) ?? Infinity)
+			(a, b) => (modelCostBasis(a, w) ?? Infinity) - (modelCostBasis(b, w) ?? Infinity)
 		);
 		if (cheapest[0]?.id === best.main.id) {
 			best.warnings.unshift(

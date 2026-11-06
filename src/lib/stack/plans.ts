@@ -1,6 +1,7 @@
 import type {
 	ModelBenchmarks,
 	ModelCapabilities,
+	BurnDetails,
 	ModelPricing,
 	ModelSpeed,
 	ModelTag
@@ -44,6 +45,14 @@ export interface StackModel {
 	llmStatsId?: string | null;
 	/** Plan-specific gotcha worth showing next to the model. */
 	note?: string;
+	/**
+	 * OpenCode Go burn details (docs request windows) — the ground truth for
+	 * how fast this model burns the Go allowance. `score` is an efficiency
+	 * index (higher is better; the UI shows `100 − score` as "Burn · lower
+	 * better") and `requestsPer12` is the published requests per $12 window.
+	 * Null on Zed / Copilot, whose cost story is pure price.
+	 */
+	burn?: BurnDetails | null;
 	/** One-line model description; null/absent when the source has none. */
 	description?: string;
 	/** modelgrep id ("anthropic/claude-sonnet-5.5") for the model page; null = none. */

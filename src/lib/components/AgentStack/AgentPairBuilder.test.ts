@@ -4,6 +4,8 @@ import AgentPairBuilder from './AgentPairBuilder.svelte';
 import type { CompareModel } from '$lib/compare-model';
 import type { PlanId, StackModel, StackPlan, StackPricing } from '$lib/stack/plans';
 import type { StackParams } from '$lib/stack/search';
+import { makeBurnDetails, makeGoModel, makePricing } from '$lib/test/fixtures';
+import type { GoModel } from '$lib/types/models';
 
 const SONNET: StackPricing = {
 	inputPricePerM: 2,
@@ -30,7 +32,7 @@ function model(
  * A compare column whose benchmark fields all match `intelligence`, so
  * `stackQuality` returns the same score the plan-model fixture already names.
  */
-function column(m: StackModel, plan: PlanId = 'zed'): CompareModel {
+function column(m: StackModel, plan: PlanId = 'zed', go: GoModel | null = null): CompareModel {
 	const bench = {
 		coding: m.intelligence,
 		reasoning: m.intelligence,
@@ -59,7 +61,7 @@ function column(m: StackModel, plan: PlanId = 'zed'): CompareModel {
 		openWeight: null,
 		speed: null,
 		tags: [],
-		go: null
+		go
 	};
 }
 
@@ -216,5 +218,73 @@ describe('AgentPairBuilder', () => {
 
 		expect(body).toContain('In comparison');
 		expect(body).toMatch(/<button[^>]*disabled[^>]*>\s*In comparison/);
+	});
+
+	it('judges a Go pair’s cost by the docs burn windows, not list price', () => {
+		// The sub costs MORE per token but burns far less of the Go allowance —
+		// the price-only verdict wrongly called this pair a non-saver.
+		const mainStack = model('glm-go', 'GLM 5.3 Flash', 'Z.ai', SONNET, 45);
+		const subStack = model(
+			'deepseek-go',
+			'DeepSeek 4.1 Flash',
+			'DeepSeek',
+			{
+				inputPricePerM: 2.5,
+				outputPricePerM: 10.5,
+				cachedReadPerM: 0.25
+			},
+			27.8
+		);
+		const body = text({
+			plans: [goPlan],
+			models: [
+				column(
+					mainStack,
+					'go',
+					makeGoModel({
+						id: 'glm-go',
+						name: 'GLM 5.3 Flash',
+						provider: 'Z.ai',
+						pricing: makePricing({
+							inputPricePerM: 2,
+							outputPricePerM: 10,
+							cachedReadPerM: 0.2
+						}),
+						burnDetails: makeBurnDetails({
+							score: 67,
+							requestsPer12: 6320,
+							band: 'good'
+						})
+					})
+				),
+				column(
+					subStack,
+					'go',
+					makeGoModel({
+						id: 'deepseek-go',
+						name: 'DeepSeek 4.1 Flash',
+						provider: 'DeepSeek',
+						pricing: makePricing({
+							inputPricePerM: 2.5,
+							outputPricePerM: 10.5,
+							cachedReadPerM: 0.25
+						}),
+						burnDetails: makeBurnDetails({
+							score: 99,
+							requestsPer12: 43330,
+							band: 'excellent'
+						})
+					})
+				)
+			],
+			params: { ...params, stack: 'go' }
+		});
+
+		expect(body).toContain('GLM 5.3 Flash + DeepSeek 4.1 Flash');
+		// Window share at split 70: blended = 0.3 + 0.7·(6320/43330) = 40.2% of
+		// all-main → 60% saved — even though list price says +8% more.
+		expect(body).toContain('−60%');
+		expect(body).toContain('fits 6.9× more requests into the same $12 window');
+		expect(body).not.toContain('saves nothing');
 	});
 });
