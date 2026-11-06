@@ -155,6 +155,22 @@ describe('AgentPairBuilder', () => {
 		expect(body).toContain('keeps only 62% of the main');
 	});
 
+	it('lets an explicit sub claim its role, pushing the other model to main', () => {
+		// The URL can carry `sub=claude-sonnet-5.5` while `main` is left to the
+		// auto-suggestion — the sub's claim must win instead of being discarded.
+		const body = text({ params: { ...params, sub: 'claude-sonnet-5.5' } });
+
+		expect(body).toContain('Your pick');
+		expect(body).toContain('GPT-6 Luna + Claude Sonnet 5.5');
+	});
+
+	it('follows an explicit main and offers the remaining model as sub', () => {
+		const body = text({ params: { ...params, main: 'gpt-6-luna' } });
+
+		expect(body).toContain('Your pick');
+		expect(body).toContain('GPT-6 Luna + Claude Sonnet 5.5');
+	});
+
 	it('refuses to build a pair from models on different plans', () => {
 		const body = text({
 			models: [column(zedPlan.models[0]), column(zedPlan.models[1], 'copilot')]

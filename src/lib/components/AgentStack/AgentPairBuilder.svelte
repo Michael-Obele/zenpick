@@ -86,7 +86,21 @@
 	let requestedMain = $derived(findModel(available, params.main));
 	let requestedSub = $derived(findModel(available, params.sub));
 
-	let main = $derived(requestedMain ?? suggestion?.main ?? null);
+	/**
+	 * An explicit `sub` claims its role even when the recommendation would have
+	 * cast that model as the main — with two comparison models that is exactly the
+	 * role swap, so the main is re-suggested from the models the sub leaves over
+	 * (which with two models is simply the other one).
+	 */
+	let main = $derived.by(() => {
+		if (requestedMain) return requestedMain;
+		if (requestedSub) {
+			const rest = available.filter((model) => model.id !== requestedSub.id);
+			const candidate = plan && rest.length > 1 ? suggestPair(rest, plan, workload) : null;
+			return candidate?.main ?? rest[0] ?? null;
+		}
+		return suggestion?.main ?? null;
+	});
 	let sub = $derived.by(() => {
 		if (requestedSub && requestedSub.id !== main?.id) return requestedSub;
 		const suggested = suggestion?.sub;
@@ -162,6 +176,13 @@
 		if (verdict.economics.savingsPct < 0) return `+${Math.abs(verdict.economics.savingsPct)}% more`;
 		return '—';
 	});
+
+	/** Swap the two roles in the URL: both end up explicit, so the swap sticks. */
+	function swapRoles() {
+		if (!main || !sub || main.id === sub.id) return;
+		params.main = sub.id;
+		params.sub = main.id;
+	}
 </script>
 
 {#snippet economicsTiles()}
@@ -314,14 +335,24 @@
 					/>
 				</div>
 
-				<p class="mt-3 text-xs text-muted-foreground">
-					{#if autoMain && autoSub}
-						Recommended from this comparison
-					{:else}
-						Your pick
-					{/if}
-					· {main?.name ?? '—'} + {sub?.name ?? '—'}
-				</p>
+				<div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+					<p class="text-xs text-muted-foreground">
+						{#if autoMain && autoSub}
+							Recommended from this comparison
+						{:else}
+							Your pick
+						{/if}
+						· {main?.name ?? '—'} + {sub?.name ?? '—'}
+					</p>
+					<Button
+						variant="outline"
+						size="sm"
+						onclick={swapRoles}
+						disabled={!main || !sub || main.id === sub.id}
+					>
+						Swap roles
+					</Button>
+				</div>
 
 				<div class="mt-3">
 					<label for="pair-split" class="text-sm font-medium text-foreground">
